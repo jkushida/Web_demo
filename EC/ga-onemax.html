@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GA - OneMax問題</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            padding: 8px;
+            overflow-y: auto;
+        }
+        
+        .container {
+            max-width: 1400px;
+            min-height: calc(100vh - 16px);
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 1.4em;
+            margin-bottom: 2px;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            flex: 1;
+            min-height: 0;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            padding: 6px;
+            background: #f0f4f8;
+            border-radius: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-size: 0.8em;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 2px;
+        }
+        
+        input[type="number"], input[type="range"] {
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 8px 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        .reset-btn {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 6px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.7em;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 6px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            min-height: 0;
+        }
+        
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .right-panel {
+            background: white;
+            padding: 6px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            height: 620px;
+        }
+        
+        .population-title {
+            font-size: 1em;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: #333;
+        }
+        
+        .individual {
+            display: inline-flex;
+            margin: 2px;
+            padding: 3px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8em;
+            align-items: center;
+        }
+        
+        .best-individual {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            font-weight: bold;
+        }
+        
+        .gene {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 1px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 0.75em;
+        }
+        
+        .gene-0 {
+            background: #ff6b6b;
+            color: white;
+        }
+        
+        .gene-1 {
+            background: #4ecdc4;
+            color: white;
+        }
+        
+        .fitness-badge {
+            margin-left: 5px;
+            padding: 2px 6px;
+            background: #667eea;
+            color: white;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .index-badge {
+            margin-right: 6px;
+            padding: 2px 6px;
+            background: #94a3b8; /* slate */
+            color: white;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 0.75em;
+            
+            text-align: center;
+        }
+    .about {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 8px 10px;
+        font-size: 0.9em;
+        line-height: 1.5;
+        margin-top: 6px;
+    }
+    .about h2 {
+        font-size: 1em;
+        margin-bottom: 6px;
+        color: #333;
+    }
+    .about dl {
+        display: grid;
+        grid-template-columns: 7em 1fr;
+        gap: 4px 10px;
+    }
+    .about dt {
+        font-weight: bold;
+        color: #555;
+    }
+    .about dd {
+        margin: 0;
+        color: #444;
+    }
+    .about ul {
+        margin-left: 1.2em;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 遺伝的アルゴリズム - OneMax問題</h1>
+        
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="geneLength">遺伝子長</label>
+                        <input type="number" id="geneLength" value="20" min="5" max="50">
+                    </div>
+                    <div class="control-group">
+                        <label for="populationSize">個体数</label>
+                        <input type="number" id="populationSize" value="20" min="10" max="100">
+                    </div>
+                    <div class="control-group">
+                        <label for="mutationRate">突然変異率: <span id="mutationRateValue">0.01</span></label>
+                        <input type="range" id="mutationRate" value="0.01" min="0" max="0.1" step="0.001">
+                    </div>
+                    <div class="control-group">
+                        <label for="crossoverRate">交叉率: <span id="crossoverRateValue">0.8</span></label>
+                        <input type="range" id="crossoverRate" value="0.8" min="0" max="1" step="0.01">
+                    </div>
+                    <div class="control-group">
+                        <label for="tournamentSize">トーナメントサイズ</label>
+                        <input type="number" id="tournamentSize" value="3" min="2" max="20">
+                    </div>
+                    <div class="control-group">
+                        <label for="eliteSize">エリート数</label>
+                        <input type="number" id="eliteSize" value="2" min="0" max="10">
+                    </div>
+                    <div class="control-group">
+                        <label for="maxGenerations">打ち切り世代</label>
+                        <input type="number" id="maxGenerations" value="30" min="1" max="10000">
+                    </div>
+                    <div class="control-group">
+                        <label for="speed">アニメーション速度</label>
+                        <input type="range" id="speed" value="5" min="1" max="10" step="1">
+                        <span id="speedValue">5</span>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="start-btn" id="playBtn" onclick="toggleRun()">開始</button>
+                    <button class="reset-btn" onclick="resetGA()">リセット/初期化</button>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="generation">0</div>
+                        <div class="stat-label">世代</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="bestFitness">0</div>
+                        <div class="stat-label">最高適応度</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avgFitness">0</div>
+                        <div class="stat-label">平均適応度</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="diversity">0%</div>
+                        <div class="stat-label">多様性</div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="fitnessChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="population-title">現在の個体群（上位20個体）</div>
+                <div id="individuals"></div>
+            </div>
+        </div>
+        <section class="about">
+            <h2>このデモの説明</h2>
+            <dl>
+                <dt>目的</dt>
+                <dd>OneMax問題（0/1遺伝子列において「1」の個数を最大化する問題）を遺伝的アルゴリズムで解く様子を可視化するものである．</dd>
+                <dt>適応度</dt>
+                <dd>適応度は遺伝子列中の1の総数である．最高適応度が遺伝子長に等しくなった時点で最適解に到達したことを意味する．</dd>
+                <dt>進化の流れ</dt>
+                <dd>初期化 → 評価 → 選択（トーナメント）→ 交叉（2点）→ 突然変異 → エリート保持 → 世代更新，を繰り返す．</dd>
+                <dt>停止条件</dt>
+                <dd>
+                    いずれかを満たすと停止する．
+                    <ul>
+                        <li>最高適応度が遺伝子長に到達したとき．</li>
+                        <li>打ち切り世代で指定した世代数に到達したとき．</li>
+                    </ul>
+                </dd>
+                <dt>多様性</dt>
+                <dd>個体群内のユニークな遺伝子列の割合を％で表示している．値が低下し過ぎると早期収束の兆候となることがある．計算式は<code>(ユニークな遺伝子の種類の数 / 総個体数) * 100</code>です．</dd>
+                <dt>操作</dt>
+                <dd>
+                    <ul>
+                        <li><strong>遺伝子長・個体数・エリート数</strong>：問題規模と選択圧を調整する．</li>
+                        <li><strong>交叉率・突然変異率</strong>：探索の集約と拡散のバランスを制御する．</li>
+                        <li><strong>打ち切り世代</strong>：最大世代数を指定する（デフォルト30）．</li>
+                        <li><strong>アニメーション速度</strong>：大きいほど高速で表示更新する．</li>
+                        <li><strong>リセット/初期化</strong>：毎回ランダムに初期個体群を再生成して表示する．</li>
+                    </ul>
+                </dd>
+            </dl>
+        </section>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let ga = null;
+        let chart = null;
+        let isRunning = false;
+        let animationId = null;
+
+        function updatePlayLabel() {
+            const btn = document.getElementById('playBtn');
+            if (!btn) return;
+            if (!ga) {
+                btn.textContent = '開始';
+            } else if (isRunning) {
+                btn.textContent = '一時停止';
+            } else {
+                btn.textContent = '再生';
+            }
+        }
+        
+        document.getElementById('mutationRate').addEventListener('input', (e) => {
+            document.getElementById('mutationRateValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('crossoverRate').addEventListener('input', (e) => {
+            document.getElementById('crossoverRateValue').textContent = e.target.value;
+        });
+        
+        document.getElementById('speed').addEventListener('input', (e) => {
+            document.getElementById('speedValue').textContent = e.target.value;
+        });
+        
+        class GeneticAlgorithm {
+            constructor(geneLength, populationSize, mutationRate, crossoverRate, eliteSize) {
+                this.geneLength = geneLength;
+                this.populationSize = populationSize;
+                this.mutationRate = mutationRate;
+                this.crossoverRate = crossoverRate;
+                this.eliteSize = eliteSize;
+                this.tournamentSize = parseInt(document.getElementById('tournamentSize').value);
+                this.generation = 0;
+                this.population = this.initializePopulation();
+                this.bestIndividual = null;
+                this.fitnessHistory = [];
+                this.avgFitnessHistory = [];
+                this.maxGenerations = parseInt(document.getElementById('maxGenerations').value);
+            }
+            
+            initializePopulation() {
+                const population = [];
+                for (let i = 0; i < this.populationSize; i++) {
+                    const individual = [];
+                    for (let j = 0; j < this.geneLength; j++) {
+                        individual.push(Math.random() < 0.5 ? 0 : 1);
+                    }
+                    population.push(individual);
+                }
+                return population;
+            }
+            
+            fitness(individual) {
+                return individual.reduce((sum, gene) => sum + gene, 0);
+            }
+            
+            selection() {
+                const tournamentSize = this.tournamentSize;
+                const tournament = [];
+                for (let i = 0; i < tournamentSize; i++) {
+                    const randomIndex = Math.floor(Math.random() * this.population.length);
+                    tournament.push(this.population[randomIndex]);
+                }
+                return tournament.reduce((best, current) =>
+                    this.fitness(current) > this.fitness(best) ? current : best
+                );
+            }
+            
+            crossover(parent1, parent2) {
+                if (Math.random() > this.crossoverRate) {
+                    return [parent1.slice(), parent2.slice()];
+                }
+                
+                const point1 = Math.floor(Math.random() * this.geneLength);
+                const point2 = Math.floor(Math.random() * this.geneLength);
+                const start = Math.min(point1, point2);
+                const end = Math.max(point1, point2);
+                
+                const child1 = [];
+                const child2 = [];
+                
+                for (let i = 0; i < this.geneLength; i++) {
+                    if (i >= start && i <= end) {
+                        child1.push(parent2[i]);
+                        child2.push(parent1[i]);
+                    } else {
+                        child1.push(parent1[i]);
+                        child2.push(parent2[i]);
+                    }
+                }
+                
+                return [child1, child2];
+            }
+            
+            mutate(individual) {
+                const mutated = individual.slice();
+                for (let i = 0; i < this.geneLength; i++) {
+                    if (Math.random() < this.mutationRate) {
+                        mutated[i] = 1 - mutated[i];
+                    }
+                }
+                return mutated;
+            }
+            
+            evolve() {
+                this.population.sort((a, b) => this.fitness(b) - this.fitness(a));
+                
+                const newPopulation = [];
+                for (let i = 0; i < this.eliteSize && i < this.population.length; i++) {
+                    newPopulation.push(this.population[i].slice());
+                }
+                
+                while (newPopulation.length < this.populationSize) {
+                    const parent1 = this.selection();
+                    const parent2 = this.selection();
+                    const [child1, child2] = this.crossover(parent1, parent2);
+                    newPopulation.push(this.mutate(child1));
+                    if (newPopulation.length < this.populationSize) {
+                        newPopulation.push(this.mutate(child2));
+                    }
+                }
+                
+                this.population = newPopulation.slice(0, this.populationSize);
+                this.generation++;
+                
+                const fitnesses = this.population.map(ind => this.fitness(ind));
+                const maxFitness = Math.max(...fitnesses);
+                const avgFitness = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
+                
+                this.fitnessHistory.push(maxFitness);
+                this.avgFitnessHistory.push(avgFitness);
+                
+                this.bestIndividual = this.population[0];
+                
+                return {
+                    generation: this.generation,
+                    bestFitness: maxFitness,
+                    avgFitness: avgFitness.toFixed(1),
+                    diversity: this.calculateDiversity(),
+                    maxGenerations: this.maxGenerations
+                };
+            }
+            
+            calculateDiversity() {
+                const uniqueIndividuals = new Set(this.population.map(ind => ind.join('')));
+                return (((uniqueIndividuals.size - 1) / (this.population.length - 1)) * 100).toFixed(0);
+            }
+
+            // Return current stats without evolving
+            getStats() {
+                const fitnesses = this.population.map(ind => this.fitness(ind));
+                const maxFitness = Math.max(...fitnesses);
+                const avgFitness = fitnesses.reduce((a, b) => a + b, 0) / fitnesses.length;
+                return {
+                    generation: this.generation,
+                    bestFitness: maxFitness,
+                    avgFitness: avgFitness.toFixed(1),
+                    diversity: this.calculateDiversity(),
+                    maxGenerations: this.maxGenerations
+                };
+            }
+        }
+        
+        function initChart() {
+            const ctx = document.getElementById('fitnessChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '最高',
+                        data: [],
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }, {
+                        label: '平均',
+                        data: [],
+                        borderColor: 'rgb(255, 107, 107)',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0,
+                        borderWidth: 2,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 0
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                boxWidth: 15,
+                                padding: 5,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: '世代数'
+                            },
+                            ticks: {
+                                font: {
+                                    size: 9
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: '適応度'
+                            },
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 9
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateDisplay(stats) {
+            document.getElementById('generation').textContent = stats.generation;
+            document.getElementById('bestFitness').textContent = stats.bestFitness;
+            document.getElementById('avgFitness').textContent = stats.avgFitness;
+            document.getElementById('diversity').textContent = stats.diversity + '%';
+            
+            chart.data.labels.push(stats.generation);
+            chart.data.datasets[0].data.push(stats.bestFitness);
+            chart.data.datasets[1].data.push(stats.avgFitness);
+            
+            const maxPoints = 30;
+            if (chart.data.labels.length > maxPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+                chart.data.datasets[1].data.shift();
+            }
+            
+            chart.update();
+            displayPopulation();
+        }
+        
+        function displayPopulation() {
+            const container = document.getElementById('individuals');
+            container.innerHTML = '';
+            
+            const sorted = [...ga.population].sort((a, b) => ga.fitness(b) - ga.fitness(a));
+            const maxFitness = ga.fitness(sorted[0]);
+            
+            sorted.slice(0, 20).forEach((individual, index) => {
+                const fitness = ga.fitness(individual);
+                const isMax = fitness === maxFitness && index === 0;
+                
+                const div = document.createElement('div');
+                div.className = isMax ? 'individual best-individual' : 'individual';
+                
+                // Add index badge
+            const idx = document.createElement('div');
+            idx.className = 'index-badge';
+            idx.textContent = 'index ' + String(index + 1).padStart(2, '0');
+            div.appendChild(idx);
+                
+                individual.forEach(gene => {
+                    const geneDiv = document.createElement('div');
+                    geneDiv.className = `gene gene-${gene}`;
+                    geneDiv.textContent = gene;
+                    div.appendChild(geneDiv);
+                });
+                
+                const fitnessDiv = document.createElement('div');
+                fitnessDiv.className = 'fitness-badge';
+                fitnessDiv.textContent = fitness;
+                div.appendChild(fitnessDiv);
+                
+                container.appendChild(div);
+            });
+        }
+        
+        function startGA() {
+            if (isRunning) return;
+
+            if (!ga) {
+                const geneLength = parseInt(document.getElementById('geneLength').value);
+                const populationSize = parseInt(document.getElementById('populationSize').value);
+                const mutationRate = parseFloat(document.getElementById('mutationRate').value);
+                const crossoverRate = parseFloat(document.getElementById('crossoverRate').value);
+                const eliteSize = parseInt(document.getElementById('eliteSize').value);
+                ga = new GeneticAlgorithm(geneLength, populationSize, mutationRate, crossoverRate, eliteSize);
+
+                if (!chart) {
+                    initChart();
+                }
+            }
+
+            isRunning = true;
+            updatePlayLabel();
+            const speedLevel = parseInt(document.getElementById('speed').value);
+            const speed = 1000 / speedLevel; // higher speedLevel = shorter delay
+
+            function run() {
+                if (!isRunning) return;
+
+                const stats = ga.evolve();
+                updateDisplay(stats);
+
+                if (stats.generation >= ga.maxGenerations) {
+                    stopGA();
+                    return;
+                }
+
+                animationId = setTimeout(run, speed);
+            }
+
+            run();
+        }
+        
+        function stopGA() {
+            isRunning = false;
+            if (animationId) {
+                clearTimeout(animationId);
+                animationId = null;
+            }
+            updatePlayLabel();
+        }
+
+        function toggleRun() {
+            if (isRunning) {
+                // pause
+                isRunning = false;
+                if (animationId) {
+                    clearTimeout(animationId);
+                    animationId = null;
+                }
+                updatePlayLabel();
+                return;
+            }
+            // start or resume
+            // If already finished, do nothing (user can reset to start anew)
+            if (ga && ga.generation >= ga.maxGenerations) {
+                return;
+            }
+            startGA(); // handles both first start and resume
+            updatePlayLabel();
+        }
+        
+        function resetGA() {
+            stopGA();
+            // Recreate GA with current control values (random re-initialization every time)
+            const geneLength = parseInt(document.getElementById('geneLength').value);
+            const populationSize = parseInt(document.getElementById('populationSize').value);
+            const mutationRate = parseFloat(document.getElementById('mutationRate').value);
+            const crossoverRate = parseFloat(document.getElementById('crossoverRate').value);
+            const eliteSize = parseInt(document.getElementById('eliteSize').value);
+            ga = new GeneticAlgorithm(geneLength, populationSize, mutationRate, crossoverRate, eliteSize);
+
+            // Reset chart
+            if (chart) {
+                chart.data.labels = [];
+                chart.data.datasets[0].data = [];
+                chart.data.datasets[1].data = [];
+                chart.update();
+            }
+
+            // Show initial stats and population immediately
+            const stats = ga.getStats();
+            updateDisplay(stats);
+            updatePlayLabel();
+        }
+        
+        window.addEventListener('load', () => {
+            initChart();
+            updatePlayLabel();
+        });
+    </script>
+</body>
+</html>
+</script>
+</body>
+</html>
