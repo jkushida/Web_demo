@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宣教師と人食い人種 - 川渡りパズル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 50%, #6B8E23 50%, #8FBC8F 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 120px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+        }
+        
+        .game-area {
+            position: relative;
+            height: 400px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #4A90E2 100%);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        
+        .river {
+            position: absolute;
+            width: 40%;
+            height: 100%;
+            left: 30%;
+            background: linear-gradient(to bottom, 
+                rgba(30, 144, 255, 0.6) 0%, 
+                rgba(0, 119, 190, 0.8) 100%);
+            animation: wave 3s ease-in-out infinite;
+        }
+        
+        @keyframes wave {
+            0%, 100% { transform: translateX(0); }
+            50% { transform: translateX(10px); }
+        }
+        
+        .bank {
+            position: absolute;
+            width: 30%;
+            height: 100%;
+            background: linear-gradient(to bottom, #8FBC8F 0%, #556B2F 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .bank-left {
+            left: 0;
+            border-right: 3px solid #4A5F30;
+        }
+        
+        .bank-right {
+            right: 0;
+            border-left: 3px solid #4A5F30;
+        }
+        
+        .bank-label {
+            position: absolute;
+            top: 10px;
+            font-weight: bold;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        .people-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            max-width: 100%;
+            min-height: 80px;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        
+        .people-container.drag-over {
+            background: rgba(102, 126, 234, 0.2);
+            border: 2px dashed #667eea;
+        }
+        
+        .person {
+            width: 50px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: move;
+            transition: all 0.3s;
+            font-size: 30px;
+            position: relative;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid transparent;
+            user-select: none;
+        }
+        
+        .person:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .person.selected {
+            border-color: #f39c12;
+            background: #fff3cd;
+            animation: pulse 0.5s infinite;
+        }
+        
+        .person.dragging {
+            opacity: 0.5;
+            cursor: grabbing;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .missionary {
+            color: #3498db;
+        }
+        
+        .cannibal {
+            color: #e74c3c;
+        }
+        
+        .boat {
+            position: absolute;
+            width: 120px;
+            height: 80px;
+            bottom: 80px;
+            background: linear-gradient(to bottom, #8B4513 0%, #654321 100%);
+            border-radius: 0 0 20px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.5s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 3px dashed transparent;
+        }
+        
+        .boat.drag-over {
+            border-color: #f39c12;
+            background: linear-gradient(to bottom, #A0522D 0%, #8B4513 100%);
+            transform: scale(1.05);
+        }
+        
+        .boat.left-side {
+            left: 25%;
+        }
+        
+        .boat.right-side {
+            right: 25%;
+        }
+        
+        .boat:hover {
+            transform: scale(1.05);
+        }
+        
+        .boat-moving {
+            animation: sail 2s ease-in-out;
+        }
+        
+        @keyframes sail {
+            0% { transform: rotate(-2deg); }
+            25% { transform: translateY(-5px) rotate(2deg); }
+            50% { transform: rotate(-2deg); }
+            75% { transform: translateY(5px) rotate(2deg); }
+            100% { transform: rotate(0deg); }
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .btn-success:hover:not(:disabled) {
+            background: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover:not(:disabled) {
+            background: #c0392b;
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .message {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            display: none;
+        }
+        
+        .message.error {
+            background: #fee;
+            color: #c0392b;
+            border: 2px solid #e74c3c;
+            display: block;
+        }
+        
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #27ae60;
+            display: block;
+        }
+        
+        .message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #f39c12;
+            display: block;
+        }
+        
+        .rules {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .rules h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .rules ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .rules li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            color: #5a6c7d;
+            line-height: 1.6;
+        }
+        
+        .rules li:before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #3498db;
+        }
+        
+        .history {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .history-item {
+            padding: 5px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #5a6c7d;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-icon {
+            font-size: 24px;
+        }
+        
+        .legend-text {
+            color: #5a6c7d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⛪ 宣教師と人食い人種 🏝️</h1>
+        <div class="subtitle">全員を安全に対岸へ渡らせよう！</div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <span class="legend-icon">👨‍💼</span>
+                <span class="legend-text">宣教師</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-icon">👹</span>
+                <span class="legend-text">人食い人種</span>
+            </div>
+        </div>
+        
+        <div class="game-info">
+            <div class="info-box">
+                <div class="info-label">移動回数</div>
+                <div class="info-value" id="moveCount">0</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">最小回数</div>
+                <div class="info-value">11</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">左岸</div>
+                <div class="info-value" id="leftCount">6</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">ボート</div>
+                <div class="info-value" id="boatCount">0</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">右岸</div>
+                <div class="info-value" id="rightCount">0</div>
+            </div>
+        </div>
+        
+        <div id="message" class="message"></div>
+        
+        <div class="game-area">
+            <div class="river"></div>
+            
+            <div class="bank bank-left">
+                <div class="bank-label">左岸（出発地）</div>
+                <div class="people-container" id="leftBank"></div>
+            </div>
+            
+            <div class="bank bank-right">
+                <div class="bank-label">右岸（目的地）</div>
+                <div class="people-container" id="rightBank"></div>
+            </div>
+            
+            <div class="boat left-side" id="boat">
+                <div class="people-container" id="boatContainer"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-success" id="crossRiver">川を渡る</button>
+            <button class="btn btn-danger" id="reset">リセット</button>
+            <button class="btn btn-primary" id="hint">ヒント</button>
+            <button class="btn btn-success" id="autoSolve">自動解答</button>
+        </div>
+        
+        <div class="rules">
+            <h3>📜 ゲームのルール</h3>
+            <ul>
+                <li>3人の宣教師と3人の人食い人種を全員右岸に渡します</li>
+                <li>ボートには最大2人まで乗れます</li>
+                <li>ボートを動かすには最低1人は乗っている必要があります</li>
+                <li>どちらの岸でも、人食い人種の数が宣教師の数を上回ってはいけません</li>
+                <li>宣教師が0人の場合は、人食い人種が何人いても問題ありません</li>
+                <li>最小11回の移動で全員を渡らせることができます</li>
+            </ul>
+        </div>
+        
+        <div class="history" id="history" style="display: none;">
+            <h3>📝 移動履歴</h3>
+            <div id="historyContent"></div>
+        </div>
+    </div>
+    
+    <script>
+        class RiverCrossingGame {
+            constructor() {
+                this.leftBank = [];
+                this.rightBank = [];
+                this.boat = [];
+                this.boatPosition = 'left';
+                this.moveCount = 0;
+                this.selectedPerson = null;
+                this.history = [];
+                this.isAutoSolving = false;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupInitialState();
+                this.setupEventListeners();
+                this.render();
+            }
+            
+            setupInitialState() {
+                this.leftBank = [
+                    { type: 'missionary', id: 'm1' },
+                    { type: 'missionary', id: 'm2' },
+                    { type: 'missionary', id: 'm3' },
+                    { type: 'cannibal', id: 'c1' },
+                    { type: 'cannibal', id: 'c2' },
+                    { type: 'cannibal', id: 'c3' }
+                ];
+                this.rightBank = [];
+                this.boat = [];
+                this.boatPosition = 'left';
+                this.moveCount = 0;
+                this.history = [];
+                this.selectedPerson = null;
+                this.isAutoSolving = false;
+            }
+            
+            setupEventListeners() {
+                document.getElementById('crossRiver').addEventListener('click', () => this.crossRiver());
+                document.getElementById('reset').addEventListener('click', () => this.reset());
+                document.getElementById('hint').addEventListener('click', () => this.showHint());
+                document.getElementById('autoSolve').addEventListener('click', () => this.autoSolve());
+                
+                this.setupDragAndDrop();
+            }
+            
+            setupDragAndDrop() {
+                document.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                });
+                
+                document.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                });
+            }
+            
+            crossRiver() {
+                if (this.boat.length === 0) {
+                    this.showMessage('ボートに誰も乗っていません', 'warning');
+                    return;
+                }
+                
+                const fromBank = this.boatPosition === 'left' ? '左岸' : '右岸';
+                const toBank = this.boatPosition === 'left' ? '右岸' : '左岸';
+                const passengers = this.boat.map(p => p.type === 'missionary' ? '宣教師' : '人食い人種').join('と');
+                
+                this.boatPosition = this.boatPosition === 'left' ? 'right' : 'left';
+                this.moveCount++;
+                
+                this.history.push(`${this.moveCount}. ${passengers}が${fromBank}から${toBank}へ`);
+                
+                if (!this.checkValidState()) {
+                    this.showMessage('危険！人食い人種が宣教師を襲います！', 'error');
+                    setTimeout(() => {
+                        this.boatPosition = this.boatPosition === 'left' ? 'right' : 'left';
+                        this.moveCount--;
+                        this.history.pop();
+                        this.render();
+                    }, 2000);
+                    return;
+                }
+                
+                this.render();
+                this.animateBoat();
+                
+                if (this.checkWin()) {
+                    setTimeout(() => {
+                        this.showMessage(`🎉 おめでとうございます！${this.moveCount}回で全員を渡らせました！`, 'success');
+                    }, 500);
+                }
+            }
+            
+            checkValidState() {
+                const leftMissionaries = this.leftBank.filter(p => p.type === 'missionary').length;
+                const leftCannibals = this.leftBank.filter(p => p.type === 'cannibal').length;
+                const rightMissionaries = this.rightBank.filter(p => p.type === 'missionary').length;
+                const rightCannibals = this.rightBank.filter(p => p.type === 'cannibal').length;
+                const boatMissionaries = this.boat.filter(p => p.type === 'missionary').length;
+                const boatCannibals = this.boat.filter(p => p.type === 'cannibal').length;
+                
+                let totalLeftM = leftMissionaries;
+                let totalLeftC = leftCannibals;
+                let totalRightM = rightMissionaries;
+                let totalRightC = rightCannibals;
+                
+                if (this.boatPosition === 'left') {
+                    totalLeftM += boatMissionaries;
+                    totalLeftC += boatCannibals;
+                } else {
+                    totalRightM += boatMissionaries;
+                    totalRightC += boatCannibals;
+                }
+                
+                if (totalLeftM > 0 && totalLeftC > totalLeftM) return false;
+                if (totalRightM > 0 && totalRightC > totalRightM) return false;
+                
+                return true;
+            }
+            
+            checkWin() {
+                // 勝利条件：左岸とボートが空で、右岸に6人全員がいる
+                // または、ボートが右岸にあり、左岸が空で、右岸とボートの合計が6人
+                if (this.leftBank.length === 0) {
+                    if (this.boat.length === 0 && this.rightBank.length === 6) {
+                        return true;
+                    }
+                    if (this.boatPosition === 'right' && 
+                        this.rightBank.length + this.boat.length === 6) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            reset() {
+                this.setupInitialState();
+                this.render();
+                this.showMessage('', '');
+            }
+            
+            showHint() {
+                const hints = [
+                    '最初は2人の人食い人種を渡すのが良いでしょう',
+                    '1人が戻って、もう1人の人食い人種を渡します',
+                    '次に2人の宣教師を渡すと良いでしょう',
+                    '宣教師と人食い人種のバランスを常に考えましょう',
+                    '時には1人で戻ることも必要です'
+                ];
+                const hint = hints[Math.min(Math.floor(this.moveCount / 2), hints.length - 1)];
+                this.showMessage(`💡 ヒント: ${hint}`, 'warning');
+            }
+            
+            async autoSolve() {
+                if (this.isAutoSolving) return;
+                
+                this.isAutoSolving = true;
+                this.reset();
+                await this.sleep(1000);
+                
+                const solution = [
+                    { passengers: ['c1', 'c2'], direction: 'right' },
+                    { passengers: ['c1'], direction: 'left' },
+                    { passengers: ['c1', 'c3'], direction: 'right' },
+                    { passengers: ['c1'], direction: 'left' },
+                    { passengers: ['m1', 'm2'], direction: 'right' },
+                    { passengers: ['m1', 'c2'], direction: 'left' },
+                    { passengers: ['m1', 'm3'], direction: 'right' },
+                    { passengers: ['c3'], direction: 'left' },
+                    { passengers: ['c1', 'c2'], direction: 'right' },
+                    { passengers: ['c1'], direction: 'left' },
+                    { passengers: ['c1', 'c3'], direction: 'right' }
+                ];
+                
+                for (const step of solution) {
+                    if (!this.isAutoSolving) break;
+                    
+                    await this.sleep(1000);
+                    
+                    // Clear boat first
+                    while (this.boat.length > 0) {
+                        const person = this.boat.pop();
+                        const bank = this.boatPosition === 'left' ? this.leftBank : this.rightBank;
+                        bank.push(person);
+                    }
+                    
+                    // Load passengers onto boat
+                    const currentBank = this.boatPosition === 'left' ? this.leftBank : this.rightBank;
+                    for (const passengerId of step.passengers) {
+                        const personIndex = currentBank.findIndex(p => p.id === passengerId);
+                        if (personIndex !== -1) {
+                            const person = currentBank.splice(personIndex, 1)[0];
+                            this.boat.push(person);
+                        }
+                    }
+                    
+                    this.render();
+                    await this.sleep(800);
+                    
+                    // Cross the river
+                    if (this.boat.length > 0) {
+                        this.crossRiverAuto();
+                        await this.sleep(1500);
+                    }
+                }
+                
+                this.isAutoSolving = false;
+            }
+            
+            crossRiverAuto() {
+                if (this.boat.length === 0) return;
+                
+                const fromBank = this.boatPosition === 'left' ? '左岸' : '右岸';
+                const toBank = this.boatPosition === 'left' ? '右岸' : '左岸';
+                const passengers = this.boat.map(p => p.type === 'missionary' ? '宣教師' : '人食い人種').join('と');
+                
+                this.boatPosition = this.boatPosition === 'left' ? 'right' : 'left';
+                this.moveCount++;
+                
+                this.history.push(`${this.moveCount}. ${passengers}が${fromBank}から${toBank}へ`);
+                
+                this.render();
+                this.animateBoat();
+                
+                if (this.checkWin()) {
+                    setTimeout(() => {
+                        this.showMessage(`🎉 おめでとうございます！${this.moveCount}回で全員を渡らせました！`, 'success');
+                    }, 500);
+                }
+            }
+            
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            animateBoat() {
+                const boat = document.getElementById('boat');
+                boat.classList.add('boat-moving');
+                setTimeout(() => {
+                    boat.classList.remove('boat-moving');
+                }, 2000);
+            }
+            
+            showMessage(text, type) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = text;
+                messageEl.className = 'message';
+                if (type) {
+                    messageEl.classList.add(type);
+                }
+            }
+            
+            render() {
+                this.renderBank('leftBank', this.leftBank);
+                this.renderBank('rightBank', this.rightBank);
+                this.renderBoat();
+                this.updateCounts();
+                this.renderHistory();
+                
+                const boat = document.getElementById('boat');
+                boat.className = `boat ${this.boatPosition}-side`;
+                
+                // Setup drop zones once after rendering
+                this.setupDropZones();
+            }
+            
+            setupDropZones() {
+                // Setup left bank drop zone
+                const leftBank = document.getElementById('leftBank');
+                const leftBankParent = leftBank.parentElement;
+                
+                // Remove old listeners
+                leftBankParent.ondragover = null;
+                leftBankParent.ondragleave = null;
+                leftBankParent.ondrop = null;
+                
+                leftBankParent.ondragover = (e) => {
+                    e.preventDefault();
+                    leftBank.classList.add('drag-over');
+                };
+                
+                leftBankParent.ondragleave = (e) => {
+                    if (!leftBankParent.contains(e.relatedTarget)) {
+                        leftBank.classList.remove('drag-over');
+                    }
+                };
+                
+                leftBankParent.ondrop = (e) => {
+                    e.preventDefault();
+                    leftBank.classList.remove('drag-over');
+                    this.handleDropOnBank(e, 'left', this.leftBank);
+                };
+                
+                // Setup right bank drop zone
+                const rightBank = document.getElementById('rightBank');
+                const rightBankParent = rightBank.parentElement;
+                
+                // Remove old listeners
+                rightBankParent.ondragover = null;
+                rightBankParent.ondragleave = null;
+                rightBankParent.ondrop = null;
+                
+                rightBankParent.ondragover = (e) => {
+                    e.preventDefault();
+                    rightBank.classList.add('drag-over');
+                };
+                
+                rightBankParent.ondragleave = (e) => {
+                    if (!rightBankParent.contains(e.relatedTarget)) {
+                        rightBank.classList.remove('drag-over');
+                    }
+                };
+                
+                rightBankParent.ondrop = (e) => {
+                    e.preventDefault();
+                    rightBank.classList.remove('drag-over');
+                    this.handleDropOnBank(e, 'right', this.rightBank);
+                };
+                
+                // Setup boat drop zone
+                const boat = document.getElementById('boat');
+                
+                // Remove old listeners
+                boat.ondragover = null;
+                boat.ondragleave = null;
+                boat.ondrop = null;
+                
+                boat.ondragover = (e) => {
+                    e.preventDefault();
+                    boat.classList.add('drag-over');
+                };
+                
+                boat.ondragleave = (e) => {
+                    if (!boat.contains(e.relatedTarget)) {
+                        boat.classList.remove('drag-over');
+                    }
+                };
+                
+                boat.ondrop = (e) => {
+                    e.preventDefault();
+                    boat.classList.remove('drag-over');
+                    this.handleDropOnBoat(e);
+                };
+            }
+            
+            handleDropOnBank(e, bankSide, bankArray) {
+                const personId = e.dataTransfer.getData('personId');
+                const fromLocation = e.dataTransfer.getData('from');
+                
+                if (fromLocation === 'boat') {
+                    if (this.boatPosition === bankSide) {
+                        const personIndex = this.boat.findIndex(p => p.id === personId);
+                        if (personIndex !== -1) {
+                            const person = this.boat.splice(personIndex, 1)[0];
+                            bankArray.push(person);
+                            this.render();
+                        }
+                    } else {
+                        this.showMessage('ボートは反対側の岸にあります', 'warning');
+                    }
+                }
+            }
+            
+            handleDropOnBoat(e) {
+                const personId = e.dataTransfer.getData('personId');
+                const fromLocation = e.dataTransfer.getData('from');
+                
+                if (this.boat.length >= 2) {
+                    this.showMessage('ボートは満員です（最大2人）', 'warning');
+                    return;
+                }
+                
+                if (fromLocation === 'leftBank' || fromLocation === 'rightBank') {
+                    const currentBank = this.boatPosition === 'left' ? 'leftBank' : 'rightBank';
+                    if (fromLocation === currentBank) {
+                        const bank = fromLocation === 'leftBank' ? this.leftBank : this.rightBank;
+                        const personIndex = bank.findIndex(p => p.id === personId);
+                        if (personIndex !== -1) {
+                            const person = bank.splice(personIndex, 1)[0];
+                            this.boat.push(person);
+                            this.render();
+                        }
+                    } else {
+                        this.showMessage('ボートは反対側の岸にあります', 'warning');
+                    }
+                }
+            }
+            
+            renderBank(bankId, people) {
+                const bankEl = document.getElementById(bankId);
+                bankEl.innerHTML = '';
+                
+                people.forEach(person => {
+                    const personEl = document.createElement('div');
+                    personEl.className = `person ${person.type}`;
+                    personEl.textContent = person.type === 'missionary' ? '👨‍💼' : '👹';
+                    personEl.dataset.id = person.id;
+                    personEl.draggable = true;
+                    
+                    if (this.selectedPerson && this.selectedPerson.id === person.id) {
+                        personEl.classList.add('selected');
+                    }
+                    
+                    personEl.addEventListener('click', () => {
+                        this.selectedPerson = person;
+                        this.render();
+                    });
+                    
+                    personEl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('personId', person.id);
+                        e.dataTransfer.setData('from', bankId);
+                        personEl.classList.add('dragging');
+                    });
+                    
+                    personEl.addEventListener('dragend', () => {
+                        personEl.classList.remove('dragging');
+                    });
+                    
+                    bankEl.appendChild(personEl);
+                });
+            }
+            
+            renderBoat() {
+                const boatContainer = document.getElementById('boatContainer');
+                boatContainer.innerHTML = '';
+                
+                this.boat.forEach(person => {
+                    const personEl = document.createElement('div');
+                    personEl.className = `person ${person.type}`;
+                    personEl.textContent = person.type === 'missionary' ? '👨‍💼' : '👹';
+                    personEl.dataset.id = person.id;
+                    personEl.draggable = true;
+                    
+                    if (this.selectedPerson && this.selectedPerson.id === person.id) {
+                        personEl.classList.add('selected');
+                    }
+                    
+                    personEl.addEventListener('click', () => {
+                        this.selectedPerson = person;
+                        this.render();
+                    });
+                    
+                    personEl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('personId', person.id);
+                        e.dataTransfer.setData('from', 'boat');
+                        personEl.classList.add('dragging');
+                    });
+                    
+                    personEl.addEventListener('dragend', () => {
+                        personEl.classList.remove('dragging');
+                    });
+                    
+                    boatContainer.appendChild(personEl);
+                });
+            }
+            
+            updateCounts() {
+                const leftTotal = this.leftBank.length + (this.boatPosition === 'left' ? this.boat.length : 0);
+                const rightTotal = this.rightBank.length + (this.boatPosition === 'right' ? this.boat.length : 0);
+                
+                document.getElementById('moveCount').textContent = this.moveCount;
+                document.getElementById('leftCount').textContent = leftTotal;
+                document.getElementById('boatCount').textContent = this.boat.length;
+                document.getElementById('rightCount').textContent = rightTotal;
+            }
+            
+            renderHistory() {
+                if (this.history.length > 0) {
+                    document.getElementById('history').style.display = 'block';
+                    const historyContent = document.getElementById('historyContent');
+                    historyContent.innerHTML = '';
+                    
+                    this.history.slice(-10).forEach(item => {
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'history-item';
+                        itemEl.textContent = item;
+                        historyContent.appendChild(itemEl);
+                    });
+                    
+                    historyContent.scrollTop = historyContent.scrollHeight;
+                }
+            }
+        }
+        
+        new RiverCrossingGame();
+    </script>
+</body>
+</html>

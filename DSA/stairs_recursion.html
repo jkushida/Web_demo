@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>階段問題 - 手動制御可能な再帰可視化</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="number"] {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+        }
+        
+        button:hover:not(:disabled) {
+            transform: scale(1.05);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: scale(1);
+        }
+        
+        .step-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #f0f0ff;
+            padding: 8px 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            justify-content: space-between;
+        }
+        
+        .step-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+        
+        .step-info {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        
+        .step-description {
+            font-size: 1em;
+            font-weight: bold;
+            color: #667eea;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .step-nav-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .step-nav-buttons button {
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        
+        
+        .visualization-container {
+            display: grid;
+            grid-template-columns: 9fr 5fr;
+            gap: 50px;
+            margin-top: 30px;
+        }
+        
+        .tree-container {
+            background: #f8f9fa;
+            padding: 20px 10px;
+            border-radius: 10px;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 700px;
+            min-height: 500px;
+        }
+        
+        .call-stack-container {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 400px;
+        }
+        
+        h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        
+        .tree {
+            display: flex;
+            justify-content: flex-start;
+            margin: 20px 0;
+            padding-left: 20px;
+        }
+        
+        .node {
+            display: inline-block;
+            text-align: center;
+            position: relative;
+            margin: 0 10px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .node.visible {
+            opacity: 1;
+        }
+        
+        .node-content {
+            display: inline-block;
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            margin: 5px;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        /* 終端ノード（基底条件）のスタイル */
+        .node-content.terminal {
+            border-radius: 0;
+            background: #f0f0ff;
+            border-width: 3px;
+        }
+        
+        .node-content.terminal.visited {
+            background: #90EE90;
+            border-color: #4CAF50;
+        }
+        
+        .node-content.terminal.current {
+            background: #FFD700;
+            border-color: #FFA500;
+        }
+        
+        .node-content:hover {
+            background: #f0f0ff;
+            transform: scale(1.1);
+        }
+        
+        .node-content.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .node-content.visited {
+            background: #90EE90;
+            border-color: #4CAF50;
+        }
+        
+        .node-content.current {
+            background: #FFD700;
+            border-color: #FFA500;
+            animation: pulse 0.5s infinite;
+        }
+        
+        .node-content.pending {
+            background: #FFE4E1;
+            border-color: #FF6B6B;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .node-value {
+            position: absolute;
+            top: -32px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10;
+        }
+        
+        .children {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 65px;
+            position: relative;
+        }
+        
+        /* 親から子への縦線 */
+        .node.visible > .children::before {
+            content: '';
+            position: absolute;
+            top: -65px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 30px;
+            background: #667eea;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* 子ノード間の横線 */
+        .node.visible > .children::after {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: 15%;
+            right: 15%;
+            height: 2px;
+            background: #667eea;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* 各子ノードへの縦線 */
+        .node.visible > .children > .node::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 30px;
+            background: #667eea;
+        }
+        
+        /* 終端ノードへの縦線 */
+        .node.visible > .children > .node.terminal-node::before {
+            background: #667eea; /* 青色の線に戻す */
+        }
+        
+        .stack-item {
+            background: white;
+            border: 2px solid #667eea;
+            padding: 8px;
+            margin: 3px 0;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        .stack-item.active {
+            background: #FFD700;
+            border-color: #FFA500;
+            font-weight: bold;
+        }
+        
+        .stack-item.completed {
+            background: #90EE90;
+            border-color: #4CAF50;
+            text-decoration: line-through;
+        }
+        
+        
+        .info-panel {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        
+        .info-panel h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        
+        .shortcut-info {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            border: 1px solid #b3d9ff;
+        }
+        
+        .shortcut-key {
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 0 2px;
+        }
+        
+        @media (max-width: 1024px) {
+            .visualization-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🪜 階段問題の再帰探索</h1>
+        
+        <div class="info-panel">
+            <h3>問題設定</h3>
+            <p>n段の階段を1段または2段ずつ登るときの、登り方の総数を求めます。</p>
+            <p>再帰式: <span class="formula">count(n) = count(n-1) + count(n-2)</span></p>
+            <p>基底条件: <span class="formula">count(1) = 1, count(2) = 2</span></p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="stairsInput">階段の段数 (n):</label>
+                <input type="number" id="stairsInput" min="1" max="10" value="5">
+            </div>
+            
+            <button onclick="initializeVisualization()" id="initBtn">
+                初期化
+            </button>
+            
+            <button onclick="resetVisualization()" id="resetBtn">
+                リセット
+            </button>
+        </div>
+        
+        <div class="step-controls" id="stepControls" style="display: none;">
+            <div class="step-left">
+                <div class="step-info">
+                    ステップ: <span id="currentStep">0</span> / <span id="totalSteps">0</span>
+                </div>
+                <div class="step-description" id="stepDescription"></div>
+            </div>
+            <div class="step-nav-buttons">
+                <button onclick="firstStep()" id="firstBtn" title="最初へ">
+                    ⏮️
+                </button>
+                <button onclick="previousStep()" id="prevBtn" title="前へ">
+                    ⬅️
+                </button>
+                <button onclick="nextStep()" id="nextBtn" title="次へ">
+                    ➡️
+                </button>
+                <button onclick="lastStep()" id="lastBtn" title="最後へ">
+                    ⏭️
+                </button>
+            </div>
+        </div>
+        
+        <div class="visualization-container">
+            <div class="tree-container">
+                <h2>再帰呼び出しツリー</h2>
+                <div id="treeVisualization"></div>
+            </div>
+            
+            <div class="call-stack-container">
+                <h2>コールスタック</h2>
+                <div id="callStack"></div>
+                
+                <h3 style="margin-top: 20px;">実行ログ</h3>
+                <div id="executionLog" style="max-height: 180px; overflow-y: auto; background: white; padding: 8px; border-radius: 5px; font-family: monospace; font-size: 14px;"></div>
+            </div>
+        </div>
+        
+        <div class="shortcut-info">
+            <strong>🎮 操作方法:</strong>
+            <div style="margin-top: 10px;">
+                <strong>ボタン操作:</strong><br>
+                • ⏮️ 最初: 最初のステップへジャンプ<br>
+                • ⬅️ 前へ: 1ステップ戻る<br>
+                • ➡️ 次へ: 1ステップ進む<br>
+                • ⏭️ 最後: 最後のステップへジャンプ<br>
+            </div>
+            <div style="margin-top: 10px;">
+                <strong>⌨️ キーボードショートカット:</strong><br>
+                <span class="shortcut-key">←</span> 前のステップ
+                <span class="shortcut-key">→</span> 次のステップ
+                <span class="shortcut-key">Home</span> 最初へ
+                <span class="shortcut-key">End</span> 最後へ
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 実行ステップの記録
+        let executionSteps = [];
+        let currentStepIndex = -1;
+        let treeNodes = new Map();
+        
+        // ステップの種類
+        const STEP_TYPES = {
+            CALL: 'call',
+            BASE_CASE: 'base_case',
+            CALCULATE: 'calculate',
+            RETURN: 'return'
+        };
+        
+        class ExecutionStep {
+            constructor(type, n, depth, nodeId, result = null, left = null, right = null) {
+                this.type = type;
+                this.n = n;
+                this.depth = depth;
+                this.nodeId = nodeId;
+                this.result = result;
+                this.left = left;
+                this.right = right;
+                this.stackState = [];
+                this.logMessage = '';
+            }
+        }
+        
+        // ツリーノードの作成（完全なツリー構造を事前構築）
+        let nodeCounter = 0;
+        let nodeStructure = new Map(); // ノードIDとその子ノードIDのマッピング
+        
+        function createTreeNode(n, depth = 0, parentId = null, position = '') {
+            const nodeId = `node-${n}-${depth}-${position}-${nodeCounter++}`;
+            const node = document.createElement('div');
+            node.className = 'node';
+            node.id = nodeId;
+            
+            const content = document.createElement('div');
+            content.className = 'node-content';
+            
+            // 終端ノード（基底条件）にterminalクラスを追加
+            if (n === 1 || n === 2) {
+                content.classList.add('terminal');
+                content.style.backgroundColor = '#e0e0e0'; // 薄い灰色
+                node.classList.add('terminal-node'); // ノード自体にもクラスを追加
+            }
+            
+            content.innerHTML = `count(${n})`;
+            content.dataset.n = n;
+            content.dataset.depth = depth;
+            content.dataset.nodeId = nodeId;
+            
+            node.appendChild(content);
+            treeNodes.set(nodeId, content);
+            
+            if (n > 2) {
+                const children = document.createElement('div');
+                children.className = 'children';
+                
+                // 左の子: count(n-1)、右の子: count(n-2)
+                const leftChild = createTreeNode(n - 1, depth + 1, nodeId, position + 'L');
+                const rightChild = createTreeNode(n - 2, depth + 1, nodeId, position + 'R');
+                
+                // ノード構造を記録
+                nodeStructure.set(nodeId, {
+                    left: leftChild.id,
+                    right: rightChild.id,
+                    n: n
+                });
+                
+                children.appendChild(leftChild);
+                children.appendChild(rightChild);
+                node.appendChild(children);
+            } else {
+                // 終端ノードも記録
+                nodeStructure.set(nodeId, {
+                    left: null,
+                    right: null,
+                    n: n
+                });
+            }
+            
+            return node;
+        }
+        
+        // 実行ステップの事前計算
+        function computeExecutionSteps(n, depth = 0, nodeId = null, stackState = []) {
+            const steps = [];
+            
+            // 呼び出しステップ
+            const callStep = new ExecutionStep(STEP_TYPES.CALL, n, depth, nodeId);
+            callStep.stackState = [...stackState, `count(${n})`];
+            callStep.logMessage = `関数呼び出し: count(${n}) - 深さ: ${depth}`;
+            steps.push(callStep);
+            
+            let result;
+            
+            if (n === 1) {
+                // 基底条件1
+                result = 1;
+                const baseStep = new ExecutionStep(STEP_TYPES.BASE_CASE, n, depth, nodeId, result);
+                baseStep.stackState = [...stackState, `count(${n})`];
+                baseStep.logMessage = `基底条件: count(1) = 1`;
+                steps.push(baseStep);
+            } else if (n === 2) {
+                // 基底条件2
+                result = 2;
+                const baseStep = new ExecutionStep(STEP_TYPES.BASE_CASE, n, depth, nodeId, result);
+                baseStep.stackState = [...stackState, `count(${n})`];
+                baseStep.logMessage = `基底条件: count(2) = 2`;
+                steps.push(baseStep);
+            } else {
+                // 再帰呼び出し
+                const newStackState = [...stackState, `count(${n})`];
+                
+                // nodeStructureから子ノードのIDを取得
+                const nodeInfo = nodeStructure.get(nodeId);
+                const leftNodeId = nodeInfo ? nodeInfo.left : null;
+                const rightNodeId = nodeInfo ? nodeInfo.right : null;
+                
+                console.log(`Computing for count(${n}), nodeId=${nodeId}, left=${leftNodeId}, right=${rightNodeId}`);
+                
+                // 左の子ノード (n-1)
+                const leftSteps = computeExecutionSteps(n - 1, depth + 1, leftNodeId, newStackState);
+                steps.push(...leftSteps);
+                const leftResult = getResultFromSteps(leftSteps);
+                
+                // 右の子ノード (n-2)
+                const rightSteps = computeExecutionSteps(n - 2, depth + 1, rightNodeId, newStackState);
+                steps.push(...rightSteps);
+                const rightResult = getResultFromSteps(rightSteps);
+                
+                // 計算ステップ
+                result = leftResult + rightResult;
+                const calcStep = new ExecutionStep(STEP_TYPES.CALCULATE, n, depth, nodeId, result, leftResult, rightResult);
+                calcStep.stackState = [...stackState, `count(${n})`];
+                calcStep.logMessage = `計算: count(${n}) = count(${n-1}) + count(${n-2}) = ${leftResult} + ${rightResult} = ${result}`;
+                steps.push(calcStep);
+            }
+            
+            // 戻りステップ
+            const returnStep = new ExecutionStep(STEP_TYPES.RETURN, n, depth, nodeId, result);
+            returnStep.stackState = [...stackState];
+            returnStep.logMessage = `戻り値: count(${n}) = ${result}`;
+            steps.push(returnStep);
+            
+            return steps;
+        }
+        
+        function getResultFromSteps(steps) {
+            // 最後のRETURNステップを取得（複数ある場合は最後のものが正しい結果）
+            for (let i = steps.length - 1; i >= 0; i--) {
+                if (steps[i].type === STEP_TYPES.RETURN) {
+                    return steps[i].result;
+                }
+            }
+            return null;
+        }
+        
+        // ステップの表示
+        function displayStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= executionSteps.length) return;
+            
+            const step = executionSteps[stepIndex];
+            
+            // デバッグ: 現在のステップ情報
+            console.log(`Step ${stepIndex}: type=${step.type}, n=${step.n}, nodeId=${step.nodeId}`);
+            
+            // すべてのノードをリセット
+            treeNodes.forEach((nodeContent, nodeId) => {
+                const nodeElement = document.getElementById(nodeId);
+                nodeElement.classList.remove('visible');
+                nodeContent.classList.remove('current', 'active', 'visited', 'pending');
+                const valueDisplay = nodeContent.querySelector('.node-value');
+                if (valueDisplay) {
+                    valueDisplay.remove();
+                }
+            });
+            
+            // 現在までのステップを再現
+            const nodeResults = new Map(); // 各ノードの最終結果を記録
+            const visitedNodes = new Set(); // 訪問済みノードを記録
+            const processedNodes = new Set(); // 処理済みノードを記録
+            
+            for (let i = 0; i <= stepIndex; i++) {
+                const s = executionSteps[i];
+                if (s.nodeId && treeNodes.has(s.nodeId)) {
+                    const node = treeNodes.get(s.nodeId);
+                    const nodeElement = document.getElementById(s.nodeId);
+                    
+                    // ノードを表示
+                    nodeElement.classList.add('visible');
+                    visitedNodes.add(s.nodeId);
+                    
+                    // デバッグ: count(4)の子ノードの状況を確認
+                    if (s.n === 4 && (s.type === STEP_TYPES.CALL || s.type === STEP_TYPES.CALCULATE)) {
+                        const nodeInfo = nodeStructure.get(s.nodeId);
+                        if (nodeInfo) {
+                            console.log(`count(4) at step ${i}: left=${nodeInfo.left}, right=${nodeInfo.right}`);
+                            if (nodeInfo.left) {
+                                const leftElement = document.getElementById(nodeInfo.left);
+                                console.log(`  Left child visible: ${leftElement?.classList.contains('visible')}`);
+                            }
+                            if (nodeInfo.right) {
+                                const rightElement = document.getElementById(nodeInfo.right);
+                                console.log(`  Right child visible: ${rightElement?.classList.contains('visible')}`);
+                            }
+                        }
+                    }
+                    
+                    if (i === stepIndex) {
+                        // 現在のステップ
+                        node.classList.add('current');
+                    } else if (s.type === STEP_TYPES.RETURN || s.type === STEP_TYPES.BASE_CASE) {
+                        // 完了したノード - 最新の結果を記録
+                        node.classList.add('visited');
+                        nodeResults.set(s.nodeId, s.result);
+                        processedNodes.add(s.nodeId);
+                    } else if (s.type === STEP_TYPES.CALL && !processedNodes.has(s.nodeId)) {
+                        // 処理中のノード（まだ完了していない場合のみ）
+                        node.classList.add('pending');
+                    }
+                }
+            }
+            
+            // 結果の表示（重複を防ぐため最後に一括で行う）
+            nodeResults.forEach((result, nodeId) => {
+                const node = treeNodes.get(nodeId);
+                if (node && !node.querySelector('.node-value')) {
+                    const valueDisplay = document.createElement('div');
+                    valueDisplay.className = 'node-value';
+                    valueDisplay.textContent = result;
+                    node.appendChild(valueDisplay);
+                }
+            });
+            
+            // コールスタックの更新
+            updateCallStack(step.stackState, step.n);
+            
+            // ログの更新
+            updateLog(step.logMessage);
+            
+            // ステップ説明の更新
+            updateStepDescription(step);
+            
+            // ステップ番号の更新
+            document.getElementById('currentStep').textContent = stepIndex + 1;
+            
+            // ボタンの有効/無効設定
+            updateButtonStates();
+            
+            // 最終ステップで結果表示
+            if (stepIndex === executionSteps.length - 1) {
+                console.log(`最終結果: n=${step.n}, result=${step.result}`);
+                
+                // ルートノード（count(5)）にも最終結果を表示
+                const rootNodeId = executionSteps[0].nodeId; // 最初のステップのnodeIdがルート
+                if (!nodeResults.has(rootNodeId)) {
+                    nodeResults.set(rootNodeId, step.result);
+                    const rootNode = treeNodes.get(rootNodeId);
+                    if (rootNode && !rootNode.querySelector('.node-value')) {
+                        const valueDisplay = document.createElement('div');
+                        valueDisplay.className = 'node-value';
+                        valueDisplay.textContent = step.result;
+                        rootNode.appendChild(valueDisplay);
+                    }
+                }
+            }
+        }
+        
+        function updateCallStack(stackState, currentN) {
+            const stackContainer = document.getElementById('callStack');
+            stackContainer.innerHTML = '';
+            
+            stackState.forEach((item, index) => {
+                const stackItem = document.createElement('div');
+                stackItem.className = 'stack-item';
+                stackItem.style.marginLeft = `${index * 20}px`;
+                stackItem.textContent = item;
+                
+                if (index === stackState.length - 1) {
+                    stackItem.classList.add('active');
+                }
+                
+                stackContainer.appendChild(stackItem);
+            });
+        }
+        
+        function updateLog(message) {
+            const logContainer = document.getElementById('executionLog');
+            logContainer.innerHTML = '';
+            
+            // 現在のステップまでのログを表示
+            for (let i = 0; i <= currentStepIndex && i < executionSteps.length; i++) {
+                const logItem = document.createElement('div');
+                logItem.style.marginBottom = '3px';
+                logItem.style.opacity = i === currentStepIndex ? '1' : '0.85';
+                
+                const step = executionSteps[i];
+                let color = '#333'; // デフォルト色
+                
+                // ステップタイプに応じて色を設定
+                switch(step.type) {
+                    case STEP_TYPES.CALL:
+                        color = '#1A1A80'; // 非常に濃い青紫（関数呼び出し）
+                        break;
+                    case STEP_TYPES.BASE_CASE:
+                        color = '#003300'; // 非常に濃い緑（基底条件）
+                        break;
+                    case STEP_TYPES.CALCULATE:
+                        color = '#B34500'; // より濃いオレンジ（計算）
+                        break;
+                    case STEP_TYPES.RETURN:
+                        color = '#001A4D'; // 非常に濃い青（戻り値）
+                        break;
+                }
+                
+                logItem.style.color = color;
+                logItem.style.fontWeight = i === currentStepIndex ? 'bold' : 'normal';
+                logItem.innerHTML = `${i + 1}. ${executionSteps[i].logMessage}`;
+                logContainer.appendChild(logItem);
+            }
+            
+            // 最新のログにスクロール
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        function updateStepDescription(step) {
+            const descElement = document.getElementById('stepDescription');
+            let description = '';
+            
+            switch(step.type) {
+                case STEP_TYPES.CALL:
+                    description = `📞 関数 count(${step.n}) を呼び出しています`;
+                    break;
+                case STEP_TYPES.BASE_CASE:
+                    description = `✅ 基底条件に到達: count(${step.n}) = ${step.result}`;
+                    break;
+                case STEP_TYPES.CALCULATE:
+                    description = `🧮 計算中: count(${step.n}) = ${step.left} + ${step.right} = ${step.result}`;
+                    break;
+                case STEP_TYPES.RETURN:
+                    description = `↩️ 戻り値: count(${step.n}) = ${step.result}`;
+                    break;
+            }
+            
+            descElement.innerHTML = description;
+        }
+        
+        function updateButtonStates() {
+            document.getElementById('firstBtn').disabled = currentStepIndex <= 0;
+            document.getElementById('prevBtn').disabled = currentStepIndex <= 0;
+            document.getElementById('nextBtn').disabled = currentStepIndex >= executionSteps.length - 1;
+            document.getElementById('lastBtn').disabled = currentStepIndex >= executionSteps.length - 1;
+        }
+        
+        
+        // 制御関数
+        function initializeVisualization() {
+            const n = parseInt(document.getElementById('stairsInput').value);
+            if (n < 1 || n > 10) {
+                alert('階段の段数は1から10の間で入力してください。');
+                return;
+            }
+            
+            resetVisualization();
+            
+            // ツリーを作成
+            const treeContainer = document.getElementById('treeVisualization');
+            const tree = createTreeNode(n);
+            treeContainer.appendChild(tree);
+            
+            // デバッグ: ツリー構造を確認
+            console.log("=== Tree Structure Created ===");
+            console.log("Total nodes in treeNodes Map:", treeNodes.size);
+            console.log("Total nodes in nodeStructure Map:", nodeStructure.size);
+            nodeStructure.forEach((info, nodeId) => {
+                console.log(`Node ${nodeId}: n=${info.n}, left=${info.left}, right=${info.right}`);
+            });
+            
+            // 実行ステップを計算
+            const rootNode = tree;
+            executionSteps = computeExecutionSteps(n, 0, rootNode.id, []);
+            
+            console.log("=== Execution Steps Created ===");
+            console.log("Total steps:", executionSteps.length);
+            // count(4)に関連するステップを確認
+            const count4Steps = executionSteps.filter(s => s.n === 4);
+            console.log(`Steps for count(4): ${count4Steps.length}`);
+            count4Steps.forEach((s, i) => {
+                console.log(`  ${i}: type=${s.type}, nodeId=${s.nodeId}, result=${s.result}`);
+            });
+            
+            // UIを更新
+            document.getElementById('totalSteps').textContent = executionSteps.length;
+            document.getElementById('stepControls').style.display = 'flex';
+            document.getElementById('initBtn').disabled = true;
+            document.getElementById('stairsInput').disabled = true;
+            
+            // 最初のステップを表示（手動モード）
+            currentStepIndex = 0;
+            displayStep(currentStepIndex);
+        }
+        
+        function resetVisualization() {
+            executionSteps = [];
+            currentStepIndex = -1;
+            treeNodes.clear();
+            nodeStructure.clear();  // nodeStructureもクリア
+            nodeCounter = 0;  // nodeCounterもリセット
+            
+            document.getElementById('treeVisualization').innerHTML = '';
+            document.getElementById('callStack').innerHTML = '';
+            document.getElementById('executionLog').innerHTML = '';
+            document.getElementById('stepControls').style.display = 'none';
+            document.getElementById('initBtn').disabled = false;
+            document.getElementById('stairsInput').disabled = false;
+        }
+        
+        function nextStep() {
+            if (currentStepIndex < executionSteps.length - 1) {
+                currentStepIndex++;
+                displayStep(currentStepIndex);
+            }
+        }
+        
+        function previousStep() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                displayStep(currentStepIndex);
+            }
+        }
+        
+        function firstStep() {
+            currentStepIndex = 0;
+            displayStep(currentStepIndex);
+        }
+        
+        function lastStep() {
+            currentStepIndex = executionSteps.length - 1;
+            displayStep(currentStepIndex);
+        }
+        
+// キーボードショートカット
+        document.addEventListener('keydown', (e) => {
+            if (executionSteps.length === 0) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    previousStep();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    nextStep();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    firstStep();
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    lastStep();
+                    break;
+            }
+        });
+        
+        // デバッグ用: 階段問題の答えを計算する関数
+        function calculateStairs(n) {
+            if (n === 1) return 1;
+            if (n === 2) return 2;
+            return calculateStairs(n - 1) + calculateStairs(n - 2);
+        }
+        
+        // 初期化
+        document.addEventListener('DOMContentLoaded', () => {
+            resetVisualization();
+            
+            // デバッグ: 正しい答えを確認
+            console.log("階段問題の正解:");
+            for (let i = 1; i <= 5; i++) {
+                console.log(`count(${i}) = ${calculateStairs(i)}`);
+            }
+            // 期待される結果:
+            // count(1) = 1
+            // count(2) = 2
+            // count(3) = 3
+            // count(4) = 5
+            // count(5) = 8
+        });
+    </script>
+</body>
+</html>
