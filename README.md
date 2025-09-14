@@ -15,3 +15,4 @@
 *   [DE Simulator](https://jkushida.github.io/Web_demo/EC/de_simulator.html) - 差分進化のシミュレータ
 *   [PSO Simulator](https://jkushida.github.io/Web_demo/EC/pso_simulator.html) - 粒子群最適化のシミュレータ
 *   [ACO TSP](https://jkushida.github.io/Web_demo/EC/aco_tsp.html) - アントコロニー最適化によりTSPの近似解探索を可視化するデモ
+*   [GP Regression](https://jkushida.github.io/Web_demo/EC/gp_regression.html) - 遺伝的プログラミングによる関数回帰デモ

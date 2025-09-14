@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GP 回帰デモ（遺伝的プログラミング）</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 10px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: rgba(255,255,255,0.96);
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    h1 { text-align: center; margin: 0; color: #333; font-size: 1.2em; }
+    .panel { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); padding: 8px; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+    .tool { display: flex; align-items: center; gap: 6px; }
+    .tool label { font-size: 0.8em; color: #444; font-weight: 700; }
+    input[type="number"], select { padding: 4px 6px; border: 1px solid #ddd; border-radius: 6px; font-size: 0.9em; background: #fafafa; }
+    button { padding: 6px 10px; border: none; border-radius: 6px; font-size: 0.85em; font-weight: 700; cursor: pointer; }
+    .btn-start { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+    .btn-reset { background: linear-gradient(135deg,#4facfe,#00f2fe); color: #fff; }
+    .statusbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 2px 4px; font-size: .85em; color: #374151; }
+    .statusbar .v { color: #667eea; font-weight: 800; }
+    canvas { width: 100%; height: 360px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; }
+    .about h2 { margin: 0 0 6px; font-size: 1.05em; color: #333; }
+    .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+  </style>
+  <script>
+    // --- 目標データ生成 ---
+    function targetFn(x, kind) {
+      switch (kind) {
+        case 'sinx_plus_x': return Math.sin(x) + x;
+        case 'poly3': return 0.5*x*x*x - x*x + 0.5*x;
+        case 'abs_sin': return Math.abs(Math.sin(1.5*x)) + 0.2*x;
+        default: return Math.sin(x) + x;
+      }
+    }
+
+    function makeDataset(n, xMin, xMax, noise, kind) {
+      const xs = [], ys = [];
+      for (let i = 0; i < n; i++) {
+        const t = i/(n-1);
+        const x = xMin + (xMax - xMin) * t;
+        const y = targetFn(x, kind) + (noise>0 ? (noise * (Math.random()*2-1)) : 0);
+        xs.push(x); ys.push(y);
+      }
+      return { xs, ys };
+    }
+
+    // --- 木構造（式木）表現 ---
+    const FuncSet = ['+','-','*','/','sin','cos','exp','log'];
+    const TermSet = ['x','const'];
+
+    function randChoice(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+    function newConst() { return { type: 'const', value: (Math.random()*2-1)*2 }; }
+
+    function clone(node) { return JSON.parse(JSON.stringify(node)); }
+
+    function randTree(maxDepth) {
+      if (maxDepth === 0) {
+        const t = randChoice(TermSet);
+        return t === 'x' ? { type:'x' } : newConst();
+      }
+      const chooseFunc = Math.random() < 0.7; // 葉ばかりにならないよう関数を優先
+      if (!chooseFunc) {
+        const t = randChoice(TermSet);
+        return t === 'x' ? { type:'x' } : newConst();
+      }
+      const f = randChoice(FuncSet);
+      if (['+','-','*','/'].includes(f)) {
+        return { type:'op', op:f, left: randTree(maxDepth-1), right: randTree(maxDepth-1) };
+      } else { // 単項
+        return { type:'uop', op:f, arg: randTree(maxDepth-1) };
+      }
+    }
+
+    function treeEval(node, x) {
+      switch (node.type) {
+        case 'x': return x;
+        case 'const': return node.value;
+        case 'op': {
+          const a = treeEval(node.left, x), b = treeEval(node.right, x);
+          switch (node.op) {
+            case '+': return a + b;
+            case '-': return a - b;
+            case '*': return a * b;
+            case '/': return Math.abs(b) < 1e-9 ? a : a / b; // 0割回避
+          }
+          return 0;
+        }
+        case 'uop': {
+          const v = treeEval(node.arg, x);
+          switch (node.op) {
+            case 'sin': return Math.sin(v);
+            case 'cos': return Math.cos(v);
+            case 'exp': return Math.exp(Math.max(-20, Math.min(20, v))); // オーバーフロー抑制
+            case 'log': return Math.log(Math.abs(v)+1e-6);
+          }
+          return 0;
+        }
+      }
+      return 0;
+    }
+
+    function treeToString(node) {
+      switch (node.type) {
+        case 'x': return 'x';
+        case 'const': return node.value.toFixed(3);
+        case 'op': return `(${treeToString(node.left)} ${node.op} ${treeToString(node.right)})`;
+        case 'uop': return `${node.op}(${treeToString(node.arg)})`;
+        default: return '?';
+      }
+    }
+
+    function treeSize(node) {
+      if (!node) return 0;
+      if (node.type === 'op') return 1 + treeSize(node.left) + treeSize(node.right);
+      if (node.type === 'uop') return 1 + treeSize(node.arg);
+      return 1;
+    }
+
+    // --- 適応度（MSE + 罰則） ---
+    function fitness(node, xs, ys) {
+      let se = 0;
+      for (let i = 0; i < xs.length; i++) {
+        const yhat = treeEval(node, xs[i]);
+        const diff = yhat - ys[i];
+        se += diff*diff;
+      }
+      const mse = se / xs.length;
+      const penalty = 1e-3 * Math.max(0, treeSize(node) - 40); // 複雑さ抑制
+      return mse + penalty;
+    }
+
+    // --- 選択・交叉・突然変異 ---
+    function tournamentSelect(pop, k) {
+      let best = null, bestF = Infinity;
+      for (let i = 0; i < k; i++) {
+        const cand = pop[Math.floor(Math.random()*pop.length)];
+        if (cand.f < bestF) { best = cand; bestF = cand.f; }
+      }
+      return best;
+    }
+
+    function randomSubtree(node) {
+      // 前順走査でノードを配列化し、ランダム選択
+      const nodes = [];
+      (function dfs(n){ if(!n) return; nodes.push(n); if(n.type==='op'){ dfs(n.left); dfs(n.right);} else if(n.type==='uop'){ dfs(n.arg);} })(node);
+      return nodes[Math.floor(Math.random()*nodes.length)];
+    }
+
+    function crossover(a, b, maxDepth) {
+      const na = clone(a), nb = clone(b);
+      // 参照差し替えのため、親を辿って置換
+      function replaceRandom(parent) {
+        const isBin = parent.type==='op';
+        const isUni = parent.type==='uop';
+        const choices = [];
+        if (isBin) { choices.push(['left'], ['right']); }
+        if (isUni) { choices.push(['arg']); }
+        // 葉は置換対象にしない（親ノードから差し替える）
+        const path = choices.length ? randChoice(choices) : null;
+        if (!path) return null;
+        return { parent, path };
+      }
+      const spotA = replaceRandom(na);
+      const spotB = replaceRandom(nb);
+      if (!spotA || !spotB) return na; // 片方が葉のみなら無変更
+      // 置換する部分木をランダム取得
+      const subA = randomSubtree(spotA.parent[spotA.path[0]]);
+      const subB = randomSubtree(spotB.parent[spotB.path[0]]);
+      // 深さ制約を軽くチェック（厳密でなくヒューリスティック）
+      spotA.parent[spotA.path[0]] = clone(subB);
+      spotB.parent[spotB.path[0]] = clone(subA);
+      return na;
+    }
+
+    function mutate(node, maxDepth, pm = 0.1) {
+      const n = clone(node);
+      function rec(cur, depth) {
+        if (Math.random() < pm) {
+          return randTree(Math.max(0, maxDepth - depth));
+        }
+        if (cur.type === 'op') {
+          return { type:'op', op: cur.op, left: rec(cur.left, depth+1), right: rec(cur.right, depth+1) };
+        } else if (cur.type === 'uop') {
+          return { type:'uop', op: cur.op, arg: rec(cur.arg, depth+1) };
+        } else if (cur.type === 'const') {
+          // 定数微小変異
+          if (Math.random() < pm) return { type:'const', value: cur.value + (Math.random()*2-1)*0.5 };
+          return cur;
+        }
+        return cur;
+      }
+      return rec(n, 0);
+    }
+
+    // --- ラン執行ループ ---
+    let dataset = null;
+    let pop = [];
+    let best = null;
+    let running = false;
+    let timer = null;
+
+    function initGP() {
+      const nData = parseInt(document.getElementById('nData').value);
+      const xMin = parseFloat(document.getElementById('xMin').value);
+      const xMax = parseFloat(document.getElementById('xMax').value);
+      const noise = parseFloat(document.getElementById('noise').value);
+      const kind = document.getElementById('dataset').value;
+      dataset = makeDataset(nData, xMin, xMax, noise, kind);
+
+      const popSize = parseInt(document.getElementById('popSize').value);
+      const maxDepth = parseInt(document.getElementById('maxDepth').value);
+
+      pop = [];
+      for (let i = 0; i < popSize; i++) {
+        const ind = randTree(maxDepth);
+        const f = fitness(ind, dataset.xs, dataset.ys);
+        pop.push({ ind, f });
+      }
+      best = pop.reduce((a,b)=> a.f<b.f?a:b);
+      updateStats(0, best.f, best.ind);
+      draw();
+    }
+
+    function step(gen) {
+      const popSize = parseInt(document.getElementById('popSize').value);
+      const maxDepth = parseInt(document.getElementById('maxDepth').value);
+      const pC = parseFloat(document.getElementById('pC').value);
+      const pM = parseFloat(document.getElementById('pM').value);
+      const tourK = parseInt(document.getElementById('tourK').value);
+      const elitism = document.getElementById('elit').checked ? 1 : 0;
+
+      const next = [];
+      // エリート保持
+      const sorted = [...pop].sort((a,b)=>a.f-b.f);
+      for (let i = 0; i < elitism; i++) next.push({ ind: clone(sorted[i].ind), f: sorted[i].f });
+
+      while (next.length < popSize) {
+        const a = tournamentSelect(pop, tourK);
+        const b = tournamentSelect(pop, tourK);
+        let child = Math.random() < pC ? crossover(a.ind, b.ind, maxDepth) : clone(a.ind);
+        child = Math.random() < pM ? mutate(child, maxDepth, 0.1) : child;
+        const f = fitness(child, dataset.xs, dataset.ys);
+        next.push({ ind: child, f });
+      }
+      pop = next;
+      const curBest = pop.reduce((x,y)=> x.f<y.f?x:y);
+      if (!best || curBest.f < best.f) best = { ind: clone(curBest.ind), f: curBest.f };
+      updateStats(gen, best.f, best.ind);
+      draw();
+    }
+
+    function updateStats(gen, bestF, bestInd) {
+      document.getElementById('gen').textContent = gen;
+      document.getElementById('bestF').textContent = bestF.toExponential(3);
+      document.getElementById('expr').textContent = treeToString(bestInd);
+      document.getElementById('size').textContent = treeSize(bestInd);
+    }
+
+    function draw() {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+
+      // 軸範囲
+      const xMin = parseFloat(document.getElementById('xMin').value);
+      const xMax = parseFloat(document.getElementById('xMax').value);
+
+      // y範囲推定
+      let yMin = Infinity, yMax = -Infinity;
+      for (let i = 0; i < dataset.xs.length; i++) { yMin = Math.min(yMin, dataset.ys[i]); yMax = Math.max(yMax, dataset.ys[i]); }
+      // ベスト式もスキャン
+      for (let i = 0; i < 200; i++) {
+        const x = xMin + (xMax - xMin) * (i/199);
+        const y = treeEval(best.ind, x);
+        yMin = Math.min(yMin, y); yMax = Math.max(yMax, y);
+      }
+      if (!(yMax>yMin)) { yMin = -1; yMax = 1; }
+      const pad = 0.1*(yMax - yMin + 1e-9);
+      yMin -= pad; yMax += pad;
+
+      function X(x) { return (x - xMin) / (xMax - xMin) * (w-40) + 20; }
+      function Y(y) { return h - ((y - yMin) / (yMax - yMin)) * (h-40) - 20; }
+
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,w,h);
+
+      // 軸
+      ctx.strokeStyle = '#e5e7eb';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(20,20,w-40,h-40);
+
+      // データ点
+      ctx.fillStyle = '#111827';
+      for (let i = 0; i < dataset.xs.length; i++) {
+        const x = X(dataset.xs[i]);
+        const y = Y(dataset.ys[i]);
+        ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI*2); ctx.fill();
+      }
+
+      // 目標関数（理想）
+      ctx.strokeStyle = '#9ca3af'; // 灰
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 200; i++) {
+        const t = i/199;
+        const x = xMin + (xMax - xMin) * t;
+        const y = targetFn(x, document.getElementById('dataset').value);
+        const xp = X(x), yp = Y(y);
+        if (i===0) ctx.moveTo(xp, yp); else ctx.lineTo(xp, yp);
+      }
+      ctx.stroke();
+
+      // 予測（ベスト個体）
+      ctx.strokeStyle = '#10b981'; // 緑
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let i = 0; i < 200; i++) {
+        const t = i/199;
+        const x = xMin + (xMax - xMin) * t;
+        const y = treeEval(best.ind, x);
+        const xp = X(x), yp = Y(y);
+        if (i===0) ctx.moveTo(xp, yp); else ctx.lineTo(xp, yp);
+      }
+      ctx.stroke();
+    }
+
+    function tick(gen) {
+      if (!running) return;
+      const maxGen = parseInt(document.getElementById('maxGen').value);
+      const speed = parseInt(document.getElementById('speed').value);
+      if (gen >= maxGen) { running = false; return; }
+      step(gen+1);
+      timer = setTimeout(() => tick(gen+1), 1000/Math.max(1, speed));
+    }
+
+    function startStop() {
+      if (!dataset) initGP();
+      running = !running;
+      document.getElementById('btnStart').textContent = running ? '一時停止' : '開始';
+      if (running) tick(parseInt(document.getElementById('gen').textContent) || 0);
+      else if (timer) { clearTimeout(timer); timer = null; }
+    }
+
+    function resetAll() {
+      running = false; if (timer) { clearTimeout(timer); timer = null; }
+      document.getElementById('btnStart').textContent = '開始';
+      initGP();
+    }
+
+    window.addEventListener('load', () => {
+      initGP();
+      draw();
+      window.addEventListener('resize', draw);
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>🧬 遺伝的プログラミング（GP）による回帰デモ</h1>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="tool"><label for="dataset">データ</label>
+          <select id="dataset" onchange="resetAll()">
+            <option value="sinx_plus_x">sin(x)+x</option>
+            <option value="poly3">多項式3次</option>
+            <option value="abs_sin">|sin(1.5x)|+0.2x</option>
+          </select>
+        </div>
+        <div class="tool"><label for="nData">点数</label><input id="nData" type="number" value="60" min="10" max="400" onchange="resetAll()" /></div>
+        <div class="tool"><label for="xMin">x最小</label><input id="xMin" type="number" value="-3.14" step="0.1" onchange="resetAll()" /></div>
+        <div class="tool"><label for="xMax">x最大</label><input id="xMax" type="number" value="3.14" step="0.1" onchange="resetAll()" /></div>
+        <div class="tool"><label for="noise">ノイズ</label><input id="noise" type="number" value="0.0" step="0.05" min="0" max="1" onchange="resetAll()" /></div>
+      </div>
+      <div class="toolbar" style="margin-top:6px;">
+        <div class="tool"><label for="popSize">個体数</label><input id="popSize" type="number" value="80" min="10" max="500" onchange="resetAll()" /></div>
+        <div class="tool"><label for="maxDepth">最大深さ</label><input id="maxDepth" type="number" value="5" min="2" max="10" onchange="resetAll()" /></div>
+        <div class="tool"><label for="pC">交叉率</label><input id="pC" type="number" value="0.9" step="0.05" min="0" max="1" /></div>
+        <div class="tool"><label for="pM">突然変異率</label><input id="pM" type="number" value="0.2" step="0.05" min="0" max="1" /></div>
+        <div class="tool"><label for="tourK">トーナメントk</label><input id="tourK" type="number" value="3" min="2" max="8" /></div>
+        <div class="tool"><label><input id="elit" type="checkbox" checked /> エリート保持</label></div>
+        <div class="tool"><label for="maxGen">打ち切り</label><input id="maxGen" type="number" value="200" min="1" max="2000" /></div>
+        <div class="tool"><label for="speed">速度</label><input id="speed" type="number" value="5" min="1" max="30" /></div>
+        <div class="tool">
+          <button id="btnStart" class="btn-start" onclick="startStop()">開始</button>
+          <button class="btn-reset" onclick="resetAll()">リセット</button>
+        </div>
+      </div>
+
+      <div class="statusbar">
+        <span>gen <span class="v" id="gen">0</span></span>
+        <span>best MSE <span class="v" id="bestF">-</span></span>
+        <span>size <span class="v" id="size">-</span></span>
+        <span>expr <span class="v code" id="expr">-</span></span>
+      </div>
+
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="panel about">
+      <h2>このデモについて</h2>
+      <p>
+        遺伝的プログラミング（Genetic Programming; GP）を用いて、連続関数の回帰近似を行います。<br/>
+        個体は式木（抽象構文木）で表現し、二項演算（+,-,*,/）と単項演算（sin,cos,exp,log）を利用します。
+      </p>
+      <ul>
+        <li><b>適応度</b>: 二乗誤差の平均（MSE）に小さな複雑度ペナルティを加えます。</li>
+        <li><b>選択</b>: トーナメント選択。</li>
+        <li><b>交叉</b>: ランダム部分木の置換（簡易版）。</li>
+        <li><b>突然変異</b>: 部分木の置換と定数微小変異。</li>
+        <li><b>エリート保持</b>: 最良個体を次世代に温存（任意）。</li>
+      </ul>
+      <p>ノイズを加えると過学習傾向が見やすくなります。最大深さやペナルティで複雑度を抑制できます。</p>
+    </div>
+  </div>
+</body>
+</html>
+
