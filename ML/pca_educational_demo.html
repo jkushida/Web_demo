@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主成分分析（PCA）教育デモ - 計算過程の可視化</title>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.27.0/dist/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+            font-size: 12px;
+        }
+        input[type="range"] {
+            width: 150px;
+        }
+        .value-display {
+            text-align: center;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .plot-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .math-container {
+            grid-column: span 3;
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .step-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .step-header {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        .matrix {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            background: white;
+        }
+        .matrix-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .equation {
+            font-size: 14px;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+        h2 {
+            color: #555;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+            margin: 15px 0 10px 0;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 主成分分析（PCA）- 計算過程の可視化</h1>
+        <p class="subtitle">固有値・固有ベクトルの計算手順を理解しよう</p>
+        
+        <div class="info-box">
+            <strong>PCAの手順：</strong>
+            1️⃣ データの中心化 → 2️⃣ 共分散行列の計算 → 3️⃣ 固有値・固有ベクトルの計算 → 4️⃣ 主成分への射影
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>データ点数:</label>
+                <input type="range" id="nPoints" min="20" max="100" value="50" step="5">
+                <div class="value-display" id="nPointsValue">50</div>
+            </div>
+            <div class="control-group">
+                <label>相関係数:</label>
+                <input type="range" id="correlation" min="-0.9" max="0.9" value="0.7" step="0.1">
+                <div class="value-display" id="correlationValue">0.7</div>
+            </div>
+            <div class="control-group">
+                <label>X軸の分散:</label>
+                <input type="range" id="xVar" min="0.5" max="2" value="1.5" step="0.1">
+                <div class="value-display" id="xVarianceValue">1.5</div>
+            </div>
+            <div class="control-group">
+                <label>Y軸の分散:</label>
+                <input type="range" id="yVar" min="0.5" max="2" value="1" step="0.1">
+                <div class="value-display" id="yVarianceValue">1.0</div>
+            </div>
+            <button onclick="generateAndAnalyze()">🔄 データ生成と分析実行</button>
+        </div>
+
+        <h2>Step 1: 元データと中心化</h2>
+        <div class="info-box" style="margin-bottom: 10px;">
+            <strong>中心化とは：</strong> 各データ点から平均を引いて、データの重心を原点に移動させる操作<br>
+            <strong>計算式：</strong> $$x'_i = x_i - \mu_x, \quad y'_i = y_i - \mu_y$$
+            <span style="color: #666;">→ これにより、データの「形」はそのままで、位置だけが原点中心に移動します</span>
+        </div>
+        <div class="main-grid">
+            <div class="plot-container">
+                <div id="originalPlot"></div>
+            </div>
+            <div class="plot-container">
+                <div id="centeredPlot"></div>
+            </div>
+            <div class="plot-container">
+                <div id="pcaPlot"></div>
+            </div>
+        </div>
+
+        <h2>Step 2: 共分散行列と固有値・固有ベクトル</h2>
+        <div class="step-container">
+            <div class="step-header">共分散行列 C</div>
+            <div id="covarianceMatrix"></div>
+            
+            <div class="step-header" style="margin-top: 15px;">固有値と固有ベクトル</div>
+            <div id="eigenAnalysis"></div>
+            
+            <div class="equation">
+                <strong>固有方程式：</strong> \(C\vec{v} = \lambda\vec{v}\)<br>
+                <span style="font-size: 12px;">ここで、C: 共分散行列、λ: 固有値、v: 固有ベクトル</span>
+            </div>
+        </div>
+
+        <h2>Step 3: 主成分への射影</h2>
+        <div class="main-grid">
+            <div class="plot-container">
+                <div id="projectionPlot"></div>
+            </div>
+            <div class="plot-container">
+                <div id="transformedPlot"></div>
+            </div>
+            <div class="plot-container">
+                <div id="variancePlot"></div>
+            </div>
+        </div>
+
+        <h2>分析結果のまとめ</h2>
+        <div class="step-container">
+            <table id="resultTable">
+                <tr>
+                    <th>主成分</th>
+                    <th>固有値</th>
+                    <th>寄与率(%)</th>
+                    <th>累積寄与率(%)</th>
+                    <th>固有ベクトル</th>
+                </tr>
+            </table>
+            
+            <div class="info-box" style="margin-top: 15px;">
+                <strong>解釈：</strong>
+                <div id="interpretation"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MathJax設定
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }
+        };
+
+        // スライダーイベント
+        document.getElementById('nPoints').addEventListener('input', function() {
+            document.getElementById('nPointsValue').textContent = this.value;
+        });
+        document.getElementById('correlation').addEventListener('input', function() {
+            document.getElementById('correlationValue').textContent = this.value;
+        });
+        document.getElementById('xVar').addEventListener('input', function() {
+            document.getElementById('xVarianceValue').textContent = this.value;
+        });
+        document.getElementById('yVar').addEventListener('input', function() {
+            document.getElementById('yVarianceValue').textContent = this.value;
+        });
+
+        let originalData = [];
+        let centeredData = [];
+        let covMatrix = [];
+        let eigenvalues = [];
+        let eigenvectors = [];
+        let transformedData = [];
+        let mean = [0, 0];
+
+        function generateAndAnalyze() {
+            const n = parseInt(document.getElementById('nPoints').value);
+            const corr = parseFloat(document.getElementById('correlation').value);
+            const xVar = parseFloat(document.getElementById('xVar').value);
+            const yVar = parseFloat(document.getElementById('yVar').value);
+
+            // データ生成
+            originalData = generateCorrelatedData(n, corr, xVar, yVar);
+            
+            // PCA実行
+            performPCA();
+            
+            // 全プロット更新
+            plotOriginalData();
+            plotCenteredData();
+            plotPCAResult();
+            plotProjection();
+            plotTransformed();
+            plotVariance();
+            displayMatrices();
+            updateResultTable();
+            
+            // MathJaxで数式をレンダリング（少し遅延させる）
+            setTimeout(() => {
+                if (window.MathJax && window.MathJax.typeset) {
+                    MathJax.typeset();
+                } else if (window.MathJax && window.MathJax.Hub) {
+                    MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+                }
+            }, 100);
+        }
+
+        function generateCorrelatedData(n, correlation, xVar, yVar) {
+            const data = [];
+            // 原点から離れた位置にオフセット（中心化の効果を見やすくするため）
+            const xOffset = 3.5;
+            const yOffset = 2.5;
+            
+            for (let i = 0; i < n; i++) {
+                const z1 = gaussianRandom() * Math.sqrt(xVar);
+                const z2 = gaussianRandom() * Math.sqrt(yVar);
+                const x = z1 + xOffset;
+                const y = correlation * z1 + Math.sqrt(1 - correlation * correlation) * z2 + yOffset;
+                data.push([x, y]);
+            }
+            return data;
+        }
+
+        function gaussianRandom() {
+            let u = 0, v = 0;
+            while (u === 0) u = Math.random();
+            while (v === 0) v = Math.random();
+            return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        }
+
+        function performPCA() {
+            // Step 1: 中心化
+            mean[0] = originalData.reduce((sum, d) => sum + d[0], 0) / originalData.length;
+            mean[1] = originalData.reduce((sum, d) => sum + d[1], 0) / originalData.length;
+            
+            centeredData = originalData.map(d => [d[0] - mean[0], d[1] - mean[1]]);
+
+            // Step 2: 共分散行列
+            const n = centeredData.length;
+            covMatrix = [[0, 0], [0, 0]];
+            
+            for (let i = 0; i < n; i++) {
+                covMatrix[0][0] += centeredData[i][0] * centeredData[i][0];
+                covMatrix[0][1] += centeredData[i][0] * centeredData[i][1];
+                covMatrix[1][0] += centeredData[i][1] * centeredData[i][0];
+                covMatrix[1][1] += centeredData[i][1] * centeredData[i][1];
+            }
+            
+            for (let i = 0; i < 2; i++) {
+                for (let j = 0; j < 2; j++) {
+                    covMatrix[i][j] /= (n - 1);
+                }
+            }
+
+            // Step 3: 固有値と固有ベクトル（2x2の解析解）
+            const a = covMatrix[0][0];
+            const b = covMatrix[0][1];
+            const c = covMatrix[1][0];
+            const d = covMatrix[1][1];
+            
+            const trace = a + d;
+            const det = a * d - b * c;
+            const discriminant = Math.sqrt(trace * trace - 4 * det);
+            
+            eigenvalues[0] = (trace + discriminant) / 2;
+            eigenvalues[1] = (trace - discriminant) / 2;
+            
+            if (b !== 0) {
+                eigenvectors[0] = [b, eigenvalues[0] - a];
+                eigenvectors[1] = [b, eigenvalues[1] - a];
+            } else if (c !== 0) {
+                eigenvectors[0] = [eigenvalues[0] - d, c];
+                eigenvectors[1] = [eigenvalues[1] - d, c];
+            } else {
+                eigenvectors[0] = [1, 0];
+                eigenvectors[1] = [0, 1];
+            }
+            
+            // 正規化
+            for (let i = 0; i < 2; i++) {
+                const norm = Math.sqrt(eigenvectors[i][0] ** 2 + eigenvectors[i][1] ** 2);
+                eigenvectors[i][0] /= norm;
+                eigenvectors[i][1] /= norm;
+            }
+
+            // Step 4: 変換
+            transformedData = centeredData.map(d => [
+                d[0] * eigenvectors[0][0] + d[1] * eigenvectors[0][1],
+                d[0] * eigenvectors[1][0] + d[1] * eigenvectors[1][1]
+            ]);
+        }
+
+        function plotOriginalData() {
+            const x = originalData.map(d => d[0]);
+            const y = originalData.map(d => d[1]);
+            
+            const traces = [
+                {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { size: 6, color: 'rgba(102, 126, 234, 0.7)' },
+                    name: 'データ点'
+                },
+                // 平均点を追加
+                {
+                    x: [mean[0]],
+                    y: [mean[1]],
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { 
+                        size: 12, 
+                        color: 'red',
+                        symbol: 'x'
+                    },
+                    name: '平均'
+                }
+            ];
+            
+            const layout = {
+                title: '元データ',
+                xaxis: { title: 'X', zeroline: true, range: [-1, 7] },
+                yaxis: { title: 'Y', zeroline: true, scaleanchor: 'x', range: [-1, 6] },
+                height: 320,
+                width: 320,
+                margin: { l: 40, r: 20, t: 60, b: 40 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: 1.12,
+                    yanchor: 'top',
+                    font: { size: 11 }
+                }
+            };
+            
+            Plotly.newPlot('originalPlot', traces, layout);
+        }
+
+        function plotCenteredData() {
+            const x = centeredData.map(d => d[0]);
+            const y = centeredData.map(d => d[1]);
+            
+            const traces = [
+                {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { size: 6, color: 'rgba(118, 75, 162, 0.7)' },
+                    name: '中心化データ',
+                    showlegend: false
+                },
+                // 原点を強調
+                {
+                    x: [0],
+                    y: [0],
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { 
+                        size: 12, 
+                        color: 'red',
+                        symbol: 'x'
+                    },
+                    name: '中心'
+                }
+            ];
+            
+            const layout = {
+                title: '中心化後',
+                xaxis: { title: 'X - μₓ', zeroline: true, zerolinewidth: 2, zerolinecolor: 'red' },
+                yaxis: { title: 'Y - μᵧ', zeroline: true, zerolinewidth: 2, zerolinecolor: 'red', scaleanchor: 'x' },
+                height: 320,
+                width: 320,
+                margin: { l: 40, r: 20, t: 60, b: 40 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: 1.12,
+                    yanchor: 'top',
+                    font: { size: 11 }
+                }
+            };
+            
+            Plotly.newPlot('centeredPlot', traces, layout);
+        }
+
+        function plotPCAResult() {
+            const x = centeredData.map(d => d[0]);
+            const y = centeredData.map(d => d[1]);
+            
+            const scale = Math.sqrt(eigenvalues[0]) * 2;
+            const scale2 = Math.sqrt(eigenvalues[1]) * 2;
+            
+            const traces = [
+                {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { size: 6, color: 'rgba(102, 126, 234, 0.5)' },
+                    name: 'データ',
+                    showlegend: false
+                },
+                {
+                    x: [0, eigenvectors[0][0] * scale],
+                    y: [0, eigenvectors[0][1] * scale],
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    line: { color: 'red', width: 3 },
+                    marker: { size: 8, color: 'red' },
+                    name: 'PC1'
+                },
+                {
+                    x: [0, eigenvectors[1][0] * scale2],
+                    y: [0, eigenvectors[1][1] * scale2],
+                    mode: 'lines+markers',
+                    type: 'scatter',
+                    line: { color: 'green', width: 3 },
+                    marker: { size: 8, color: 'green' },
+                    name: 'PC2'
+                }
+            ];
+            
+            const layout = {
+                title: '主成分ベクトル',
+                xaxis: { title: 'X', zeroline: true },
+                yaxis: { title: 'Y', zeroline: true, scaleanchor: 'x' },
+                height: 320,
+                width: 320,
+                margin: { l: 40, r: 20, t: 60, b: 40 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: 1.12,
+                    yanchor: 'top',
+                    font: { size: 11 },
+                    itemsizing: 'constant',
+                    itemwidth: 30,
+                    traceorder: 'normal'
+                }
+            };
+            
+            Plotly.newPlot('pcaPlot', traces, layout);
+        }
+
+        function plotProjection() {
+            const x = centeredData.map(d => d[0]);
+            const y = centeredData.map(d => d[1]);
+            
+            // PC1への射影を計算
+            const projections = centeredData.map(d => {
+                const proj = (d[0] * eigenvectors[0][0] + d[1] * eigenvectors[0][1]);
+                return [proj * eigenvectors[0][0], proj * eigenvectors[0][1]];
+            });
+            
+            const traces = [
+                {
+                    x: x,
+                    y: y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    marker: { size: 6, color: 'rgba(102, 126, 234, 0.5)' },
+                    name: 'データ'
+                }
+            ];
+            
+            // 射影線を追加
+            for (let i = 0; i < Math.min(10, centeredData.length); i++) {
+                traces.push({
+                    x: [centeredData[i][0], projections[i][0]],
+                    y: [centeredData[i][1], projections[i][1]],
+                    mode: 'lines',
+                    type: 'scatter',
+                    line: { color: 'orange', width: 1, dash: 'dash' },
+                    showlegend: false
+                });
+            }
+            
+            // 射影点
+            traces.push({
+                x: projections.slice(0, 10).map(p => p[0]),
+                y: projections.slice(0, 10).map(p => p[1]),
+                mode: 'markers',
+                type: 'scatter',
+                marker: { size: 8, color: 'orange' },
+                name: 'PC1への射影'
+            });
+            
+            const layout = {
+                title: 'PC1への射影',
+                xaxis: { title: 'X', zeroline: true },
+                yaxis: { title: 'Y', zeroline: true, scaleanchor: 'x' },
+                height: 320,
+                width: 320,
+                margin: { l: 40, r: 20, t: 60, b: 40 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: 1.12,
+                    yanchor: 'top',
+                    font: { size: 11 }
+                }
+            };
+            
+            Plotly.newPlot('projectionPlot', traces, layout);
+        }
+
+        function plotTransformed() {
+            const x = transformedData.map(d => d[0]);
+            const y = transformedData.map(d => d[1]);
+            
+            const trace = {
+                x: x,
+                y: y,
+                mode: 'markers',
+                type: 'scatter',
+                marker: { size: 6, color: 'rgba(255, 107, 107, 0.7)' },
+                name: '変換後データ'
+            };
+            
+            const layout = {
+                title: '主成分座標系',
+                xaxis: { title: 'PC1', zeroline: true },
+                yaxis: { title: 'PC2', zeroline: true, scaleanchor: 'x' },
+                height: 320,
+                width: 320,
+                margin: { l: 40, r: 20, t: 60, b: 40 },
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: 1.12,
+                    yanchor: 'top',
+                    font: { size: 11 }
+                }
+            };
+            
+            Plotly.newPlot('transformedPlot', [trace], layout);
+        }
+
+        function plotVariance() {
+            const contribution1 = eigenvalues[0] / (eigenvalues[0] + eigenvalues[1]) * 100;
+            const contribution2 = eigenvalues[1] / (eigenvalues[0] + eigenvalues[1]) * 100;
+            
+            const trace = {
+                x: ['PC1', 'PC2'],
+                y: [contribution1, contribution2],
+                type: 'bar',
+                marker: {
+                    color: ['rgba(255, 107, 107, 0.8)', 'rgba(107, 255, 107, 0.8)']
+                },
+                text: [contribution1.toFixed(1) + '%', contribution2.toFixed(1) + '%'],
+                textposition: 'auto'
+            };
+            
+            const layout = {
+                title: '寄与率',
+                yaxis: { title: '寄与率 (%)', range: [0, 100] },
+                height: 300,
+                margin: { l: 40, r: 20, t: 60, b: 40 }
+            };
+            
+            Plotly.newPlot('variancePlot', [trace], layout);
+        }
+
+        function displayMatrices() {
+            // 共分散行列の表示
+            let covHtml = '<div style="display: flex; gap: 30px; align-items: flex-start;">';
+            
+            // 左側：共分散行列
+            covHtml += '<div>';
+            covHtml += '<table style="display: inline-block; margin: 10px;">';
+            covHtml += '<tr><td style="background: #e3f2fd;">C =</td>';
+            covHtml += `<td>[${covMatrix[0][0].toFixed(3)}</td><td>${covMatrix[0][1].toFixed(3)}]</td></tr>`;
+            covHtml += `<tr><td></td><td>[${covMatrix[1][0].toFixed(3)}</td><td>${covMatrix[1][1].toFixed(3)}]</td></tr>`;
+            covHtml += '</table>';
+            covHtml += '</div>';
+            
+            // 右側：各成分の求め方
+            covHtml += '<div style="flex: 1; padding: 15px; background: #fff9c4; border-radius: 5px; font-size: 14px;">';
+            covHtml += '<strong>共分散行列の各成分：</strong><br><br>';
+            covHtml += '$$C_{00} = \\text{Var}(X) = \\frac{1}{n-1}\\sum_{i=1}^{n}(x_i - \\bar{x})^2$$';
+            covHtml += '$$C_{11} = \\text{Var}(Y) = \\frac{1}{n-1}\\sum_{i=1}^{n}(y_i - \\bar{y})^2$$';
+            covHtml += '$$C_{01} = C_{10} = \\text{Cov}(X,Y) = \\frac{1}{n-1}\\sum_{i=1}^{n}(x_i - \\bar{x})(y_i - \\bar{y})$$';
+            covHtml += '</div>';
+            
+            covHtml += '</div>';
+            
+            document.getElementById('covarianceMatrix').innerHTML = covHtml;
+            
+            // 固有値と固有ベクトルの表示
+            let eigenHtml = '<div style="display: flex; gap: 20px; flex-wrap: wrap;">';
+            
+            eigenHtml += '<div class="matrix">';
+            eigenHtml += '<div class="matrix-title">固有値</div>';
+            eigenHtml += `<div>λ₁ = <span class="highlight">${eigenvalues[0].toFixed(4)}</span></div>`;
+            eigenHtml += `<div>λ₂ = <span class="highlight">${eigenvalues[1].toFixed(4)}</span></div>`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '<div class="matrix">';
+            eigenHtml += '<div class="matrix-title">第1主成分（固有ベクトル）</div>';
+            eigenHtml += `<div>v₁ = [${eigenvectors[0][0].toFixed(3)}, ${eigenvectors[0][1].toFixed(3)}]ᵀ</div>`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '<div class="matrix">';
+            eigenHtml += '<div class="matrix-title">第2主成分（固有ベクトル）</div>';
+            eigenHtml += `<div>v₂ = [${eigenvectors[1][0].toFixed(3)}, ${eigenvectors[1][1].toFixed(3)}]ᵀ</div>`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '</div>';
+            
+            // 固有値の求め方を追加
+            eigenHtml += '<div style="margin-top: 15px; padding: 12px; background: #fff9c4; border-radius: 5px; font-size: 13px; line-height: 1.4;">';
+            eigenHtml += '<strong>固有値の求め方（詳細な導出）：</strong><br><br>';
+            
+            eigenHtml += '<div style="margin-bottom: 12px;">';
+            eigenHtml += '<strong>1. 固有値問題：</strong> $C\\mathbf{v} = \\lambda\\mathbf{v}$<br>';
+            eigenHtml += '<strong>2. 変形：</strong> $(C - \\lambda I)\\mathbf{v} = \\mathbf{0}$<br>';
+            eigenHtml += '<strong>3. 非自明解の条件：</strong> $\\det(C - \\lambda I) = 0$ （特性方程式）';
+            eigenHtml += '</div>';
+            
+            eigenHtml += '<div style="margin-bottom: 12px;">';
+            eigenHtml += '<strong>4. 2×2行列の場合：</strong><br>';
+            const a11 = covMatrix[0][0].toFixed(3);
+            const a12 = covMatrix[0][1].toFixed(3);
+            const a21 = covMatrix[1][0].toFixed(3);
+            const a22 = covMatrix[1][1].toFixed(3);
+            eigenHtml += `$C = \\begin{pmatrix} ${a11} & ${a12} \\\\ ${a21} & ${a22} \\end{pmatrix}$ に対して：`;
+            eigenHtml += `$C - \\lambda I = \\begin{pmatrix} ${a11} - \\lambda & ${a12} \\\\ ${a21} & ${a22} - \\lambda \\end{pmatrix}$`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '<div style="margin-bottom: 12px;">';
+            eigenHtml += '<strong>5. 行列式の計算：</strong><br>';
+            eigenHtml += `$\\det(C - \\lambda I) = (${a11} - \\lambda)(${a22} - \\lambda) - (${a12})(${a21})$<br>`;
+            const trace = covMatrix[0][0] + covMatrix[1][1];
+            const det = covMatrix[0][0] * covMatrix[1][1] - covMatrix[0][1] * covMatrix[1][0];
+            eigenHtml += `$= \\lambda^2 - ${trace.toFixed(3)}\\lambda + ${det.toFixed(3)} = 0$`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '<div>';
+            eigenHtml += '<strong>6. 解（固有値）：</strong> ';
+            eigenHtml += `$\\lambda_1 = ${eigenvalues[0].toFixed(3)}, \\; \\lambda_2 = ${eigenvalues[1].toFixed(3)}$`;
+            eigenHtml += '</div>';
+            
+            eigenHtml += '</div>';
+            
+            // 主成分ベクトルと固有値の関係を追加
+            eigenHtml += '<div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 5px; font-size: 14px;">';
+            eigenHtml += '<strong>主成分ベクトルと固有値の関係：</strong><br><br>';
+            eigenHtml += '<div style="margin-bottom: 10px;">📍 <strong>固有ベクトル = 主成分の方向</strong></div>';
+            eigenHtml += '<ul style="margin-left: 20px;">';
+            eigenHtml += '<li>第1主成分ベクトル（v₁）: データの分散が<strong>最大</strong>となる方向</li>';
+            eigenHtml += '<li>第2主成分ベクトル（v₂）: v₁と<strong>直交</strong>し、残りの分散が最大となる方向</li>';
+            eigenHtml += '</ul>';
+            eigenHtml += '<br>';
+            eigenHtml += '<div style="margin-bottom: 10px;">📍 <strong>固有値 = 各主成分方向の分散</strong></div>';
+            eigenHtml += '<ul style="margin-left: 20px;">';
+            eigenHtml += `<li>λ₁ = ${eigenvalues[0].toFixed(3)}: 第1主成分方向のデータの分散</li>`;
+            eigenHtml += `<li>λ₂ = ${eigenvalues[1].toFixed(3)}: 第2主成分方向のデータの分散</li>`;
+            eigenHtml += '</ul>';
+            eigenHtml += '<br>';
+            eigenHtml += '<div style="margin-bottom: 10px;">📍 <strong>寄与率の意味</strong></div>';
+            const contribution1 = (eigenvalues[0] / (eigenvalues[0] + eigenvalues[1]) * 100).toFixed(1);
+            const contribution2 = (eigenvalues[1] / (eigenvalues[0] + eigenvalues[1]) * 100).toFixed(1);
+            eigenHtml += `$$\\text{第1主成分の寄与率} = \\frac{\\lambda_1}{\\lambda_1 + \\lambda_2} = \\frac{${eigenvalues[0].toFixed(3)}}{${(eigenvalues[0] + eigenvalues[1]).toFixed(3)}} = ${contribution1}\\%$$`;
+            eigenHtml += `<div style="margin-top: 10px;">→ 第1主成分だけで全体の<strong>${contribution1}%</strong>の情報（分散）を説明</div>`;
+            eigenHtml += '</div>';
+            
+            // 重要な数学的背景を追加
+            eigenHtml += '<div style="margin-top: 15px; padding: 15px; background: #ffebee; border-radius: 5px; font-size: 14px; border-left: 4px solid #ef5350;">';
+            eigenHtml += '<strong>🔍 なぜ固有ベクトルが主成分になるのか？</strong><br><br>';
+            eigenHtml += '<div style="margin-bottom: 15px;">';
+            eigenHtml += '<strong>固有ベクトルを取る理由：</strong><br>';
+            eigenHtml += 'データがよくばらついている方向に合わせて空間の軸を取り直すということ';
+            eigenHtml += '</div>';
+            eigenHtml += '<div style="margin-bottom: 15px;">';
+            eigenHtml += '<strong>数学的な意味：</strong><br>';
+            eigenHtml += '分散が最大になるようなベクトルを探す問題は、数学的に「分散共分散行列の固有ベクトル」を求める問題に帰着する';
+            eigenHtml += '</div>';
+            eigenHtml += '<div style="margin-bottom: 15px;">';
+            eigenHtml += '<strong>最適化問題との関係：</strong><br>';
+            eigenHtml += '$$\\max_{\\|\\mathbf{v}\\|=1} \\mathbf{v}^T C \\mathbf{v}$$';
+            eigenHtml += 'この最適化問題の解が、最大固有値に対応する固有ベクトル（第1主成分）になる';
+            eigenHtml += '</div>';
+            eigenHtml += '<div>';
+            eigenHtml += '<strong>結論：</strong><br>';
+            eigenHtml += '最大の固有値に対応する固有ベクトルが第1主成分の方向になる理由は、<br>';
+            eigenHtml += 'それがデータの分散を最大化する方向だから';
+            eigenHtml += '</div>';
+            eigenHtml += '</div>';
+            
+            document.getElementById('eigenAnalysis').innerHTML = eigenHtml;
+            
+            // MathJaxで数式を再レンダリング
+            if (window.MathJax && window.MathJax.typeset) {
+                MathJax.typeset();
+            } else if (window.MathJax && window.MathJax.Hub) {
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+            }
+        }
+
+        function updateResultTable() {
+            const total = eigenvalues[0] + eigenvalues[1];
+            const contribution1 = (eigenvalues[0] / total * 100).toFixed(1);
+            const contribution2 = (eigenvalues[1] / total * 100).toFixed(1);
+            
+            let tableHtml = '<tr><th>主成分</th><th>固有値</th><th>寄与率(%)</th><th>累積寄与率(%)</th><th>固有ベクトル</th></tr>';
+            
+            tableHtml += '<tr>';
+            tableHtml += '<td style="background: #ffebee;">第1主成分</td>';
+            tableHtml += `<td>${eigenvalues[0].toFixed(4)}</td>`;
+            tableHtml += `<td>${contribution1}</td>`;
+            tableHtml += `<td>${contribution1}</td>`;
+            tableHtml += `<td>[${eigenvectors[0][0].toFixed(3)}, ${eigenvectors[0][1].toFixed(3)}]</td>`;
+            tableHtml += '</tr>';
+            
+            tableHtml += '<tr>';
+            tableHtml += '<td style="background: #e8f5e9;">第2主成分</td>';
+            tableHtml += `<td>${eigenvalues[1].toFixed(4)}</td>`;
+            tableHtml += `<td>${contribution2}</td>`;
+            tableHtml += `<td>100.0</td>`;
+            tableHtml += `<td>[${eigenvectors[1][0].toFixed(3)}, ${eigenvectors[1][1].toFixed(3)}]</td>`;
+            tableHtml += '</tr>';
+            
+            document.getElementById('resultTable').innerHTML = tableHtml;
+            
+            // 解釈
+            let interpretation = `第1主成分が全体の<strong>${contribution1}%</strong>の情報を説明しています。`;
+            if (parseFloat(contribution1) > 80) {
+                interpretation += '<br>→ データは1次元でほぼ表現可能（強い相関がある）';
+            } else if (parseFloat(contribution1) > 60) {
+                interpretation += '<br>→ ある程度の次元削減が可能';
+            } else {
+                interpretation += '<br>→ 両方の主成分が重要（相関が弱い）';
+            }
+            
+            document.getElementById('interpretation').innerHTML = interpretation;
+        }
+
+        // 初期実行
+        generateAndAnalyze();
+    </script>
+</body>
+</html>

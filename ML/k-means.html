@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📌 k-means クラスタリング</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      font-size: 20px;
+      margin: 0 0 6px 0;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 12px;
+      font-size: 12px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: nowrap; /* 1行に固定 */
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-x: auto; /* 幅が足りない場合は横スクロール */
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-weight: 600; color: #555; font-size: 12px; }
+    input[type="range"] { width: 140px; }
+    .value-display { text-align: center; color: #667eea; font-weight: 700; font-size: 12px; }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff; border: none; padding: 6px 12px; border-radius: 6px;
+      cursor: pointer; font-size: 12px; white-space: nowrap;
+    }
+    button.secondary { background: #e9ecef; color: #333; }
+    button:hover { transform: translateY(-1px); }
+    .panel { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+    /* 左列はキャンバス幅（560px）にフィット、右列が残りを占有 */
+    .canvas-wrap { background: #fff; border-radius: 8px; padding: 8px; border: 1px solid #eee; }
+    .side { background: #f8f9fa; border-radius: 8px; padding: 10px; border: 1px solid #eee; font-size: 12px; color: #444; }
+    .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 6px; }
+    .legend-item { display: flex; gap: 6px; align-items: center; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #3333; }
+    .stat { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 8px; border-radius: 6px; margin-top: 8px; }
+    canvas { width: 560px; max-width: 100%; height: auto; display: block; background: #fff; border-radius: 6px; }
+  </style>
+  <!-- 依存: 数式表示のため MathJax(CDN) を使用 -->
+  <!-- 参考: https://trans-it-jp.github.io/js-demo/k-means.html の学習体験 -->
+  <!-- 本ページは主にHTML+Canvas+JSで実装。数式のみMathJaxに依存 -->
+
+  <script>
+    // MathJax 設定（インライン: $...$ と \(...\) を許可）
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+  <meta name="description" content="k-meansクラスタリングの手順（初期化→割当→重心更新）をCanvas上で可視化する教育用デモ。" />
+</head>
+<body>
+  <div class="container">
+    <h1>📌 k-means クラスタリング</h1>
+
+    <div class="controls">
+      <div class="control-group">
+        <label>クラスタ数 k</label>
+        <input id="kRange" type="range" min="2" max="8" step="1" value="3" />
+        <div id="kValue" class="value-display">3</div>
+      </div>
+      <div class="control-group">
+        <label>点の数（乱数生成）</label>
+        <input id="nRange" type="range" min="20" max="300" step="10" value="120" />
+        <div id="nValue" class="value-display">120</div>
+      </div>
+      <button id="btnRandom">🎲 ランダム点 生成</button>
+      <button id="btnInit">✨ セントロイド初期化</button>
+      <button id="btnStep">➡ 1ステップ（割当→更新）</button>
+      <button id="btnRun">▶ 自動実行</button>
+      <button id="btnReset" class="secondary">⟲ リセット</button>
+    </div>
+
+    <div class="panel">
+      <div class="canvas-wrap">
+        <canvas id="plot" width="560" height="560"></canvas>
+      </div>
+      <aside class="side">
+        <div><strong>状態:</strong> <span id="stateText">未初期化</span></div>
+        <div class="stat">
+          <div><strong>反復:</strong> <span id="iterText">0</span></div>
+          <div><strong>SSE:</strong> <span id="sseText">-</span></div>
+        </div>
+        <div style="margin-top:6px; margin-bottom:6px;"><strong>SSE推移</strong></div>
+        <canvas id="sseChart" width="260" height="120" style="width:100%;height:auto;"></canvas>
+        <div class="legend" id="legend"></div>
+        <div class="side" style="margin-top: 10px;">
+          <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #555;">クラスタリング手順</h2>
+          <ol style="margin: 6px 0 10px 18px;">
+            <li><strong>初期化</strong>: k 個のセントロイド（重心）を初期配置（本デモは点からランダム選択）。</li>
+            <li><strong>割当</strong>: 各点を最も近いセントロイドへ割当（ユークリッド距離の最小）。<br>\( c(i) = \arg\min_j \\|x_i - \mu_j\\|^2 \)</li>
+            <li><strong>重心更新</strong>: 各クラスタに属する点の平均でセントロイドを更新。空クラスタはランダム再配置。</li>
+            <li><strong>収束判定</strong>: セントロイドが動かなくなる（または割当が変わらない）と終了。</li>
+          </ol>
+          <div class="note" style="margin: 8px 0;">
+            <strong>記号の補足: \(c(i)\)</strong><br>
+            \(c(i)\) は点 \(x_i\) が属するクラスタのインデックス（ラベル）。数式では \(1..k\) を用いることもありますが、本デモ実装では \(0..k-1\)。\(\mu_{c(i)}\) はそのクラスタのセントロイド（重心）。
+          </div>
+          <div class="note" style="margin: 0;">
+            <strong>SSE（平方和誤差）とは？</strong><br>
+            測っている誤差: 各点が割当先セントロイドからどれだけ離れているか（クラスタ内のばらつき）。<br>
+            数式: \( \mathrm{SSE} = \sum_i \\|x_i - \mu_{c(i)}\\|^2 \) ＝ 各クラスタの距離二乗の和。<br>
+            性質: 反復で非増加。k を増やすほど必ず減少。<br>
+            目的: クラスタを密にし、分離を良くする指標（inertia）。
+          </div>
+          <p style="margin-top: 8px;">
+            うまく分かれない場合は「セントロイド初期化」をやり直すか、k を調整してください（初期値依存）。
+          </p>
+        </div>
+      </aside>
+    </div>
+
+  </div>
+
+  <script>
+    // 基本設定
+    const canvas = document.getElementById('plot');
+    const ctx = canvas.getContext('2d');
+    const DPR = window.devicePixelRatio || 1;
+    function setupHiDPI() {
+      const cssW = canvas.clientWidth || 800;
+      const cssH = canvas.clientHeight || 800;
+      canvas.width = Math.round(cssW * DPR);
+      canvas.height = Math.round(cssH * DPR);
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    setupHiDPI();
+    window.addEventListener('resize', () => { setupHiDPI(); draw(); });
+
+    // UI要素
+    const kRange = document.getElementById('kRange');
+    const kValue = document.getElementById('kValue');
+    const nRange = document.getElementById('nRange');
+    const nValue = document.getElementById('nValue');
+    const btnRandom = document.getElementById('btnRandom');
+    const btnInit = document.getElementById('btnInit');
+    const btnStep = document.getElementById('btnStep');
+    const btnRun = document.getElementById('btnRun');
+    const btnReset = document.getElementById('btnReset');
+    const stateText = document.getElementById('stateText');
+    const iterText = document.getElementById('iterText');
+    const sseText = document.getElementById('sseText');
+    const legendBox = document.getElementById('legend');
+    const sseCanvas = document.getElementById('sseChart');
+    const sseCtx = sseCanvas.getContext('2d');
+
+    // データと状態
+    /** @type {{x:number,y:number,c:number}[]} */
+    let points = [];
+    /** @type {{x:number,y:number}[]} */
+    let centroids = [];
+    let iter = 0;
+    let running = false;
+    let timer = null;
+    let animating = false;
+    const ANIM_MS = 380;
+    let sseHistory = [];
+
+    // カラーパレット（視認性重視）
+    const COLORS = [
+      '#e6194b', '#3cb44b', '#0082c8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#ffe119'
+    ];
+
+    // スライダー表示更新
+    kRange.addEventListener('input', () => { kValue.textContent = kRange.value; draw(); buildLegend(); });
+    nRange.addEventListener('input', () => { nValue.textContent = nRange.value; });
+
+    // 乱数点生成（少しクラスターができやすいように）
+    function randomPoints(n) {
+      const clusters = 3 + Math.floor(Math.random() * 3); // 3〜5箇所の塊
+      const centers = Array.from({ length: clusters }, () => ({
+        x: 0.15 + Math.random() * 0.7,
+        y: 0.15 + Math.random() * 0.7
+      }));
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const c = centers[Math.floor(Math.random() * clusters)];
+        const x = clamp01( gaussian(c.x, 0.06) );
+        const y = clamp01( gaussian(c.y, 0.06) );
+        out.push({ x, y, c: -1 });
+      }
+      return out;
+    }
+    function gaussian(mu, sigma) {
+      let u = 0, v = 0;
+      while (u === 0) u = Math.random();
+      while (v === 0) v = Math.random();
+      const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return mu + z * sigma;
+    }
+    function clamp01(t) { return Math.max(0, Math.min(1, t)); }
+
+    // 座標変換（[0,1]→Canvas）と逆変換
+    function X(u) { return 20 + u * (canvas.clientWidth - 40); }
+    function Y(v) { return 20 + (1 - v) * (canvas.clientHeight - 40); }
+    function invX(px) { return clamp01( (px - 20) / (canvas.clientWidth - 40) ); }
+    function invY(py) { return clamp01( 1 - (py - 20) / (canvas.clientHeight - 40) ); }
+
+    // 描画
+    function clear() {
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+      // 枠
+      ctx.strokeStyle = '#ddd';
+      ctx.strokeRect(20, 20, canvas.clientWidth - 40, canvas.clientHeight - 40);
+    }
+    function draw() {
+      clear();
+      // エッジ（点→セントロイド）
+      for (const p of points) {
+        if (p.c >= 0 && centroids[p.c]) {
+          ctx.beginPath();
+          ctx.moveTo(X(p.x), Y(p.y));
+          ctx.lineTo(X(centroids[p.c].x), Y(centroids[p.c].y));
+          ctx.strokeStyle = hexToRgba(COLORS[p.c % COLORS.length], 0.28);
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+      }
+      // 点
+      for (const p of points) {
+        const px = X(p.x), py = Y(p.y);
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        const color = p.c >= 0 ? COLORS[p.c % COLORS.length] : 'rgba(0,0,0,0.4)';
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+      // セントロイド
+      centroids.forEach((c, i) => drawCentroid(c, COLORS[i % COLORS.length]));
+    }
+    function drawCentroid(c, color) {
+      const cx = X(c.x), cy = Y(c.y);
+      ctx.strokeStyle = color; ctx.lineWidth = 2;
+      const r = 7;
+      ctx.beginPath(); ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - r, cy + r); ctx.lineTo(cx + r, cy - r); ctx.stroke();
+    }
+
+    function hexToRgba(hex, alpha) {
+      const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      if (!m) return `rgba(0,0,0,${alpha})`;
+      const r = parseInt(m[1], 16), g = parseInt(m[2], 16), b = parseInt(m[3], 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+
+    // SSE ミニグラフ
+    function setupSSEHiDPI() {
+      const cssW = sseCanvas.clientWidth || 260;
+      const cssH = sseCanvas.clientHeight || 120;
+      sseCanvas.width = Math.round(cssW * DPR);
+      sseCanvas.height = Math.round(cssH * DPR);
+      sseCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    function drawSSEChart() {
+      if (!sseCtx) return;
+      const w = sseCanvas.clientWidth || 260;
+      const h = sseCanvas.clientHeight || 120;
+      sseCtx.clearRect(0, 0, w, h);
+      // 余白（軸とラベル用）
+      const left = 34, right = w - 8, top = 18, bottom = h - 24;
+      // 軸
+      sseCtx.strokeStyle = '#ddd';
+      sseCtx.strokeRect(left, top, right - left, bottom - top);
+      // 軸ラベル
+      sseCtx.fillStyle = '#666';
+      sseCtx.font = '11px sans-serif';
+      sseCtx.textAlign = 'center';
+      sseCtx.fillText('Iteration', (left + right) / 2, h - 6);
+      sseCtx.save();
+      sseCtx.translate(10, (top + bottom) / 2);
+      sseCtx.rotate(-Math.PI / 2);
+      sseCtx.fillText('SSE', 0, 0);
+      sseCtx.restore();
+      if (sseHistory.length === 0) return;
+      const n = sseHistory.length;
+      const maxY = Math.max(...sseHistory) || 1;
+      const minY = 0;
+      const sx = (i) => left + (right - left) * (n === 1 ? 0 : i / (n - 1));
+      const sy = (v) => bottom - (bottom - top) * ((v - minY) / (maxY - minY || 1));
+      // 目盛（x: 0 と n-1, y: 0 と max）
+      sseCtx.fillStyle = '#888';
+      sseCtx.textAlign = 'center';
+      sseCtx.fillText('0', sx(0), bottom + 12);
+      if (n > 1) sseCtx.fillText(String(n - 1), sx(n - 1), bottom + 12);
+      sseCtx.textAlign = 'right';
+      sseCtx.textBaseline = 'middle';
+      sseCtx.fillText(maxY.toFixed(2), left - 6, sy(maxY));
+      sseCtx.fillText('0', left - 6, sy(0));
+      sseCtx.beginPath();
+      sseCtx.strokeStyle = '#667eea';
+      sseCtx.lineWidth = 1.5;
+      for (let i = 0; i < n; i++) {
+        const x = sx(i), y = sy(sseHistory[i]);
+        if (i === 0) sseCtx.moveTo(x, y); else sseCtx.lineTo(x, y);
+      }
+      sseCtx.stroke();
+      // 目安の点
+      sseCtx.fillStyle = '#667eea';
+      for (let i = 0; i < n; i++) {
+        const x = sx(i), y = sy(sseHistory[i]);
+        sseCtx.beginPath(); sseCtx.arc(x, y, 2.2, 0, Math.PI * 2); sseCtx.fill();
+      }
+    }
+
+    // k-means 主要処理
+    function initCentroids(k) {
+      const chosen = new Set();
+      centroids = [];
+      // 点からランダムサンプリング（k-means++は未採用：教育用に単純化）
+      if (points.length >= k) {
+        while (centroids.length < k) {
+          const idx = Math.floor(Math.random() * points.length);
+          if (!chosen.has(idx)) {
+            chosen.add(idx);
+            centroids.push({ x: points[idx].x, y: points[idx].y });
+          }
+        }
+      } else {
+        // 点が少なければ一様乱数
+        for (let i = 0; i < k; i++) {
+          centroids.push({ x: Math.random(), y: Math.random() });
+        }
+      }
+      iter = 0; stateText.textContent = '初期化済み';
+      assign();
+      draw(); buildLegend(); updateSSE();
+      // SSE履歴初期化
+      sseHistory = [];
+      sseHistory.push(sse());
+      drawSSEChart();
+    }
+
+    function assign() {
+      const k = centroids.length;
+      if (k === 0) return;
+      for (const p of points) {
+        let best = -1, bestD = Infinity;
+        for (let j = 0; j < k; j++) {
+          const c = centroids[j];
+          const d = (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
+          if (d < bestD) { bestD = d; best = j; }
+        }
+        p.c = best;
+      }
+    }
+
+    function computeUpdatedCentroids() {
+      const k = centroids.length;
+      const sum = Array.from({ length: k }, () => ({ x: 0, y: 0, n: 0 }));
+      for (const p of points) {
+        if (p.c >= 0) { sum[p.c].x += p.x; sum[p.c].y += p.y; sum[p.c].n++; }
+      }
+      const next = [];
+      let moved = false;
+      for (let j = 0; j < k; j++) {
+        if (sum[j].n === 0) {
+          const nx = Math.random(), ny = Math.random();
+          moved = moved || Math.hypot(centroids[j].x - nx, centroids[j].y - ny) > 1e-6;
+          next.push({ x: nx, y: ny });
+        } else {
+          const nx = sum[j].x / sum[j].n, ny = sum[j].y / sum[j].n;
+          moved = moved || Math.hypot(centroids[j].x - nx, centroids[j].y - ny) > 1e-6;
+          next.push({ x: nx, y: ny });
+        }
+      }
+      return { next, moved };
+    }
+
+    function stepOnce() {
+      if (centroids.length === 0 || animating) return;
+      assign();
+      const prev = centroids.map(c => ({...c}));
+      const { next, moved } = computeUpdatedCentroids();
+      animateCentroids(prev, next, () => {
+        centroids = next.map(c => ({...c}));
+        iter++; iterText.textContent = String(iter);
+        updateSSE();
+        // SSE履歴更新
+        sseHistory.push(sse());
+        drawSSEChart();
+        if (!moved && running) stopAuto('収束');
+      });
+    }
+
+    function animateCentroids(from, to, onDone) {
+      animating = true;
+      const start = performance.now();
+      const ease = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; // easeInOutCubic
+      function frame(now) {
+        const t = Math.min(1, (now - start) / ANIM_MS);
+        const a = ease(t);
+        centroids = from.map((c, i) => ({
+          x: c.x + (to[i].x - c.x) * a,
+          y: c.y + (to[i].y - c.y) * a,
+        }));
+        draw();
+        if (t < 1) requestAnimationFrame(frame);
+        else {
+          animating = false;
+          draw();
+          if (onDone) onDone();
+        }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function sse() {
+      let sum = 0;
+      for (const p of points) {
+        if (p.c >= 0) {
+          const c = centroids[p.c];
+          sum += (p.x - c.x) ** 2 + (p.y - c.y) ** 2;
+        }
+      }
+      return sum;
+    }
+    function updateSSE() { sseText.textContent = points.length && centroids.length ? sse().toFixed(4) : '-'; }
+
+    function buildLegend() {
+      const k = parseInt(kRange.value, 10);
+      legendBox.innerHTML = '';
+      for (let i = 0; i < k; i++) {
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        const dot = document.createElement('div');
+        dot.className = 'dot'; dot.style.background = COLORS[i % COLORS.length];
+        const label = document.createElement('div'); label.textContent = `Cluster ${i+1}`;
+        item.appendChild(dot); item.appendChild(label);
+        legendBox.appendChild(item);
+      }
+    }
+
+    // 自動実行
+    function startAuto() {
+      if (running || centroids.length === 0) return;
+      running = true; stateText.textContent = '自動実行中';
+      btnRun.textContent = '⏸ 一時停止';
+      const loop = () => {
+        if (!running) return;
+        if (!animating) stepOnce();
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    }
+    function stopAuto(reason) {
+      running = false; stateText.textContent = reason ? `停止: ${reason}` : '停止';
+      btnRun.textContent = '▶ 自動実行';
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    // クリックで点追加
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      points.push({ x: invX(px), y: invY(py), c: -1 });
+      assign(); updateSSE(); draw(); drawSSEChart();
+    });
+
+    // ボタン動作
+    btnRandom.addEventListener('click', () => {
+      points = randomPoints(parseInt(nRange.value, 10));
+      centroids = []; iter = 0; iterText.textContent = '0';
+      stateText.textContent = '点を生成'; updateSSE(); draw();
+      sseHistory = []; drawSSEChart();
+    });
+    btnInit.addEventListener('click', () => {
+      stopAuto();
+      initCentroids(parseInt(kRange.value, 10));
+    });
+    btnStep.addEventListener('click', () => { stopAuto(); stepOnce(); });
+    btnRun.addEventListener('click', () => { running ? stopAuto() : startAuto(); });
+    btnReset.addEventListener('click', () => {
+      stopAuto(); points = []; centroids = []; iter = 0;
+      iterText.textContent = '0'; updateSSE(); stateText.textContent = '未初期化'; draw();
+      sseHistory = []; drawSSEChart();
+    });
+
+    // 初期表示
+    buildLegend();
+    points = randomPoints(parseInt(nRange.value, 10));
+    setupSSEHiDPI();
+    drawSSEChart();
+    draw();
+
+    window.addEventListener('resize', () => { setupSSEHiDPI(); drawSSEChart(); });
+  </script>
+</body>
+</html>

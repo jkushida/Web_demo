@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📌 多項式回帰と過学習</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 8px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .container { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 10px 24px rgba(0,0,0,0.25); }
+    h1 { color: #333; text-align: center; font-size: 20px; margin: 0 0 8px 0; }
+    .controls { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; overflow-x: auto; justify-content: flex-start;
+      background: #f8f9fa; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    label { font-weight: 600; color: #555; font-size: 12px; }
+    input[type="range"] { width: 140px; }
+    .value-display { text-align: center; color: #667eea; font-weight: 700; font-size: 12px; }
+    button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border: none; padding: 6px 12px; border-radius: 6px;
+      cursor: pointer; font-size: 12px; white-space: nowrap; }
+    button.secondary { background: #e9ecef; color: #333; }
+    .panel { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+    .canvas-wrap { background: #fff; border-radius: 8px; padding: 8px; border: 1px solid #eee; }
+    canvas { width: 560px; max-width: 100%; height: auto; display: block; background: #fff; border-radius: 6px; }
+    .side { background: #f8f9fa; border-radius: 8px; padding: 10px; border: 1px solid #eee; font-size: 12px; color: #444; }
+    .stat { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .note { background: #fff3cd; border-left: 4px solid #ffc107; padding: 8px; border-radius: 6px; margin-top: 8px; }
+  </style>
+  <meta name="description" content="多項式回帰で学習/検証誤差の推移を可視化し、過学習の挙動を体験できる教育用デモ" />
+</head>
+<body>
+  <div class="container">
+    <h1>📌 多項式回帰と過学習</h1>
+    <div class="controls">
+      <div class="control-group">
+        <label>次数 d</label>
+        <input id="degRange" type="range" min="0" max="10" step="1" value="3" />
+        <div id="degValue" class="value-display">3</div>
+      </div>
+      <div class="control-group">
+        <label>点の数</label>
+        <input id="nRange" type="range" min="20" max="200" step="10" value="60" />
+        <div id="nValue" class="value-display">60</div>
+      </div>
+      <div class="control-group">
+        <label>ノイズ σ</label>
+        <input id="noiseRange" type="range" min="0" max="1.0" step="0.01" value="0.10" />
+        <div id="noiseValue" class="value-display">0.10</div>
+      </div>
+      <div class="control-group">
+        <label>学習データ比</label>
+        <input id="trainRange" type="range" min="50" max="90" step="5" value="70" />
+        <div id="trainValue" class="value-display">70%</div>
+      </div>
+      <button id="btnGen">🎲 データ生成</button>
+    </div>
+
+    <div class="panel">
+      <div class="canvas-wrap">
+        <canvas id="plot" width="560" height="420"></canvas>
+      </div>
+      <aside class="side">
+        <div class="stat">
+          <div><strong>Train MSE:</strong> <span id="trainMse">-</span></div>
+          <div><strong>Test MSE:</strong> <span id="testMse">-</span></div>
+        </div>
+        <div style="margin-top:8px; margin-bottom:6px;"><strong>次数-誤差</strong></div>
+        <canvas id="mseChart" width="260" height="140" style="width:100%;height:auto;"></canvas>
+        <div class="note">
+          目的関数（真の関数）: y = sin(2πx) + 0.3x + 0.1<br>
+          高次の多項式ほど学習誤差は下がりやすい一方、検証誤差が増えると過学習の兆候です。
+        </div>
+        <div class="note">
+          <strong>画面の見方</strong>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li>左図: 点は <span style="color:#0082c8;">学習=青</span>・<span style="color:#d62728;">検証=赤</span>、<span style="color:#999;">灰の点線=真の関数</span>、<span style="color:#667eea;">青い実線=推定曲線</span>。</li>
+            <li>上部メトリクス: 現在の <span style="color:#0082c8;">学習</span>/<span style="color:#d62728;">検証</span> MSE（平均二乗誤差）。</li>
+            <li>右図: <span style="color:#0082c8;">Train（青）</span>、<span style="color:#d62728;">Test（赤）</span> の「次数 d と誤差」。<span style="color:#d62728;">Test</span> が最小の d が目安。</li>
+            <li>次数 d を上げるほど曲線は複雑に。<span style="color:#0082c8;">Train</span> は下がり続けやすいが、<span style="color:#d62728;">Test</span> が上がり始めたら過学習。</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // 基本
+    const canvas = document.getElementById('plot');
+    const ctx = canvas.getContext('2d');
+    const mseCanvas = document.getElementById('mseChart');
+    const mseCtx = mseCanvas.getContext('2d');
+    const DPR = window.devicePixelRatio || 1;
+    function cssSize(el, fallbackW, fallbackH){
+      const r = el.getBoundingClientRect();
+      const w = Math.max(1, Math.round(r.width || fallbackW));
+      const h = Math.max(1, Math.round(r.height || fallbackH));
+      return {w,h};
+    }
+    function setupHiDPI(c, g) {
+      const s = cssSize(c, c.width, c.height);
+      c.width = Math.round(s.w * DPR); c.height = Math.round(s.h * DPR);
+      g.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    function resize() { setupHiDPI(canvas, ctx); setupHiDPI(mseCanvas, mseCtx); draw(); drawMSE(); }
+    window.addEventListener('resize', resize);
+
+    // UI
+    const degRange = document.getElementById('degRange');
+    const degValue = document.getElementById('degValue');
+    const nRange = document.getElementById('nRange');
+    const nValue = document.getElementById('nValue');
+    const noiseRange = document.getElementById('noiseRange');
+    const noiseValue = document.getElementById('noiseValue');
+    const trainRange = document.getElementById('trainRange');
+    const trainValue = document.getElementById('trainValue');
+    const trainMseText = document.getElementById('trainMse');
+    const testMseText = document.getElementById('testMse');
+    const btnGen = document.getElementById('btnGen');
+
+    degRange.addEventListener('input', () => {
+      degValue.textContent = degRange.value;
+      fitAndDraw();
+      // 次数変更に合わせて全dの誤差曲線も更新
+      sweep();
+    });
+    nRange.addEventListener('input', () => {
+      nValue.textContent = nRange.value;
+      // 点数変更時は再生成して再計算
+      generate(); resize(); fitAndDraw(); sweep();
+    });
+    noiseRange.addEventListener('input', () => {
+      noiseValue.textContent = Number(noiseRange.value).toFixed(2);
+      // ノイズ変更時も再生成して再計算
+      generate(); resize(); fitAndDraw(); sweep();
+    });
+    trainRange.addEventListener('input', () => {
+      trainValue.textContent = trainRange.value + '%';
+      // 分割比は再分割のみで十分。データ未生成なら生成。
+      if (data.length === 0) generate(); else split();
+      fitAndDraw(); sweep();
+    });
+
+    btnGen.addEventListener('click', () => { generate(); resize(); fitAndDraw(); sweep(); });
+
+    // データ
+    /** @type {{x:number,y:number}[]} */
+    let data = [];
+    let trainIdx = [], testIdx = [];
+    let coef = []; // 回帰係数（長さ d+1）
+    let sweepTrain = [], sweepTest = [], sweepDeg = [];
+
+    function fTrue(x) { return Math.sin(2*Math.PI*x) + 0.3*x + 0.1; }
+    function gaussian() { let u=0,v=0; while(!u) u=Math.random(); while(!v) v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+    function generate() {
+      const n = parseInt(nRange.value,10); const sigma = parseFloat(noiseRange.value);
+      data = Array.from({length:n}, (_,i)=>{ const x=Math.random(); const y=fTrue(x)+sigma*gaussian(); return {x,y}; });
+      split();
+      // 表示値も同期
+      degValue.textContent = degRange.value;
+      nValue.textContent = nRange.value;
+      noiseValue.textContent = Number(noiseRange.value).toFixed(2);
+      trainValue.textContent = trainRange.value + '%';
+      draw(); drawMSE();
+    }
+    function split() {
+      const n = data.length; const idx = [...Array(n).keys()]; idx.sort(()=>Math.random()-0.5);
+      const r = Math.floor(n * (parseInt(trainRange.value,10)/100));
+      trainIdx = idx.slice(0,r); testIdx = idx.slice(r);
+    }
+
+    // 多項式基底と最小二乗
+    function designRow(x, d) { const row = new Array(d+1); let p=1; for(let j=0;j<=d;j++){ row[j]=p; p*=x; } return row; }
+    function fitPoly(d) {
+      if (trainIdx.length === 0) return [];
+      const X = trainIdx.map(i => designRow(data[i].x, d));
+      const y = trainIdx.map(i => data[i].y);
+      const m = X.length, n = d+1;
+      // XtX and XtY
+      const XtX = Array.from({length:n},()=>Array(n).fill(0));
+      const XtY = Array(n).fill(0);
+      for (let i=0;i<m;i++){
+        const xi = X[i]; const yi = y[i];
+        for(let a=0;a<n;a++){ XtY[a]+=xi[a]*yi; for(let b=0;b<n;b++){ XtX[a][b]+=xi[a]*xi[b]; } }
+      }
+      return solveLinear(XtX, XtY);
+    }
+    function solveLinear(A, b) { // ガウス消去（部分ピボット）
+      const n = A.length; const M = A.map((row,i)=>row.concat([b[i]]));
+      for(let k=0;k<n;k++){
+        // pivot
+        let piv=k; for(let i=k+1;i<n;i++){ if(Math.abs(M[i][k])>Math.abs(M[piv][k])) piv=i; }
+        if (Math.abs(M[piv][k])<1e-12) return Array(n).fill(0); // 退避
+        if (piv!==k){ const tmp=M[k]; M[k]=M[piv]; M[piv]=tmp; }
+        // eliminate
+        for(let i=k+1;i<n;i++){
+          const f=M[i][k]/M[k][k]; if(!isFinite(f)) continue; M[i][k]=0;
+          for(let j=k+1;j<=n;j++){ M[i][j]-=f*M[k][j]; }
+        }
+      }
+      // back-substitution
+      const x=Array(n).fill(0);
+      for(let i=n-1;i>=0;i--){ let s=M[i][n]; for(let j=i+1;j<n;j++) s-=M[i][j]*x[j]; x[i]=s/M[i][i]; }
+      return x;
+    }
+    function predict(x, c){ let y=0, p=1; for(let j=0;j<c.length;j++){ y+=c[j]*p; p*=x; } return y; }
+    function mse(idx, c){ if(idx.length===0||c.length===0) return NaN; let s=0; for(const i of idx){ const e=data[i].y-predict(data[i].x,c); s+=e*e; } return s/idx.length; }
+
+    // 描画
+    function draw(){
+      const s = cssSize(canvas, canvas.width, canvas.height); const w=s.w, h=s.h; ctx.clearRect(0,0,w,h);
+      // 枠
+      const L=40,R=w-10,T=10,B=h-30; ctx.strokeStyle='#ddd'; ctx.strokeRect(L,T,R-L,B-T);
+      // 軸ラベル
+      ctx.fillStyle='#666'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.fillText('x', (L+R)/2, h-10);
+      ctx.save(); ctx.translate(12,(T+B)/2); ctx.rotate(-Math.PI/2); ctx.fillText('y',0,0); ctx.restore();
+      // スケール
+      const sx = x => L + (R-L)*x;
+      // y範囲の自動調整
+      const ys = data.map(d=>d.y).concat([fTrue(0),fTrue(1)]);
+      const ymin = Math.min(...ys)-0.5, ymax = Math.max(...ys)+0.5; const sy = y => B - (B-T)*(y - ymin)/(ymax - ymin || 1);
+      // 真の関数
+      ctx.strokeStyle = '#999'; ctx.setLineDash([5,4]); ctx.beginPath();
+      for(let i=0;i<=200;i++){ const x=i/200; const px=sx(x), py=sy(fTrue(x)); if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); }
+      ctx.stroke(); ctx.setLineDash([]);
+      // データ点
+      ctx.fillStyle='rgba(0,130,200,0.85)'; for(const i of trainIdx){ const p=data[i]; ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3, 0, Math.PI*2); ctx.fill(); }
+      ctx.fillStyle='rgba(214,39,40,0.85)'; for(const i of testIdx){ const p=data[i]; ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3, 0, Math.PI*2); ctx.fill(); }
+      // 近似曲線
+      if(coef.length){ ctx.strokeStyle='#667eea'; ctx.lineWidth=2; ctx.beginPath(); for(let i=0;i<=400;i++){ const x=i/400; const px=sx(x), py=sy(predict(x,coef)); if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py); } ctx.stroke(); }
+
+      // 凡例（左図、右上配置）
+      const lw = 210, lh = 44; const lx = R - lw - 8, ly = T + 8;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(lx, ly, lw, lh);
+      ctx.strokeStyle = '#eee'; ctx.strokeRect(lx, ly, lw, lh);
+      ctx.font = '11px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      // Train 点
+      let x0 = lx + 8, y0 = ly + 12;
+      ctx.fillStyle = '#0082c8'; ctx.fillRect(x0, y0-5, 10, 10);
+      ctx.fillStyle = '#444'; ctx.fillText('Train（点）', x0 + 14, y0);
+      // Test 点
+      x0 = lx + 110; y0 = ly + 12;
+      ctx.fillStyle = '#d62728'; ctx.fillRect(x0, y0-5, 10, 10);
+      ctx.fillStyle = '#444'; ctx.fillText('Test（点）', x0 + 14, y0);
+      // True 関数（灰の点線）
+      x0 = lx + 8; y0 = ly + 30;
+      ctx.strokeStyle = '#999'; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 50, y0); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#444'; ctx.fillText('真の関数', x0 + 56, y0);
+      // 推定曲線（青実線）
+      x0 = lx + 110; y0 = ly + 30;
+      ctx.strokeStyle = '#667eea'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 50, y0); ctx.stroke();
+      ctx.fillStyle = '#444'; ctx.fillText('推定曲線', x0 + 56, y0);
+    }
+
+    // MSEチャート
+    function drawMSE(){
+      const s = cssSize(mseCanvas, mseCanvas.width, mseCanvas.height); const w=s.w, h=s.h; mseCtx.clearRect(0,0,w,h);
+      const L=34,R=w-8,T=18,B=h-24; mseCtx.strokeStyle='#ddd'; mseCtx.strokeRect(L,T,R-L,B-T);
+      mseCtx.fillStyle='#666'; mseCtx.font='11px sans-serif'; mseCtx.textAlign='center'; mseCtx.fillText('Degree', (L+R)/2, h-6);
+      mseCtx.save(); mseCtx.translate(10,(T+B)/2); mseCtx.rotate(-Math.PI/2); mseCtx.fillText('MSE',0,0); mseCtx.restore();
+      if (sweepDeg.length===0) return;
+      const n = sweepDeg.length; const minX = sweepDeg[0], maxX = sweepDeg[n-1];
+      const maxY = Math.max(...sweepTrain.concat(sweepTest)); const minY = 0;
+      const sx = d => L + (R-L)*((d-minX)/((maxX-minX)||1));
+      const sy = v => B - (B-T)*((v-minY)/((maxY-minY)||1));
+      // 目盛
+      mseCtx.fillStyle='#888'; mseCtx.textAlign='center'; mseCtx.fillText(String(minX), sx(minX), B+12); mseCtx.fillText(String(maxX), sx(maxX), B+12);
+      mseCtx.textAlign='right'; mseCtx.textBaseline='middle'; mseCtx.fillText(maxY.toFixed(2), L-6, sy(maxY)); mseCtx.fillText('0', L-6, sy(0));
+      // 線（train: 青）
+      mseCtx.strokeStyle='#0082c8'; mseCtx.lineWidth=1.5; mseCtx.beginPath(); for(let i=0;i<n;i++){ const x=sx(sweepDeg[i]), y=sy(sweepTrain[i]); if(i===0) mseCtx.moveTo(x,y); else mseCtx.lineTo(x,y);} mseCtx.stroke();
+      // 線（test: 赤）
+      mseCtx.strokeStyle='#d62728'; mseCtx.lineWidth=1.5; mseCtx.beginPath(); for(let i=0;i<n;i++){ const x=sx(sweepDeg[i]), y=sy(sweepTest[i]); if(i===0) mseCtx.moveTo(x,y); else mseCtx.lineTo(x,y);} mseCtx.stroke();
+      // 凡例
+      const legendY = T-6; const items=[['Train','#0082c8'],['Test','#d62728']];
+      mseCtx.textAlign='left'; let lx=L; for(const [name,color] of items){ mseCtx.fillStyle=color; mseCtx.fillRect(lx, legendY, 10, 10); mseCtx.fillStyle='#444'; mseCtx.fillText(' '+name, lx+12, legendY+9); lx+=60; }
+
+      // 現在の次数を表示（縦線とマーカー）
+      const curD = parseInt(degRange.value, 10);
+      const idx = sweepDeg.indexOf(curD);
+      let curTrain = NaN, curTest = NaN;
+      if (idx >= 0) { curTrain = sweepTrain[idx]; curTest = sweepTest[idx]; }
+      // fallback: 計算可能ならその場で計算
+      if (!isFinite(curTrain) || !isFinite(curTest)) {
+        const c = fitPoly(curD);
+        curTrain = mse(trainIdx, c); curTest = mse(testIdx, c);
+      }
+      // マーカー（現在の次数）
+      const vx = sx(curD);
+      const r = 3;
+      if (isFinite(curTrain)) { const y = sy(curTrain); mseCtx.fillStyle = '#0082c8'; mseCtx.beginPath(); mseCtx.arc(vx, y, r, 0, Math.PI*2); mseCtx.fill(); }
+      if (isFinite(curTest)) { const y = sy(curTest); mseCtx.fillStyle = '#d62728'; mseCtx.beginPath(); mseCtx.arc(vx, y, r, 0, Math.PI*2); mseCtx.fill(); }
+    }
+
+    // 高レベル操作
+    function fitAndDraw(){
+      if (data.length===0) return;
+      const d = parseInt(degRange.value,10);
+      coef = fitPoly(d);
+      const tr = mse(trainIdx, coef), te = mse(testIdx, coef);
+      trainMseText.textContent = isFinite(tr) ? tr.toFixed(4) : '-';
+      testMseText.textContent = isFinite(te) ? te.toFixed(4) : '-';
+      draw();
+    }
+    function sweep(){
+      if (data.length===0) return;
+      sweepDeg = []; sweepTrain = []; sweepTest = [];
+      const maxD = parseInt(degRange.max,10);
+      for(let d=0; d<=maxD; d++){
+        const c = fitPoly(d);
+        sweepDeg.push(d);
+        sweepTrain.push(mse(trainIdx, c));
+        sweepTest.push(mse(testIdx, c));
+      }
+      drawMSE();
+    }
+    
+
+    // 初期化
+    resize();
+    generate();
+    fitAndDraw();
+    sweep();
+  </script>
+</body>
+</html>
