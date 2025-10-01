@@ -36,6 +36,15 @@
         </select>
       </label>
 
+      <label>
+        マップ：
+        <select id="map">
+          <option value="default">デフォルト</option>
+          <option value="branch">バリエーション（枝分かれ）</option>
+          <option value="zigzag">バリエーション（ジグザグ）</option>
+        </select>
+      </label>
+
       <span class="sep"></span>
 
       <button id="play">▶ 再生</button>
@@ -79,43 +88,47 @@
 
     <script>
       // 迷路: 壁=9, 通路=0, ゴール=1
-      // Python版のサンプルから簡略化・転記
-      const maze = [
-        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
-        [9, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 9],
-        [9, 0, 9, 0, 0, 0, 9, 9, 0, 9, 0, 9],
-        [9, 0, 9, 9, 0, 9, 0, 0, 0, 9, 1, 9],
-        [9, 0, 9, 0, 0, 0, 0, 9, 0, 0, 9, 9],
-        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
-      ];
+      // マップパターン
+      const MAPS = {
+        default: [
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+          [9, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 9],
+          [9, 0, 9, 0, 0, 0, 9, 9, 0, 9, 0, 9],
+          [9, 0, 9, 9, 0, 9, 0, 0, 0, 9, 1, 9],
+          [9, 0, 9, 0, 0, 0, 0, 9, 0, 0, 9, 9],
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+        ],
+        branch: [
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+          [9, 0, 9, 0, 9, 0, 0, 0, 9, 0, 0, 9],
+          [9, 0, 9, 0, 0, 0, 9, 0, 0, 9, 0, 9],
+          [9, 0, 0, 0, 9, 0, 9, 0, 9, 0, 1, 9],
+          [9, 9, 0, 9, 0, 0, 0, 0, 0, 9, 9, 9],
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+        ],
+        zigzag: [
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+          [9, 0, 0, 0, 0, 9, 0, 0, 0, 9, 0, 9],
+          [9, 9, 9, 9, 0, 9, 0, 9, 0, 9, 0, 9],
+          [9, 0, 0, 9, 0, 0, 0, 9, 0, 0, 1, 9],
+          [9, 0, 9, 9, 9, 9, 0, 9, 9, 9, 9, 9],
+          [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+        ]
+      };
 
-      const H = maze.length;
-      const W = maze[0].length;
+      let maze = []; // 現在のマップ
+      let H = 0;
+      let W = 0;
       const cellSize = 32; // セル描画サイズ（px）
       const margin = { left: 40, right: 10, top: 10, bottom: 40 }; // 軸用余白
       const view = document.getElementById('view');
-      view.width = W * cellSize + margin.left + margin.right;
-      view.height = H * cellSize + margin.top + margin.bottom;
+      // サイズはマップ設定時に更新
       const ctx = view.getContext('2d');
       const treeSvg = document.getElementById('treeSvg');
 
-      // スタートは左上側の最初の通路セル、ゴールは値1のセル
-      const start = (() => {
-        for (let i = 0; i < H; i++) {
-          for (let j = 0; j < W; j++) {
-            if (maze[i][j] === 0) return [i, j];
-          }
-        }
-        return [1, 1];
-      })();
-      const goal = (() => {
-        for (let i = 0; i < H; i++) {
-          for (let j = 0; j < W; j++) {
-            if (maze[i][j] === 1) return [i, j];
-          }
-        }
-        return null;
-      })();
+      // スタート/ゴールは都度計算
+      let start = [1, 1];
+      let goal = null;
 
       // 探索状態
       let algo = 'bfs';
@@ -142,6 +155,9 @@
         visited = Array.from({ length: H }, () => Array(W).fill(false));
         frontier = Array.from({ length: H }, () => Array(W).fill(false));
         parent = Array.from({ length: H }, () => Array(W).fill(null));
+        // スタート/ゴールを検出
+        start = findStart();
+        goal = findGoal();
         agentPos = [...start];
         pathSet = new Set();
         stepCount = 0;
@@ -159,6 +175,35 @@
         }
         draw();
         updateInfo();
+      }
+
+      function setMap(name) {
+        const src = MAPS[name] || MAPS.default;
+        // ディープコピー
+        maze = src.map(row => row.slice());
+        H = maze.length;
+        W = maze[0].length;
+        view.width = W * cellSize + margin.left + margin.right;
+        view.height = H * cellSize + margin.top + margin.bottom;
+        clearLog();
+        resetState();
+      }
+
+      function findStart() {
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            if (maze[i][j] === 0) return [i, j];
+          }
+        }
+        return [1, 1];
+      }
+      function findGoal() {
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            if (maze[i][j] === 1) return [i, j];
+          }
+        }
+        return null;
       }
 
       function updateInfo() {
@@ -488,6 +533,11 @@
         resetState();
       });
 
+      document.getElementById('map').addEventListener('change', (e) => {
+        stop();
+        setMap(e.target.value);
+      });
+
       // クリアボタンは廃止（リセット/アルゴリズム変更時に自動クリア）
 
       document.getElementById('speed').addEventListener('input', (e) => {
@@ -503,8 +553,8 @@
         document.getElementById('play').textContent = '▶ 再生';
       }
 
-      // 初期化
-      resetState();
+      // 初期化（デフォルトマップ）
+      setMap('default');
 
       // ---- ログ関数 ----
       function clearLog() {
