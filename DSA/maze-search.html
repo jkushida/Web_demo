@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSA: 迷路の探索 (BFS/DFS)</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      .panel { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+      .panel > * { margin: 0; }
+      .legend { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      .legend span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+      .box { width: 14px; height: 14px; border: 1px solid #888; display: inline-block; }
+      canvas { border: 1px solid #bbb; background: #fff; max-width: 100%; height: auto; }
+      .note { font-size: 12px; color: #555; margin-top: 6px; }
+      button { padding: 6px 10px; }
+      label { font-size: 14px; }
+      .sep { width: 1px; height: 20px; background: #ccc; margin: 0 4px; }
+      .layout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+      .treePane { border: 1px solid #bbb; background: #fff; padding: 8px; overflow: auto; }
+      .treeHead { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; font-size: 13px; }
+      svg { max-width: 100%; background: #fff; }
+    </style>
+  </head>
+  <body>
+    <h1>迷路の探索 (幅優先 / 深さ優先)</h1>
+
+    <div class="panel">
+      <label>
+        アルゴリズム：
+        <select id="algo">
+          <option value="bfs">幅優先探索 (BFS)</option>
+          <option value="dfs">深さ優先探索 (DFS)</option>
+        </select>
+      </label>
+
+      <span class="sep"></span>
+
+      <button id="play">▶ 再生</button>
+      <button id="step">⏭ 1ステップ</button>
+      <button id="reset">↺ リセット</button>
+      <button id="clearLog">🧹 ログをクリア</button>
+
+      <span class="sep"></span>
+
+      <label>
+        速度: <input id="speed" type="range" min="50" max="800" value="300" />
+      </label>
+
+      <span id="info">STEP: 0 / 探索中</span>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span><i class="box" style="background:#000"></i> 壁</span>
+      <span><i class="box" style="background:#fff"></i> 通路</span>
+      <span><i class="box" style="background:#a3c4f3"></i> 訪問済み</span>
+      <span><i class="box" style="background:#4f8ef7"></i> 境界(待ち行列/スタック)</span>
+      <span><i class="box" style="background:#fde047"></i> 経路</span>
+      <span><i class="box" style="background:#1e40af"></i> ゴール</span>
+      <span><i class="box" style="background:#fff; border-radius:50%; background:radial-gradient(circle at center, #e11d48 0 60%, transparent 61%)"></i> エージェント</span>
+    </div>
+
+    <div class="layout">
+      <div>
+        <canvas id="view" width="480" height="360" aria-label="maze"></canvas>
+        <div class="note">赤い丸がエージェント、濃い青がゴール。右下のセルも壁として扱います。</div>
+        <div id="log" class="log" role="log" aria-live="polite" style="margin-top:10px; padding:8px; border:1px solid #bbb; background: color-mix(in oklab, Canvas 92%, black 0%); max-height: 260px; overflow:auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;"></div>
+      </div>
+      <div class="treePane">
+        <div class="treeHead"><span>探索木（動的）</span><span id="treeInfo"></span></div>
+        <svg id="treeSvg" width="600" height="420" viewBox="0 0 600 420" xmlns="http://www.w3.org/2000/svg" aria-label="search tree"></svg>
+        <div class="note">層=深さ, 左→右=発見順。黄色=確定経路。</div>
+      </div>
+    </div>
+    <div class="note">赤い丸がエージェント、濃い青がゴール。右下のセルも壁として扱います。</div>
+
+    <script>
+      // 迷路: 壁=9, 通路=0, ゴール=1
+      // Python版のサンプルから簡略化・転記
+      const maze = [
+        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+        [9, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 9],
+        [9, 0, 9, 0, 0, 0, 9, 9, 0, 9, 0, 9],
+        [9, 0, 9, 9, 0, 9, 0, 0, 0, 9, 1, 9],
+        [9, 0, 9, 0, 0, 0, 0, 9, 0, 0, 9, 9],
+        [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
+      ];
+
+      const H = maze.length;
+      const W = maze[0].length;
+      const cellSize = 32; // セル描画サイズ（px）
+      const margin = { left: 40, right: 10, top: 10, bottom: 40 }; // 軸用余白
+      const view = document.getElementById('view');
+      view.width = W * cellSize + margin.left + margin.right;
+      view.height = H * cellSize + margin.top + margin.bottom;
+      const ctx = view.getContext('2d');
+      const treeSvg = document.getElementById('treeSvg');
+
+      // スタートは左上側の最初の通路セル、ゴールは値1のセル
+      const start = (() => {
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            if (maze[i][j] === 0) return [i, j];
+          }
+        }
+        return [1, 1];
+      })();
+      const goal = (() => {
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            if (maze[i][j] === 1) return [i, j];
+          }
+        }
+        return null;
+      })();
+
+      // 探索状態
+      let algo = 'bfs';
+      let running = false;
+      let stepTimer = null;
+      let stepDelay = 300;
+      let stepCount = 0;
+      let finished = false;
+
+      const inBounds = (i, j) => i >= 0 && i < H && j >= 0 && j < W;
+      const dirs = [
+        [1, 0], // 下
+        [0, 1], // 右
+        [-1, 0], // 上
+        [0, -1] // 左
+      ];
+
+      // 可視化用バッファ
+      let visited, frontier, parent, agentPos, pathSet;
+      let container; // 要素は [i, j, depth]
+      let depthMap, orderMap, discCounter;
+
+      function resetState() {
+        visited = Array.from({ length: H }, () => Array(W).fill(false));
+        frontier = Array.from({ length: H }, () => Array(W).fill(false));
+        parent = Array.from({ length: H }, () => Array(W).fill(null));
+        agentPos = [...start];
+        pathSet = new Set();
+        stepCount = 0;
+        finished = false;
+        container = [];
+        depthMap = Array.from({ length: H }, () => Array(W).fill(-1));
+        orderMap = Array.from({ length: H }, () => Array(W).fill(-1));
+        discCounter = 0;
+        // 初期登録
+        if (maze[start[0]][start[1]] !== 9) {
+          container.push([start[0], start[1], 0]);
+          frontier[start[0]][start[1]] = true;
+          depthMap[start[0]][start[1]] = 0;
+          orderMap[start[0]][start[1]] = discCounter++;
+        }
+        draw();
+        updateInfo();
+      }
+
+      function updateInfo() {
+        const info = document.getElementById('info');
+        info.textContent = `STEP: ${stepCount} / ${finished ? '完了' : '探索中'}`;
+      }
+
+      function reconstructPath(to) {
+        pathSet.clear();
+        let cur = to;
+        while (cur) {
+          pathSet.add(cur.join(','));
+          cur = parent[cur[0]][cur[1]];
+        }
+      }
+
+      function stepOnce() {
+        if (finished) return;
+        if (container.length === 0) {
+          finished = true;
+          updateInfo();
+          draw();
+          return;
+        }
+
+        // ログ: 事前の探索リスト
+        appendLog(`step= ${stepCount + 1}`);
+        appendLog('探索リスト[h, w, depth]:  ' + serializeContainer(container));
+
+        // BFS: shift / DFS: pop
+        const cur = algo === 'bfs' ? container.shift() : container.pop();
+        const [i, j, dpth] = cur;
+        appendLog('pop ' + fmtEntry(cur));
+        frontier[i][j] = false;
+        if (visited[i][j]) {
+          // 既に閉路扱いならスキップ
+          appendLog(`現在地[${i}][${j}]は既に訪問済みのためスキップ`);
+          draw();
+          return;
+        }
+        visited[i][j] = true;
+        appendLog(`現在地[${i}][${j}]を探索済みとしてセット`);
+        agentPos = [i, j];
+        stepCount++;
+
+        // ゴール判定
+        if (goal && i === goal[0] && j === goal[1]) {
+          reconstructPath([i, j]);
+          finished = true;
+          updateInfo();
+          draw();
+          appendLog('goal');
+          return;
+        }
+
+        for (const [di, dj] of dirs) {
+          const ni = i + di, nj = j + dj;
+          if (!inBounds(ni, nj)) continue;
+          if (maze[ni][nj] === 9) continue; // 壁
+          if (visited[ni][nj]) continue;
+          if (!frontier[ni][nj]) {
+            parent[ni][nj] = [i, j];
+            frontier[ni][nj] = true;
+            container.push([ni, nj, dpth + 1]);
+            if (depthMap[ni][nj] < 0) depthMap[ni][nj] = dpth + 1;
+            if (orderMap[ni][nj] < 0) orderMap[ni][nj] = discCounter++;
+          }
+        }
+
+        appendLog('更新後の探索リスト ' + serializeContainer(container));
+        draw();
+        updateInfo();
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, view.width, view.height);
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            const x = margin.left + j * cellSize;
+            const y = margin.top + i * cellSize;
+
+            // 背景（壁/通路）
+            if (maze[i][j] === 9) {
+              ctx.fillStyle = '#000';
+            } else {
+              ctx.fillStyle = '#fff';
+            }
+            ctx.fillRect(x, y, cellSize, cellSize);
+
+            // 境界（frontier）
+            if (frontier[i][j]) {
+              ctx.fillStyle = '#4f8ef7';
+              ctx.globalAlpha = 0.35;
+              ctx.fillRect(x, y, cellSize, cellSize);
+              ctx.globalAlpha = 1;
+            }
+
+            // 訪問済み（closed）
+            if (visited[i][j]) {
+              ctx.fillStyle = '#a3c4f3';
+              ctx.globalAlpha = 0.6;
+              ctx.fillRect(x, y, cellSize, cellSize);
+              ctx.globalAlpha = 1;
+            }
+
+            // 経路
+            if (pathSet.has(i + ',' + j)) {
+              ctx.fillStyle = '#fde047';
+              ctx.globalAlpha = 0.9;
+              ctx.fillRect(x, y, cellSize, cellSize);
+              ctx.globalAlpha = 1;
+            }
+
+            // ゴール
+            if (goal && i === goal[0] && j === goal[1]) {
+              ctx.fillStyle = '#1e40af';
+              ctx.globalAlpha = 0.85;
+              ctx.fillRect(x + 4, y + 4, cellSize - 8, cellSize - 8);
+              ctx.globalAlpha = 1;
+            }
+
+            // 枠線
+            ctx.strokeStyle = '#ddd';
+            ctx.strokeRect(x, y, cellSize, cellSize);
+          }
+        }
+
+        // エージェント（赤丸）
+        const [ai, aj] = agentPos;
+        ctx.beginPath();
+        ctx.fillStyle = '#e11d48';
+        ctx.arc(
+          margin.left + aj * cellSize + cellSize / 2,
+          margin.top + ai * cellSize + cellSize / 2,
+          Math.min(cellSize * 0.35, 12),
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+        drawAxes();
+        drawTree();
+      }
+
+      function drawAxes() {
+        const gridLeft = margin.left;
+        const gridTop = margin.top;
+        const gridRight = margin.left + W * cellSize;
+        const gridBottom = margin.top + H * cellSize;
+
+        ctx.save();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // x軸
+        ctx.moveTo(gridLeft, gridBottom);
+        ctx.lineTo(gridRight, gridBottom);
+        // y軸
+        ctx.moveTo(gridLeft, gridTop);
+        ctx.lineTo(gridLeft, gridBottom);
+        ctx.stroke();
+
+        // 目盛りとラベル
+        ctx.fillStyle = '#111';
+        ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+        // x ticks/labels
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let j = 0; j < W; j++) {
+          const x = gridLeft + j * cellSize + cellSize / 2;
+          ctx.fillText(String(j), x, gridBottom + 6);
+        }
+        // y ticks/labels
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i < H; i++) {
+          const y = gridTop + i * cellSize + cellSize / 2;
+          ctx.fillText(String(i), gridLeft - 6, y);
+        }
+        // 軸ラベル
+        // w (x axis)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('w', (gridLeft + gridRight) / 2, gridBottom + 22);
+        // h (y axis, vertical)
+        ctx.translate(gridLeft - 24, (gridTop + gridBottom) / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('h', 0, 0);
+        ctx.restore();
+      }
+
+      function drawTree() {
+        // 構築: 発見済みノードと親子エッジ
+        const nodes = [];
+        const edges = [];
+        let maxDepth = 0;
+        for (let i = 0; i < H; i++) {
+          for (let j = 0; j < W; j++) {
+            if (depthMap[i][j] >= 0) {
+              const key = i + ',' + j;
+              nodes.push({
+                i, j,
+                key,
+                depth: depthMap[i][j],
+                order: orderMap[i][j],
+                visited: visited[i][j],
+                frontier: frontier[i][j],
+                isGoal: goal && i === goal[0] && j === goal[1],
+                inPath: pathSet.has(key),
+                isAgent: agentPos[0] === i && agentPos[1] === j
+              });
+              maxDepth = Math.max(maxDepth, depthMap[i][j]);
+              const p = parent[i][j];
+              if (p) {
+                edges.push({ from: p[0] + ',' + p[1], to: key });
+              }
+            }
+          }
+        }
+
+        // レイアウト: 深さ別に並べ、発見順で水平配置
+        const levels = Array.from({ length: maxDepth + 1 }, () => []);
+        nodes.sort((a, b) => a.order - b.order);
+        for (const n of nodes) levels[n.depth].push(n);
+
+        const hGap = 70; // ノード間X間隔の目安
+        const vGap = 70; // 層間Y間隔
+        const radius = 12;
+        let viewW = 600;
+        const viewH = Math.max(300, (maxDepth + 1) * vGap + 60);
+
+        // x座標の割り当て
+        for (let d = 0; d <= maxDepth; d++) {
+          const row = levels[d];
+          const widthNeeded = Math.max(1, row.length) * hGap + 60;
+          viewW = Math.max(viewW, widthNeeded);
+          row.forEach((n, idx) => {
+            n.x = ((idx + 1) * (widthNeeded / (row.length + 1)));
+            n.y = 30 + d * vGap;
+          });
+        }
+
+        // ノード位置辞書
+        const pos = new Map(nodes.map(n => [n.key, { x: n.x, y: n.y, n }]));
+
+        // SVG出力
+        treeSvg.setAttribute('viewBox', `0 0 ${viewW} ${viewH}`);
+        treeSvg.setAttribute('width', Math.min(viewW, 600));
+        treeSvg.setAttribute('height', viewH);
+
+        const parts = [];
+        // edges
+        for (const e of edges) {
+          const a = pos.get(e.from); const b = pos.get(e.to);
+          if (!a || !b) continue;
+          const inPathEdge = a.n.inPath && b.n.inPath;
+          const stroke = inPathEdge ? '#f59e0b' : '#94a3b8';
+          const sw = inPathEdge ? 2.5 : 1.2;
+          parts.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${stroke}" stroke-width="${sw}" />`);
+        }
+        // nodes
+        for (const n of nodes) {
+          let fill = '#ffffff';
+          let stroke = '#334155';
+          if (n.visited) fill = '#bfdbfe';
+          if (n.frontier) fill = '#93c5fd';
+          if (n.inPath) fill = '#fde047';
+          if (n.isGoal) stroke = '#1e40af';
+          const ring = n.isAgent ? `<circle cx="${n.x}" cy="${n.y}" r="${radius + 3}" fill="none" stroke="#e11d48" stroke-width="2" />` : '';
+          parts.push(`
+            <g>
+              <circle cx="${n.x}" cy="${n.y}" r="${radius}" fill="${fill}" stroke="${stroke}" stroke-width="1.2" />
+              ${ring}
+              <text x="${n.x}" y="${n.y + 4}" text-anchor="middle" font-size="10" font-family="ui-monospace,monospace" fill="#111">${n.i},${n.j}</text>
+            </g>`);
+        }
+        treeSvg.innerHTML = parts.join('');
+        const tinfo = document.getElementById('treeInfo');
+        tinfo.textContent = `ノード: ${nodes.length}, 深さ: ${maxDepth}`;
+      }
+
+      function tick() {
+        if (!running) return;
+        stepOnce();
+        if (finished) {
+          running = false;
+          stepTimer = null;
+          return;
+        }
+        stepTimer = setTimeout(tick, stepDelay);
+      }
+
+      // UI イベント
+      document.getElementById('algo').addEventListener('change', (e) => {
+        algo = e.target.value;
+        stop();
+        resetState();
+      });
+
+      document.getElementById('play').addEventListener('click', () => {
+        if (!running) {
+          running = true;
+          tick();
+          document.getElementById('play').textContent = '⏸ 一時停止';
+        } else {
+          stop();
+        }
+      });
+
+      document.getElementById('step').addEventListener('click', () => {
+        if (running) return; // 再生中は手動ステップなし
+        stepOnce();
+      });
+
+      document.getElementById('reset').addEventListener('click', () => {
+        stop();
+        clearLog();
+        resetState();
+      });
+
+      document.getElementById('clearLog').addEventListener('click', () => {
+        clearLog();
+      });
+
+      document.getElementById('speed').addEventListener('input', (e) => {
+        stepDelay = Number(e.target.value);
+      });
+
+      function stop() {
+        running = false;
+        if (stepTimer) {
+          clearTimeout(stepTimer);
+          stepTimer = null;
+        }
+        document.getElementById('play').textContent = '▶ 再生';
+      }
+
+      // 初期化
+      resetState();
+
+      // ---- ログ関数 ----
+      function clearLog() {
+        const el = document.getElementById('log');
+        el.textContent = '';
+      }
+      function appendLog(line) {
+        const el = document.getElementById('log');
+        el.textContent += (el.textContent ? '\n' : '') + line;
+        el.scrollTop = el.scrollHeight;
+      }
+      function fmtEntry(e) {
+        if (!e) return '[]';
+        const [i, j, d] = e;
+        return `[${i}, ${j}, ${d}]`;
+      }
+      function serializeContainer(arr) {
+        return '[' + arr.map(fmtEntry).join(', ') + ']';
+      }
+    </script>
+  </body>
+  </html>
