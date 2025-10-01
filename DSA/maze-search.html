@@ -41,7 +41,6 @@
       <button id="play">▶ 再生</button>
       <button id="step">⏭ 1ステップ</button>
       <button id="reset">↺ リセット</button>
-      <button id="clearLog">🧹 ログをクリア</button>
 
       <span class="sep"></span>
 
@@ -481,9 +480,7 @@
         resetState();
       });
 
-      document.getElementById('clearLog').addEventListener('click', () => {
-        clearLog();
-      });
+      // クリアボタンは廃止（リセット/アルゴリズム変更時に自動クリア）
 
       document.getElementById('speed').addEventListener('input', (e) => {
         stepDelay = Number(e.target.value);
