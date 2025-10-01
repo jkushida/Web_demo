@@ -39,9 +39,9 @@
       <label>
         マップ：
         <select id="map">
-          <option value="default">デフォルト</option>
-          <option value="branch">バリエーション（枝分かれ）</option>
-          <option value="zigzag">バリエーション（ジグザグ）</option>
+          <option value="map1">map1</option>
+          <option value="map2">map2</option>
+          <option value="map3">map3</option>
         </select>
       </label>
 
@@ -90,7 +90,7 @@
       // 迷路: 壁=9, 通路=0, ゴール=1
       // マップパターン
       const MAPS = {
-        default: [
+        map1: [
           [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
           [9, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 9],
           [9, 0, 9, 0, 0, 0, 9, 9, 0, 9, 0, 9],
@@ -98,7 +98,7 @@
           [9, 0, 9, 0, 0, 0, 0, 9, 0, 0, 9, 9],
           [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
         ],
-        branch: [
+        map2: [
           [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
           [9, 0, 9, 0, 9, 0, 0, 0, 9, 0, 0, 9],
           [9, 0, 9, 0, 0, 0, 9, 0, 0, 9, 0, 9],
@@ -106,7 +106,7 @@
           [9, 9, 0, 9, 0, 0, 0, 0, 0, 9, 9, 9],
           [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]
         ],
-        zigzag: [
+        map3: [
           [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9],
           [9, 0, 0, 0, 0, 9, 0, 0, 0, 9, 0, 9],
           [9, 9, 9, 9, 0, 9, 0, 9, 0, 9, 0, 9],
@@ -178,7 +178,7 @@
       }
 
       function setMap(name) {
-        const src = MAPS[name] || MAPS.default;
+        const src = MAPS[name] || MAPS.map1;
         // ディープコピー
         maze = src.map(row => row.slice());
         H = maze.length;
@@ -553,8 +553,8 @@
         document.getElementById('play').textContent = '▶ 再生';
       }
 
-      // 初期化（デフォルトマップ）
-      setMap('default');
+      // 初期化（map1）
+      setMap('map1');
 
       // ---- ログ関数 ----
       function clearLog() {
