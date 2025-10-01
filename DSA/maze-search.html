@@ -184,6 +184,7 @@
         }
 
         // ログ: 事前の探索リスト
+        if (stepCount > 0) appendLog(''.padEnd(60, '─'));
         appendLog(`step= ${stepCount + 1}`);
         appendLog('探索リスト[h, w, depth]:  ' + serializeContainer(container));
 
