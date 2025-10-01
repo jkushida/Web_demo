@@ -65,6 +65,7 @@
       <div>
         <canvas id="view" width="480" height="360" aria-label="maze"></canvas>
         <div class="note">赤い丸がエージェント、緑がゴール。右下のセルも壁として扱います。</div>
+        <div class="note">次候補の追加順: 下 → 右 → 上 → 左（BFSはこの順で展開、DFSはスタックに積むため取り出し順は 左 → 上 → 右 → 下）。</div>
         <div id="log" class="log" role="log" aria-live="polite" style="margin-top:10px; padding:8px; border:1px solid #bbb; background: color-mix(in oklab, Canvas 92%, black 0%); max-height: 260px; overflow:auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap;"></div>
       </div>
       <div class="treePane">
@@ -74,6 +75,7 @@
       </div>
     </div>
     <div class="note">赤い丸がエージェント、緑がゴール。右下のセルも壁として扱います。</div>
+    <div class="note">次候補の追加順: 下 → 右 → 上 → 左（BFSはこの順で展開、DFSはスタックに積むため取り出し順は 左 → 上 → 右 → 下）。</div>
 
     <script>
       // 迷路: 壁=9, 通路=0, ゴール=1
