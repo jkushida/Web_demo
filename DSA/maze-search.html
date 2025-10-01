@@ -247,12 +247,17 @@
             }
             ctx.fillRect(x, y, cellSize, cellSize);
 
-            // 境界（frontier）
+            // 境界（frontier）: 視認性を高めるため濃色＋枠線
             if (frontier[i][j]) {
-              ctx.fillStyle = '#4f8ef7';
-              ctx.globalAlpha = 0.35;
+              ctx.fillStyle = '#3b82f6'; // 明るい青
+              ctx.globalAlpha = 0.5;
               ctx.fillRect(x, y, cellSize, cellSize);
               ctx.globalAlpha = 1;
+              ctx.save();
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = '#1d4ed8'; // 濃い青の枠
+              ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+              ctx.restore();
             }
 
             // 訪問済み（closed）
@@ -279,8 +284,9 @@
               ctx.globalAlpha = 1;
             }
 
-            // 枠線
+            // 枠線（グリッド）
             ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
             ctx.strokeRect(x, y, cellSize, cellSize);
           }
         }
