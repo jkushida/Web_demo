@@ -23,13 +23,3 @@
 *   [Polynomial Regression & Overfitting](https://jkushida.github.io/Web_demo/ML/polynomial-overfitting.html) - 次数とTrain/Test誤差の関係を可視化
 *   [PCA Educational Demo](https://jkushida.github.io/Web_demo/ML/pca_educational_demo.html) - PCAの計算過程（共分散・固有値・射影）を学習
 
-## ローカル実行
-
-```bash
-python3 -m http.server 8000
-# ブラウザで http://localhost:8000/
-```
-
-## 貢献
-
-ガイドラインは [AGENTS.md](./AGENTS.md) を参照してください。外部依存の追加や構成変更は事前相談をお願いします。
