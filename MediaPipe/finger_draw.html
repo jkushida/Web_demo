@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Hand Drawing - 改善版</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        #videoElement {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: 1;
+            transform: scaleX(-1);
+        }
+        #canvasContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+        }
+        #drawCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: none;
+        }
+        #instructions {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            background: rgba(0,0,0,0.85);
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 14px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255,255,255,0.1);
+            max-width: 300px;
+        }
+        #instructions h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #4facfe;
+        }
+        #instructions ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        #instructions li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+        #eyeStatus {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 101;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #mouthStatus {
+            position: absolute;
+            top: 45px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 101;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: color 0.3s;
+        }
+        #mouthProgressContainer {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            width: 120px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            display: none;
+            z-index: 101;
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        #mouthProgressBar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ee5a6f);
+            transition: width 0.1s linear;
+        }
+        #handsProgressContainer {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            display: none;
+            z-index: 103;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        #handsProgressBar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            transition: width 0.1s linear;
+        }
+        #handColors {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 12px;
+            font-size: 16px;
+            z-index: 102;
+            display: flex;
+            gap: 30px;
+            border: 2px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+        }
+        #handColors .hand-color-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #handColors span.color-box {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        #toggleKeypoints {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 150;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        #toggleKeypoints:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        #toggleKeypoints:active {
+            transform: translateY(0);
+        }
+        #gestureIndicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 24px;
+            z-index: 103;
+            display: none;
+            font-weight: bold;
+            border: 3px solid rgba(255,255,255,0.3);
+            animation: fadeInOut 1s ease-in-out;
+        }
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        #strokeCount {
+            position: absolute;
+            top: 115px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 101;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        #handsDistance {
+            position: absolute;
+            top: 150px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 101;
+            font-family: 'Courier New', monospace;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <video id="videoElement" autoplay muted></video>
+        <div id="canvasContainer"></div>
+        <canvas id="drawCanvas"></canvas>
+        <div id="eyeStatus">目: L:0.000 R:0.000</div>
+        <div id="mouthStatus">口: 0.000</div>
+        <div id="mouthProgressContainer">
+          <div id="mouthProgressBar"></div>
+        </div>
+        <div id="handsProgressContainer">
+          <div id="handsProgressBar"></div>
+        </div>
+        <div id="strokeCount">描画数: 0</div>
+        <div id="handsDistance">両手: -</div>
+        <div id="handColors">
+            <div class="hand-color-item">
+                <span>👈 左手:</span>
+                <span class="color-box" id="leftColorBox"></span>
+                <code id="leftColorText">#ff0000</code>
+            </div>
+            <div class="hand-color-item">
+                <span>👉 右手:</span>
+                <span class="color-box" id="rightColorBox"></span>
+                <code id="rightColorText">#00ff00</code>
+            </div>
+        </div>
+        <button id="toggleKeypoints">キーポイント表示</button>
+        <div id="gestureIndicator">🎨 色変更!</div>
+        <div id="instructions">
+            <h3>📖 使い方</h3>
+            <ul>
+                <li>👆 親指と人差し指をくっつけて描画</li>
+                <li>✊→✋ グーパーで色変更</li>
+                <li>😑 両目を閉じて全消去</li>
+                <li>😮 口を開けて吸収エフェクト</li>
+                <li>🤲 両手を合わせて0.8秒で落下</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+    <script>
+        // 2D drawing overlay setup
+        let drawCanvas, drawCtx;
+        let showKeypoints = false;
+        const paths = { left: [], right: [] };
+        let handColors = { left: 0xff0000, right: 0x00ff00 };
+
+        let winkLeft = false;
+        let faceClosed = false;
+        let eyeCloseStartTime = null;
+        const eyeCloseThreshold = 0.042;   // 改善: より確実な検出
+        const eyeCloseDuration = 1200;     // 改善: 1.2秒に延長して誤検出防止
+
+        // Mouth-open absorption
+        const mouthOpenThreshold = 0.14;   // 改善: 少し低めに調整
+        let absorbing = false;
+        let absorbStartTime = null;
+        const absorbDuration = 500;        // 改善: 少し長めのアニメーション
+        let absorbTarget = { x: 0, y: 0 };
+        let mouthOpenReadyTime = null;
+        const mouthOpenDelay = 500;        // 改善: 少し短めに
+        let barActivated = false;
+
+        let scene, camera, renderer;
+        let handDrawings;
+        let drawingStates = {};
+        let hands, videoElement;
+        let currentColor = 0x00ff00;
+        
+        // 改善: より豊富なカラーパレット
+        let colors = [
+            0xff0000,  // 赤
+            0x00ff00,  // 緑
+            0x0000ff,  // 青
+            0xffff00,  // 黄
+            0xff00ff,  // マゼンタ
+            0x00ffff,  // シアン
+            0xff8800,  // オレンジ
+            0x88ff00,  // 黄緑
+            0xff0088,  // ピンク
+            0x8800ff   // 紫
+        ];
+        
+        let colorIndex = { left: 0, right: 1 };  // left: red, right: green
+        let isInFist = { left:false, right:false };
+        let fistTime = { left:0, right:0 };
+        const fistThreshold = 0.08;
+        const openThreshold = 0.15;
+        let lastColorChange = { left: 0, right: 0 };
+        const colorChangeCooldown = 600;  // 改善: 少し短めに
+
+        // 改善: 左右別々の描画開始閾値
+        const drawThresholds = { left: 0.06, right: 0.06 };
+
+        // 改善: 両手を合わせる検出
+        let handsPausedDrawing = false;
+        let handsTogether = false;
+        let handsTogetherStartTime = null;
+        const handsTogetherThreshold = 0.25; // 閾値を大きくして検出しやすく
+        const handsTogetherDuration = 800; // 0.8秒保持で落下開始
+        let lastBothHandsTime = null; // 最後に両手が見えた時刻
+        const handsLostTolerance = 300; // 両手が見えなくなっても300ms許容
+
+        // 落下エフェクト用
+        let falling = false;
+        let fallStartTime = null;
+        const fallDuration = 2000; // 2秒かけて落下
+        let fallPhysics = {}; // 各ストロークの物理パラメータ（オブジェクト）
+
+        class PositionSmoother {
+            constructor(smoothingFactor = 0.65) {  // 改善: より滑らかに
+                this.factor = smoothingFactor;
+                this.lastPosition = null;
+            }
+            smooth(currentPosition) {
+                if (!this.lastPosition) {
+                    this.lastPosition = currentPosition.clone();
+                    return currentPosition;
+                }
+                this.lastPosition.lerp(currentPosition, 1 - this.factor);
+                return this.lastPosition.clone();
+            }
+        }
+
+        class HandDrawing {
+            constructor(scene) {
+                this.scene = scene;
+                this.smoother = new PositionSmoother();
+                this.lastPosition = null;
+                this.minDistance = 0.04;  // 改善: より細かく記録
+                this.pathPoints = null;
+                this.currentMesh = null;
+                this.tubeMaterial = null;
+            }
+            startPath(position, color = currentColor) {
+                const smoothed = this.smoother.smooth(position);
+                this.pathPoints = [smoothed.clone()];
+                this.tubeMaterial = new THREE.MeshBasicMaterial({ color: color });
+                this.currentMesh = null;
+                this.lastPosition = smoothed.clone();
+            }
+            addPoint(position) {
+                if (!this.pathPoints) return;
+                const smoothed = this.smoother.smooth(position);
+                if (this.lastPosition.distanceTo(smoothed) < this.minDistance) return;
+                this.pathPoints.push(smoothed.clone());
+                this.lastPosition = smoothed.clone();
+                if (this.currentMesh) {
+                    this.scene.remove(this.currentMesh);
+                    this.currentMesh.geometry.dispose();
+                }
+                const curve = new THREE.CatmullRomCurve3(this.pathPoints);
+                const tubeGeo = new THREE.TubeBufferGeometry(curve, this.pathPoints.length * 3, 0.005, 8, false);
+                this.currentMesh = new THREE.Mesh(tubeGeo, this.tubeMaterial);
+                this.scene.add(this.currentMesh);
+            }
+            endPath() {
+                this.pathPoints = null;
+                this.currentMesh = null;
+                this.tubeMaterial = null;
+                this.smoother = new PositionSmoother();
+            }
+            clearAll() {
+                if (this.currentMesh) {
+                    this.scene.remove(this.currentMesh);
+                    this.currentMesh.geometry.dispose();
+                    if (this.currentMesh.material) this.currentMesh.material.dispose();
+                }
+                this.pathPoints = null;
+                this.currentMesh = null;
+                this.tubeMaterial = null;
+            }
+        }
+
+        function initThreeJS() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000, 0);
+            document.getElementById('canvasContainer').appendChild(renderer.domElement);
+            camera.position.set(0,0,2);
+            handDrawings = { left: new HandDrawing(scene), right: new HandDrawing(scene) };
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+            drawAllPaths();
+        }
+
+        function initMediaPipe() {
+            videoElement = document.getElementById('videoElement');
+            hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+            hands.setOptions({ 
+                maxNumHands:2, 
+                modelComplexity:1, 
+                minDetectionConfidence:0.6,  // 改善: 検出精度向上
+                minTrackingConfidence:0.6    // 改善: トラッキング精度向上
+            });
+            hands.onResults(onResults);
+
+            const faceMesh = new FaceMesh({
+              locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+            });
+            faceMesh.setOptions({
+              maxNumFaces: 1,
+              refineLandmarks: false,
+              minDetectionConfidence: 0.6,  // 改善
+              minTrackingConfidence: 0.6    // 改善
+            });
+            faceMesh.onResults(onFaceResults);
+
+            const camera_mp = new Camera(videoElement, {
+              onFrame: async () => {
+                await hands.send({ image: videoElement });
+                await faceMesh.send({ image: videoElement });
+              },
+              width: 1920,
+              height: 1080
+            });
+            camera_mp.start();
+        }
+
+        function onResults(results) {
+            const detected = { left:null, right:null };
+            if (showKeypoints && results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    const mirrored = landmarks.map(pt => ({ ...pt, x: 1 - pt.x }));
+                    drawConnectors(drawCtx, mirrored, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+                    drawLandmarks(drawCtx, mirrored, { color: '#FF0000', lineWidth: 1 });
+                }
+            }
+            if (results.multiHandLandmarks) {
+                results.multiHandLandmarks.forEach(lm => {
+                    // ミラーリング対応: x < 0.5が右手、x >= 0.5が左手
+                    const handId = lm[0].x < 0.5 ? 'right' : 'left';
+                    detected[handId] = lm;
+                });
+                
+                // 改善: 両手が近いか検出（安定化版）
+                if (detected.left && detected.right) {
+                    lastBothHandsTime = Date.now(); // 両手が見えた時刻を記録
+                    
+                    const leftPalm = detected.left[0];
+                    const rightPalm = detected.right[0];
+                    const distance = Math.hypot(
+                        leftPalm.x - rightPalm.x, 
+                        leftPalm.y - rightPalm.y, 
+                        leftPalm.z - rightPalm.z
+                    );
+                    
+                    // UI更新: 距離を表示
+                    const distanceEl = document.getElementById('handsDistance');
+                    distanceEl.textContent = `両手: ${distance.toFixed(3)}`;
+                    
+                    const together = distance < handsTogetherThreshold;
+                    distanceEl.style.color = together ? '#00ff00' : 'white';
+                    handsPausedDrawing = together;
+                    
+                    if (together) {
+                        if (!handsTogether) {
+                            // 初めて合わせた時だけ
+                            handsTogether = true;
+                            handsTogetherStartTime = Date.now();
+                            console.log('✅ 両手を合わせ始めました！ 0.8秒保持してください');
+                        } else {
+                            // 合わせ続けている間
+                            const elapsed = Date.now() - handsTogetherStartTime;
+                            const ratio = Math.min(elapsed / handsTogetherDuration, 1);
+                            
+                            if (elapsed % 200 < 50) { // 200msごとに表示
+                                console.log('⏳ 経過時間:', elapsed, 'ms, 進捗:', (ratio * 100).toFixed(1), '%');
+                            }
+                            
+                            // プログレスバーを表示・更新
+                            const handsProgressContainer = document.getElementById('handsProgressContainer');
+                            const handsProgressBar = document.getElementById('handsProgressBar');
+                            handsProgressContainer.style.display = 'block';
+                            handsProgressBar.style.width = `${100 * ratio}%`;
+                            
+                            if (elapsed >= handsTogetherDuration && !falling && !absorbing) {
+                                // 落下エフェクト開始
+                                console.log('🎯 0.8秒達成！落下エフェクト開始!');
+                                handsProgressContainer.style.display = 'none';
+                                startFallingEffect();
+                            }
+                        }
+                    } else {
+                        // 手が離れた
+                        if (handsTogether) {
+                            const elapsed = Date.now() - handsTogetherStartTime;
+                            console.log('❌ 両手を離しました (経過:', elapsed, 'ms)');
+                            handsTogether = false;
+                            handsTogetherStartTime = null;
+                            document.getElementById('handsProgressContainer').style.display = 'none';
+                        }
+                    }
+                } else {
+                    // 片手しか検出されていない（または両手とも見えない）
+                    // でも、最近両手が見えていたなら猶予期間として継続
+                    if (handsTogether && lastBothHandsTime && (Date.now() - lastBothHandsTime < handsLostTolerance)) {
+                        // 猶予期間中は継続
+                        console.log('⚠️ 一時的に片手が見えませんが継続中...');
+                        const elapsed = Date.now() - handsTogetherStartTime;
+                        const ratio = Math.min(elapsed / handsTogetherDuration, 1);
+                        
+                        // プログレスバーは継続
+                        const handsProgressContainer = document.getElementById('handsProgressContainer');
+                        const handsProgressBar = document.getElementById('handsProgressBar');
+                        handsProgressContainer.style.display = 'block';
+                        handsProgressBar.style.width = `${100 * ratio}%`;
+                        
+                        if (elapsed >= handsTogetherDuration && !falling && !absorbing) {
+                            console.log('🎯 0.8秒達成！落下エフェクト開始!');
+                            handsProgressContainer.style.display = 'none';
+                            startFallingEffect();
+                        }
+                    } else if (handsTogether) {
+                        // 猶予期間を過ぎたのでリセット
+                        console.log('❌ 片手が見えなくなりました（猶予期間終了）');
+                        document.getElementById('handsDistance').textContent = '両手: -';
+                        handsPausedDrawing = false;
+                        handsTogether = false;
+                        handsTogetherStartTime = null;
+                        document.getElementById('handsProgressContainer').style.display = 'none';
+                    } else {
+                        // 元々検出していなかった
+                        document.getElementById('handsDistance').textContent = '両手: -';
+                        handsPausedDrawing = false;
+                    }
+                }
+            }
+            Object.entries(detected).forEach(([id,lm])=>{ if(lm) processHandGesture(lm,id); });
+        }
+
+        function onFaceResults(results) {
+          if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+            const lm = results.multiFaceLandmarks[0];
+            const topEyeL = lm[159], bottomEyeL = lm[145];
+            const topEyeR = lm[386], bottomEyeR = lm[374];
+            const eyeDistL = bottomEyeL.y - topEyeL.y;
+            const eyeDistR = bottomEyeR.y - topEyeR.y;
+            const chin = lm[152], forehead = lm[10];
+            const faceHeight = chin.y - forehead.y;
+            const ratioL = eyeDistL / faceHeight;
+            const ratioR = eyeDistR / faceHeight;
+            
+            // 改善: より確実な閾値
+            const closeTh = 0.040;
+            const openTh  = 0.070;
+            
+            if (ratioL < closeTh) {
+              faceClosed = true;
+              winkLeft = false;
+            } else if (ratioL > openTh) {
+              if (faceClosed) {
+                winkLeft = true;
+                faceClosed = false;
+              } else {
+                winkLeft = false;
+              }
+            } else {
+              winkLeft = false;
+            }
+            
+            const upperLip = lm[13], lowerLip = lm[14];
+            const mouthDist = (lowerLip.y - upperLip.y) / (chin.y - forehead.y);
+            
+            document.getElementById('eyeStatus').textContent =
+              `目: L:${ratioL.toFixed(3)} R:${ratioR.toFixed(3)}`;
+
+            // 両目を閉じて一定時間経過したら線をクリア
+            if (ratioL < eyeCloseThreshold && ratioR < eyeCloseThreshold) {
+              if (eyeCloseStartTime === null) {
+                eyeCloseStartTime = Date.now();
+              } else if (Date.now() - eyeCloseStartTime > eyeCloseDuration) {
+                clearDrawing();
+                showGestureIndicator('🗑️ クリア!');
+                eyeCloseStartTime = null;
+              }
+            } else {
+              eyeCloseStartTime = null;
+            }
+            
+            document.getElementById('mouthStatus').textContent = `口: ${mouthDist.toFixed(3)}`;
+            const mouthEl = document.getElementById('mouthStatus');
+            if (mouthDist > mouthOpenThreshold) {
+              mouthEl.style.color = '#ff6b6b';
+            } else {
+              mouthEl.style.color = 'white';
+            }
+            
+            const progressContainer = document.getElementById('mouthProgressContainer');
+            const progressBar = document.getElementById('mouthProgressBar');
+            if (mouthDist > mouthOpenThreshold && !barActivated) {
+              if (mouthOpenReadyTime === null) {
+                mouthOpenReadyTime = Date.now();
+              }
+              const elapsed = Date.now() - mouthOpenReadyTime;
+              const ratio = Math.min(elapsed / mouthOpenDelay, 1);
+              progressBar.style.width = `${100 * (1 - ratio)}%`;
+              progressContainer.style.display = 'block';
+              if (ratio >= 1) {
+                barActivated = true;
+                progressContainer.style.display = 'none';
+              }
+            } else if (mouthDist <= mouthOpenThreshold) {
+              mouthOpenReadyTime = null;
+              barActivated = false;
+              progressContainer.style.display = 'none';
+            }
+            
+            if (mouthDist > mouthOpenThreshold) {
+              if (mouthOpenReadyTime === null) {
+                mouthOpenReadyTime = Date.now();
+              } else if (!absorbing && (Date.now() - mouthOpenReadyTime > mouthOpenDelay)) {
+                absorbing = true;
+                absorbStartTime = Date.now();
+                mouthOpenReadyTime = null;
+                const mx = (1 - (upperLip.x + lowerLip.x)/2) * window.innerWidth;
+                const my = ((upperLip.y + lowerLip.y)/2) * window.innerHeight;
+                absorbTarget = { x: mx, y: my };
+                showGestureIndicator('💫 吸収!');
+              }
+            } else {
+              mouthOpenReadyTime = null;
+            }
+            
+            if (showKeypoints) {
+                const mirroredFace = lm.map(pt => ({ ...pt, x: 1 - pt.x }));
+                drawConnectors(drawCtx, mirroredFace, FACEMESH_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
+                drawLandmarks(drawCtx, mirroredFace, { color: '#FF3030', radius: 0.5 });
+            }
+          } else {
+            faceClosed = false;
+            winkLeft = false;
+          }
+        }
+
+        function processHandGesture(landmarks, handId) {
+            const t = landmarks[4], i = landmarks[8];
+            const d = Math.hypot(t.x - i.x, t.y - i.y, t.z - i.z);
+            const mp = { x: (t.x + i.x) / 2, y: (t.y + i.y) / 2, z: (t.z + i.z) / 2 };
+            const px = (1 - mp.x) * window.innerWidth;
+            const py = mp.y * window.innerHeight;
+            const shouldDraw = d < drawThresholds[handId] && !handsPausedDrawing;
+
+            // Fist-to-open gesture detection
+            const fingerTipIds = [8, 12, 16, 20];
+            const isFistNow = fingerTipIds.every(id => {
+                const tip = landmarks[id];
+                const pip = landmarks[id - 2];
+                return tip.y > pip.y;
+            });
+            const isOpenNow = fingerTipIds.every(id => {
+                const tip = landmarks[id];
+                const pip = landmarks[id - 2];
+                return tip.y < pip.y;
+            });
+            
+            if (isFistNow && !isInFist[handId]) {
+                isInFist[handId] = true;
+                fistTime[handId] = Date.now();
+            } else if (
+                isOpenNow && isInFist[handId] && (Date.now() - fistTime[handId]) < 500
+                && (Date.now() - lastColorChange[handId] > colorChangeCooldown)
+            ) {
+                isInFist[handId] = false;
+                colorIndex[handId] = (colorIndex[handId] + 1) % colors.length;
+                handColors[handId] = colors[colorIndex[handId]];
+                showGestureIndicator('🎨 色変更!');
+                updateHandColors();
+                lastColorChange[handId] = Date.now();
+            } else if (isOpenNow) {
+                isInFist[handId] = false;
+            }
+
+            if (shouldDraw) {
+                if (!drawingStates[handId]) {
+                    drawingStates[handId] = true;
+                    paths[handId].push({ points: [], color: handColors[handId] });
+                }
+                const currentStroke = paths[handId][paths[handId].length - 1];
+                currentStroke.points.push({ x: px, y: py });
+            } else {
+                if (drawingStates[handId]) {
+                    drawingStates[handId] = false;
+                }
+            }
+            updateHandColors();
+            updateStrokeCount();
+        }
+
+        function drawAllPaths() {
+            // 落下エフェクト処理
+            if (falling) {
+                console.log('drawAllPaths: 落下中!, falling=', falling);
+                const t = Math.min((Date.now() - fallStartTime) / fallDuration, 1);
+                console.log('落下進捗 t=', t.toFixed(3));
+                // Ease in quad for acceleration
+                const easedT = t * t;
+                
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                
+                let allHandIds = Object.keys(paths);
+                allHandIds.forEach(handId => {
+                    paths[handId].forEach((stroke, strokeIdx) => {
+                        const pts = stroke.points;
+                        if (pts.length < 2) return;
+                        
+                        if (!stroke.originalPoints) {
+                            stroke.originalPoints = stroke.points.map(p => ({...p}));
+                        }
+                        
+                        const key = `${handId}-${strokeIdx}`;
+                        if (!fallPhysics[key]) {
+                            // 各ストロークにランダムな物理パラメータを割り当て
+                            fallPhysics[key] = {
+                                velocityX: (Math.random() - 0.5) * 200, // 横方向の初速度
+                                rotation: (Math.random() - 0.5) * Math.PI * 4, // 回転
+                                swingAmp: Math.random() * 100 + 50, // 揺れ幅
+                                swingFreq: Math.random() * 3 + 2 // 揺れ周波数
+                            };
+                        }
+                        
+                        const physics = fallPhysics[key];
+                        // 重力加速度
+                        const gravity = 1500; // pixels/s²
+                        const fallDistance = 0.5 * gravity * Math.pow(t, 2);
+                        
+                        // 横揺れ（サイン波）
+                        const swingOffset = Math.sin(t * physics.swingFreq * Math.PI * 2) * physics.swingAmp * t;
+                        
+                        // 回転角度
+                        const angle = physics.rotation * t;
+                        
+                        // 各点を変換
+                        stroke.points = stroke.originalPoints.map(p => {
+                            // ストロークの中心点を計算
+                            const centerX = stroke.originalPoints.reduce((sum, pt) => sum + pt.x, 0) / stroke.originalPoints.length;
+                            const centerY = stroke.originalPoints.reduce((sum, pt) => sum + pt.y, 0) / stroke.originalPoints.length;
+                            
+                            // 中心からの相対位置
+                            const relX = p.x - centerX;
+                            const relY = p.y - centerY;
+                            
+                            // 回転行列を適用
+                            const rotatedX = relX * Math.cos(angle) - relY * Math.sin(angle);
+                            const rotatedY = relX * Math.sin(angle) + relY * Math.cos(angle);
+                            
+                            return {
+                                x: centerX + rotatedX + swingOffset + physics.velocityX * t,
+                                y: centerY + rotatedY + fallDistance
+                            };
+                        });
+                        
+                        // 透明度を徐々に下げる
+                        const opacity = 1 - easedT * 0.5;
+                        drawCtx.globalAlpha = opacity;
+                        
+                        drawCtx.strokeStyle = '#' + stroke.color.toString(16).padStart(6, '0');
+                        drawCtx.lineWidth = 5;
+                        drawCtx.lineCap = 'round';
+                        drawCtx.lineJoin = 'round';
+                        drawCtx.beginPath();
+                        drawCtx.moveTo(pts[0].x, pts[0].y);
+                        for (let i = 1; i < pts.length; i++) {
+                            drawCtx.lineTo(pts[i].x, pts[i].y);
+                        }
+                        drawCtx.stroke();
+                    });
+                });
+                
+                drawCtx.globalAlpha = 1.0;
+                
+                if (t >= 1) {
+                    falling = false;
+                    fallPhysics = {};
+                    clearDrawing();
+                    return;
+                }
+                return;
+            }
+            
+            if (absorbing) {
+              const t = Math.min((Date.now() - absorbStartTime)/absorbDuration, 1);
+              // Ease out cubic for smoother animation
+              const easedT = 1 - Math.pow(1 - t, 3);
+              
+              Object.keys(paths).forEach(handId => {
+                paths[handId].forEach(stroke => {
+                  if (!stroke.originalPoints) {
+                    stroke.originalPoints = stroke.points.map(p => ({...p}));
+                  }
+                  stroke.points = stroke.originalPoints.map(p => ({
+                    x: p.x * (1 - easedT) + absorbTarget.x * easedT,
+                    y: p.y * (1 - easedT) + absorbTarget.y * easedT
+                  }));
+                });
+              });
+              
+              drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+              Object.keys(paths).forEach(handId => {
+                  const strokes = paths[handId];
+                  strokes.forEach(stroke => {
+                      const pts = stroke.points;
+                      if (pts.length < 2) return;
+                      drawCtx.strokeStyle = '#' + stroke.color.toString(16).padStart(6, '0');
+                      drawCtx.lineWidth = 5;  // 改善: 少し太めに
+                      drawCtx.lineCap = 'round';  // 改善: 丸い端
+                      drawCtx.lineJoin = 'round';
+                      drawCtx.beginPath();
+                      drawCtx.moveTo(pts[0].x, pts[0].y);
+                      for (let i = 1; i < pts.length; i++) {
+                          drawCtx.lineTo(pts[i].x, pts[i].y);
+                      }
+                      drawCtx.stroke();
+                  });
+              });
+              
+              if (t >= 1) {
+                absorbing = false;
+                clearDrawing();
+                return;
+              }
+              return;
+            }
+            
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            Object.keys(paths).forEach(handId => {
+                const strokes = paths[handId];
+                strokes.forEach(stroke => {
+                    const pts = stroke.points;
+                    if (pts.length < 2) return;
+                    drawCtx.strokeStyle = '#' + stroke.color.toString(16).padStart(6, '0');
+                    drawCtx.lineWidth = 5;
+                    drawCtx.lineCap = 'round';
+                    drawCtx.lineJoin = 'round';
+                    drawCtx.beginPath();
+                    drawCtx.moveTo(pts[0].x, pts[0].y);
+                    for (let i = 1; i < pts.length; i++) {
+                        drawCtx.lineTo(pts[i].x, pts[i].y);
+                    }
+                    drawCtx.stroke();
+                });
+            });
+        }
+
+        function clearDrawing(){
+            drawingStates={};
+            Object.values(handDrawings).forEach(d=>d.clearAll());
+            paths.left = [];
+            paths.right = [];
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            updateStrokeCount();
+        }
+
+        function updateHandColors() {
+            const lc = '#' + handColors.left.toString(16).padStart(6, '0');
+            const rc = '#' + handColors.right.toString(16).padStart(6, '0');
+            document.getElementById('leftColorBox').style.backgroundColor = lc;
+            document.getElementById('leftColorText').textContent = lc;
+            document.getElementById('rightColorBox').style.backgroundColor = rc;
+            document.getElementById('rightColorText').textContent = rc;
+        }
+
+        // 改善: 描画数カウント表示
+        function updateStrokeCount() {
+            const totalStrokes = paths.left.length + paths.right.length;
+            document.getElementById('strokeCount').textContent = `描画数: ${totalStrokes}`;
+        }
+
+        // 改善: ジェスチャーインジケーター
+        function showGestureIndicator(text) {
+            const indicator = document.getElementById('gestureIndicator');
+            indicator.textContent = text;
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 1000);
+        }
+
+        // 落下エフェクト開始
+        function startFallingEffect() {
+            const totalStrokes = paths.left.length + paths.right.length;
+            console.log('startFallingEffect called, ストローク数:', totalStrokes);
+            console.log('falling flag before:', falling);
+            console.log('absorbing flag:', absorbing);
+            
+            if (totalStrokes === 0) {
+                console.log('描画がないため、落下をスキップ');
+                return;
+            }
+            
+            falling = true;
+            fallStartTime = Date.now();
+            fallPhysics = {};
+            showGestureIndicator('🌊 落下!');
+            handsTogether = false;
+            handsTogetherStartTime = null;
+            
+            console.log('落下エフェクト開始完了! falling flag:', falling);
+        }
+
+        window.addEventListener('resize',()=>{ 
+            camera.aspect=window.innerWidth/window.innerHeight; 
+            camera.updateProjectionMatrix(); 
+            renderer.setSize(window.innerWidth,window.innerHeight); 
+        });
+        
+        window.addEventListener('load',()=>{
+            initThreeJS();
+            initMediaPipe();
+            drawCanvas = document.getElementById('drawCanvas');
+            drawCtx = drawCanvas.getContext('2d');
+            function resizeDrawCanvas() {
+                drawCanvas.width = window.innerWidth;
+                drawCanvas.height = window.innerHeight;
+            }
+            resizeDrawCanvas();
+            window.addEventListener('resize', resizeDrawCanvas);
+            updateHandColors();
+            updateStrokeCount();
+            animate();
+            
+            document.getElementById('toggleKeypoints').addEventListener('click', () => {
+                showKeypoints = !showKeypoints;
+                document.getElementById('toggleKeypoints').textContent = 
+                    showKeypoints ? 'キーポイント非表示' : 'キーポイント表示';
+            });
+        });
+    </script>
+</body>
+</html>

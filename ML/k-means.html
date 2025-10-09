@@ -110,30 +110,30 @@
           <div><strong>反復:</strong> <span id="iterText">0</span></div>
           <div><strong>SSE:</strong> <span id="sseText">-</span></div>
         </div>
-        <div style="margin-top:6px; margin-bottom:6px;"><strong>SSE推移</strong></div>
+        <div style="margin-top:6px; margin-bottom:6px;"><strong>SSE Trend</strong></div>
         <canvas id="sseChart" width="260" height="120" style="width:100%;height:auto;"></canvas>
         <div class="legend" id="legend"></div>
         <div class="side" style="margin-top: 10px;">
-          <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #555;">クラスタリング手順</h2>
+          <h2 style="margin: 0 0 8px 0; font-size: 16px; color: #555;">Clustering Steps</h2>
           <ol style="margin: 6px 0 10px 18px;">
-            <li><strong>初期化</strong>: k 個のセントロイド（重心）を初期配置（本デモは点からランダム選択）。</li>
-            <li><strong>割当</strong>: 各点を最も近いセントロイドへ割当（ユークリッド距離の最小）。<br>\( c(i) = \arg\min_j \\|x_i - \mu_j\\|^2 \)</li>
-            <li><strong>重心更新</strong>: 各クラスタに属する点の平均でセントロイドを更新。空クラスタはランダム再配置。</li>
-            <li><strong>収束判定</strong>: セントロイドが動かなくなる（または割当が変わらない）と終了。</li>
+            <li><strong>Initialization</strong>: Place k centroids. This demo samples initial centers from data points.</li>
+            <li><strong>Assignment</strong>: Assign each point to the nearest centroid (Euclidean distance).<br>\( c(i) = \arg\min_j \\|x_i - \mu_j\\|^2 \)</li>
+            <li><strong>Update</strong>: Recompute each centroid as the mean of its assigned points; empty clusters are re-seeded randomly.</li>
+            <li><strong>Convergence</strong>: Stop when centroids no longer move or assignments stop changing.</li>
           </ol>
           <div class="note" style="margin: 8px 0;">
-            <strong>記号の補足: \(c(i)\)</strong><br>
-            \(c(i)\) は点 \(x_i\) が属するクラスタのインデックス（ラベル）。数式では \(1..k\) を用いることもありますが、本デモ実装では \(0..k-1\)。\(\mu_{c(i)}\) はそのクラスタのセントロイド（重心）。
+            <strong>Notation: \(c(i)\)</strong><br>
+            \(c(i)\) is the index (label) of the cluster for point \(x_i\). Math often uses \(1..k\); this demo uses \(0..k-1\). \(\mu_{c(i)}\) is the assigned centroid.
           </div>
           <div class="note" style="margin: 0;">
-            <strong>SSE（平方和誤差）とは？</strong><br>
-            測っている誤差: 各点が割当先セントロイドからどれだけ離れているか（クラスタ内のばらつき）。<br>
-            数式: \( \mathrm{SSE} = \sum_i \\|x_i - \mu_{c(i)}\\|^2 \) ＝ 各クラスタの距離二乗の和。<br>
-            性質: 反復で非増加。k を増やすほど必ず減少。<br>
-            目的: クラスタを密にし、分離を良くする指標（inertia）。
+            <strong>What is SSE?</strong><br>
+            Measures within-cluster variation: how far points are from their assigned centroids.<br>
+            Formula: \( \mathrm{SSE} = \sum_i \\|x_i - \mu_{c(i)}\\|^2 \) — sum of squared distances within clusters.<br>
+            Properties: non-increasing over iterations; decreases as k increases.<br>
+            Purpose: quantify compactness of clusters (a.k.a. inertia).
           </div>
           <p style="margin-top: 8px;">
-            うまく分かれない場合は「セントロイド初期化」をやり直すか、k を調整してください（初期値依存）。
+            Not separating well? Re-initialize centroids or adjust k (initialization matters).
           </p>
         </div>
       </aside>

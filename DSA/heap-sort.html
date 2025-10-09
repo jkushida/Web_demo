@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Heap Sort Visualizer</title>
+    <style>
+      :root { --bg:#ffffff; --fg:#111827; --muted:#6b7280; --accent:#2563eb; --warn:#f59e0b; --err:#f43f5e; --ok:#16a34a; --tree-h: clamp(220px, 42vh, 420px); --log-h: clamp(120px, 28vh, 240px); }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); }
+      header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+      h1 { font-size: 18px; margin: 0; }
+      main { padding: 16px 20px; display: grid; gap: 16px; }
+      .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
+      .controls label { color: var(--muted); font-size: 12px; }
+      .controls input[type="range"] { width: 160px; accent-color: var(--accent); }
+      .controls button { background: #ffffff; color: #111827; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+      .controls button:hover { background: #f9fafb; border-color: #cbd5e1; }
+      .controls button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3); }
+      .controls button:disabled { opacity: .6; cursor: not-allowed; }
+      .viz-row { display: grid; grid-template-columns: minmax(240px, 30vw) 1fr; gap: 16px; align-items: stretch; }
+      @media (max-width: 900px) { .viz-row { grid-template-columns: 1fr; } }
+      .tree-wrap { height: var(--tree-h); border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #ffffff; }
+      .explain { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; font-size: 14px; max-height: var(--tree-h); overflow: auto; }
+      .explain h2 { margin: 0 0 8px; font-size: 14px; }
+      .explain ul { margin: 0 0 8px 16px; padding: 0; }
+      .explain code { background: #f3f4f6; color: #111827; border: 1px solid #e5e7eb; }
+      /* tree styles */
+      #heapTree { width: 100%; height: 100%; display: block; }
+      .edge { stroke: #9ca3af; stroke-width: 2; }
+      .edge.active { stroke-width: 3; }
+      .node { fill: #e5e7eb; stroke: #9ca3af; stroke-width: 1; }
+      .node.compare { fill: var(--warn); }
+      .node.swap { fill: var(--err); }
+      .node.heap-fixed { fill: #f3f4f6; }
+      .node-label { font-size: 10px; fill: #111827; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+      .idx-label { font-size: 9px; fill: #6b7280; text-anchor: middle; dominant-baseline: hanging; pointer-events: none; }
+      .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12px; }
+      .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
+      .small { color: var(--muted); font-size: 12px; }
+      .status { display: flex; gap: 12px; align-items: baseline; }
+      code { background: #f3f4f6; color: #111827; padding: 2px 6px; border: 1px solid #e5e7eb; border-radius: 6px; }
+      /* operation log */
+      .log-wrap { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+      .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+      .log-actions { display: flex; gap: 8px; align-items: center; }
+      .log-actions button { background: #ffffff; color: #111827; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+      .log-actions label { font-size: 12px; color: #374151; }
+      .log-list { max-height: var(--log-h); overflow: auto; font-size: 12px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; background: #fff; }
+      .entry { display: flex; gap: 8px; padding: 4px 0; align-items: baseline; border-bottom: 1px dashed #f3f4f6; }
+      .entry:last-child { border-bottom: none; }
+      .tag { font-weight: 600; padding: 2px 6px; border-radius: 6px; }
+      .tag.compare { background: #FEF3C7; color: #92400E; }
+      .tag.swap { background: #FEE2E2; color: #991B1B; }
+      .tag.heap { background: #E0E7FF; color: #3730A3; }
+      .tag.phase { background: #E5E7EB; color: #111827; }
+      /* sorted row */
+      .sorted-wrap { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
+      .sorted-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+      .sorted-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      .chip { background: #F3F4F6; border: 1px solid #E5E7EB; color: #111827; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
+      .chip.highlight { background: #DBEAFE; border-color: #93C5FD; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Heap Sort Visualizer（最大ヒープ）</h1>
+    </header>
+    <main>
+      <section class="controls" aria-label="controls">
+        <label>要素数 <input id="size" type="range" min="3" max="24" value="12" /> <span id="sizeLabel">12</span></label>
+        <label>速度 <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+        <button id="btnRandom">乱数生成</button>
+        <button id="btnStep">ステップ</button>
+        <button id="btnPlay">再生</button>
+        <button id="btnPause" disabled>一時停止</button>
+        <button id="btnReset">リセット</button>
+        <span class="small">段階: <strong id="phase">build-heap</strong></span>
+        <span class="small">ヒープサイズ: <strong id="heapSize">-</strong></span>
+      </section>
+
+      <section class="viz-row">
+        <aside class="explain" aria-label="comparison order">
+          <h2>比較の順番と交換</h2>
+          <ul>
+            <li>対象ノード <code>i</code> の左子 <code>L=2i+1</code> をまず比較。</li>
+            <li><code>maxIdx = argmax(A[i], A[L])</code> を更新。</li>
+            <li>次に右子 <code>R=2i+2</code> と <code>maxIdx</code> を比較。</li>
+            <li><code>maxIdx !== i</code> なら親子（<code>i</code> と <code>maxIdx</code>）を交換し、<code>i = maxIdx</code> で継続。</li>
+          </ul>
+          <ul>
+            <li>親子以外の交換は「根 <code>0</code> と末尾 <code>end</code>」のみ（ソート工程）。</li>
+            <li>強調: 比較=黄 / 交換=赤。親子なら辺も太線で強調。</li>
+            <li>インデックス: 親 <code>⌊(i-1)/2⌋</code>・左 <code>2i+1</code>・右 <code>2i+2</code></li>
+          </ul>
+          <div class="small" style="color:#374151;">
+            heapifyDown の簡易擬似コード:
+            <pre style="margin:6px 0; background:#f9fafb; border:1px solid #e5e7eb; padding:8px; border-radius:8px;"><code>while true:
+  maxIdx = i
+  if L < heapSize and A[L] > A[maxIdx]: maxIdx = L
+  if R < heapSize and A[R] > A[maxIdx]: maxIdx = R
+  if maxIdx == i: break
+  swap(A[i], A[maxIdx]); i = maxIdx</code></pre>
+            右下のログに比較・交換の履歴と値が記録されます。
+          </div>
+        </aside>
+        <section class="tree-wrap" aria-label="heap tree">
+          <svg id="heapTree" role="img" aria-label="heap tree"></svg>
+        </section>
+      </section>
+
+      
+
+      <section class="legend" aria-label="legend">
+        <div><i style="background:#334155"></i>通常</div>
+        <div><i style="background:#f59e0b"></i>比較</div>
+        <div><i style="background:#f43f5e"></i>交換</div>
+        <div><i style="background:#1f2937"></i>確定領域（ヒープ外）</div>
+      </section>
+
+      <section class="status" aria-label="status">
+        <div class="small">計算量: build O(n), sort O(n log n)</div>
+        <div class="small">アルゴリズム: in-place / 非安定</div>
+      </section>
+
+      <section class="sorted-wrap" aria-label="sorted outputs">
+        <div class="sorted-header">
+          <strong>確定した値（左→右が昇順）</strong>
+          <span class="small" style="color:#374151;">heapSize が小さくなるたびに更新</span>
+        </div>
+        <div id="sorted" class="sorted-list"></div>
+      </section>
+
+      <section class="log-wrap" aria-label="operation log">
+        <div class="log-header">
+          <strong>操作ログ</strong>
+          <div class="log-actions">
+            <label><input id="autoScroll" type="checkbox" checked /> 自動スクロール</label>
+            <button id="clearLog" title="ログを消去">ログ消去</button>
+          </div>
+        </div>
+        <div id="log" class="log-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      // 可視化対象の配列状態と、アルゴリズム手順（ステップ）を管理
+      /** @typedef {{type:'compare'|'swap'|'heapSize'|'phase', a?:number, b?:number, value?:number, name?:string}} Step */
+
+      const heapTree = document.getElementById('heapTree');
+      const sizeInput = document.getElementById('size');
+      const sizeLabel = document.getElementById('sizeLabel');
+      const speedInput = document.getElementById('speed');
+      const speedLabel = document.getElementById('speedLabel');
+      const btnRandom = document.getElementById('btnRandom');
+      const btnStep = document.getElementById('btnStep');
+      const btnPlay = document.getElementById('btnPlay');
+      const btnPause = document.getElementById('btnPause');
+      const btnReset = document.getElementById('btnReset');
+      const phaseEl = document.getElementById('phase');
+      const heapSizeEl = document.getElementById('heapSize');
+      const logList = document.getElementById('log');
+      const autoScroll = document.getElementById('autoScroll');
+      const clearLogBtn = document.getElementById('clearLog');
+      const sortedList = document.getElementById('sorted');
+
+      /** グローバル状態 */
+      let base = [];
+      let arr = [];
+      /** @type {Step[]} */
+      let steps = [];
+      let cursor = 0;
+      let heapSize = 0;
+      let playing = false;
+      let timer = null;
+      let phase = 'build-heap';
+      let lastFixedIndex = -1;
+
+      function randArray(n) {
+        const a = Array.from({ length: n }, () => 5 + Math.floor(Math.random() * 95));
+        return a;
+      }
+
+      function init(n) {
+        base = randArray(n);
+        resetToBase();
+      }
+
+      function resetToBase() {
+        arr = base.slice();
+        steps = buildSteps(arr.slice()); // 手順はシミュレーション配列で生成
+        cursor = 0;
+        heapSize = arr.length;
+        phase = 'build-heap';
+        updateLabels();
+        clearLog();
+        render();
+      }
+
+      function updateLabels() {
+        sizeLabel.textContent = String(arr.length);
+        speedLabel.textContent = Number(speedInput.value).toFixed(2) + 'x';
+        phaseEl.textContent = phase;
+        heapSizeEl.textContent = String(heapSize);
+      }
+
+      // ヒープソートの手順を記録
+      function buildSteps(a) {
+        /** @type {Step[]} */
+        const s = [];
+        const n = a.length;
+        let hs = n;
+        s.push({ type: 'phase', name: 'build-heap' });
+        // build max-heap
+        for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+          heapifyDown(a, i, n, s);
+        }
+        s.push({ type: 'phase', name: 'sort' });
+        // sort down
+        for (let end = n - 1; end > 0; end--) {
+          s.push({ type: 'swap', a: 0, b: end });
+          [a[0], a[end]] = [a[end], a[0]];
+          hs = end;
+          s.push({ type: 'heapSize', value: hs });
+          heapifyDown(a, 0, hs, s);
+        }
+        s.push({ type: 'heapSize', value: 0 });
+        return s;
+      }
+
+      function heapifyDown(a, i, hs, s) {
+        while (true) {
+          const l = i * 2 + 1;
+          const r = i * 2 + 2;
+          let largest = i;
+          if (l < hs) {
+            s.push({ type: 'compare', a: l, b: largest });
+            if (a[l] > a[largest]) largest = l;
+          }
+          if (r < hs) {
+            s.push({ type: 'compare', a: r, b: largest });
+            if (a[r] > a[largest]) largest = r;
+          }
+          if (largest !== i) {
+            s.push({ type: 'swap', a: i, b: largest });
+            [a[i], a[largest]] = [a[largest], a[i]];
+            i = largest;
+          } else {
+            break;
+          }
+        }
+      }
+
+      function renderTree(highlight = null) {
+        const w = heapTree.clientWidth || 800;
+        const h = heapTree.clientHeight || 360;
+        const hs = heapSize;
+        heapTree.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        heapTree.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        heapTree.innerHTML = '';
+
+        if (arr.length === 0) return;
+        // レイアウトが途中で上下にずれないよう、ツリーの段数は配列全体の長さで固定する
+        // NOTE: 最下層がはみ出る不具合の原因は「arr.length - 1」で段数を計算していたこと。
+        // 正しくは要素数 n に対して総段数 = floor(log2(n)) + 1。
+        const totalLevels = arr.length > 0 ? Math.floor(Math.log2(arr.length)) + 1 : 1;
+        const marginTop = 8;
+        const baseBottom = 36; // 余白（円+インデックスラベル分）
+        let yGap = (h - marginTop - baseBottom) / totalLevels;
+        let radius = Math.max(6, Math.min(14, yGap * 0.4));
+        const marginBottom = Math.max(baseBottom, Math.ceil(radius + 14));
+        yGap = (h - marginTop - marginBottom) / totalLevels;
+        radius = Math.max(6, Math.min(14, yGap * 0.45));
+
+        const xFor = (level, idx) => {
+          const count = 2 ** level;
+          const margin = 24;
+          const span = Math.max(0, w - margin * 2);
+          return margin + Math.round(((idx + 1) / (count + 1)) * span);
+        };
+        const yFor = (level) => Math.round(marginTop + (level + 0.5) * yGap);
+
+        // edges first for all existing nodes (見た目の安定性のため)
+        for (let i = 0; i < arr.length; i++) {
+          const level = Math.floor(Math.log2(i + 1));
+          const idx = i - (2 ** level - 1);
+          const x1 = xFor(level, idx);
+          const y1 = yFor(level);
+          const l = i * 2 + 1;
+          const r = i * 2 + 2;
+          if (l < hs) {
+            const ll = Math.floor(Math.log2(l + 1));
+            const li = l - (2 ** ll - 1);
+            const x2 = xFor(ll, li);
+            const y2 = yFor(ll);
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('class', 'edge');
+            heapTree.appendChild(line);
+          }
+          if (r < hs) {
+            const rl = Math.floor(Math.log2(r + 1));
+            const ri = r - (2 ** rl - 1);
+            const x2 = xFor(rl, ri);
+            const y2 = yFor(rl);
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('class', 'edge');
+            heapTree.appendChild(line);
+          }
+        }
+
+        // active edge highlight (only when parent-child)
+        if (highlight && (highlight.type === 'compare' || highlight.type === 'swap')) {
+          const a = highlight.a, b = highlight.b;
+          if (Number.isInteger(a) && Number.isInteger(b)) {
+            const parent = (x) => Math.floor((x - 1) / 2);
+            let p = null, c = null;
+            if (parent(a) === b) { p = b; c = a; }
+            else if (parent(b) === a) { p = a; c = b; }
+            if (p !== null && c !== null && p >= 0 && c >= 0 && p < hs && c < hs) {
+              const pl = Math.floor(Math.log2(p + 1));
+              const pi = p - (2 ** pl - 1);
+              const cl = Math.floor(Math.log2(c + 1));
+              const ci = c - (2 ** cl - 1);
+              const x1 = xFor(pl, pi), y1 = yFor(pl);
+              const x2 = xFor(cl, ci), y2 = yFor(cl);
+              const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+              line.setAttribute('x1', x1);
+              line.setAttribute('y1', y1);
+              line.setAttribute('x2', x2);
+              line.setAttribute('y2', y2);
+              line.setAttribute('class', 'edge active');
+              line.setAttribute('stroke', highlight.type === 'compare' ? getComputedStyle(document.documentElement).getPropertyValue('--warn').trim() || '#f59e0b' : getComputedStyle(document.documentElement).getPropertyValue('--err').trim() || '#f43f5e');
+              heapTree.appendChild(line);
+            }
+          }
+        }
+
+        const drawNode = (i, fixedOutsideHeap) => {
+          const level = Math.floor(Math.log2(i + 1));
+          const idx = i - (2 ** level - 1);
+          const cx = xFor(level, idx);
+          const cy = yFor(level);
+          const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', cx);
+          circle.setAttribute('cy', cy);
+          circle.setAttribute('r', radius);
+          let cls = 'node';
+          const isCompare = highlight && highlight.type === 'compare' && (i === highlight.a || i === highlight.b);
+          const isSwap = highlight && highlight.type === 'swap' && (i === highlight.a || i === highlight.b);
+          if (isCompare) cls += ' compare';
+          if (isSwap) cls += ' swap';
+          if (fixedOutsideHeap) cls += ' heap-fixed';
+          circle.setAttribute('class', cls);
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', cx);
+          text.setAttribute('y', cy);
+          text.setAttribute('class', 'node-label');
+          text.textContent = String(arr[i]);
+          const idxText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          idxText.setAttribute('x', cx);
+          idxText.setAttribute('y', cy + radius + 8);
+          idxText.setAttribute('class', 'idx-label');
+          idxText.textContent = `idx ${i}`;
+          g.appendChild(circle);
+          g.appendChild(text);
+          g.appendChild(idxText);
+          heapTree.appendChild(g);
+        };
+
+        for (let i = 0; i < hs; i++) drawNode(i, false);
+        for (let i = hs; i < arr.length; i++) drawNode(i, true);
+      }
+
+      function render(highlight = null) {
+        renderTree(highlight);
+        renderSorted();
+      }
+
+      function renderSorted() {
+        if (!sortedList) return;
+        sortedList.innerHTML = '';
+        for (let i = heapSize; i < arr.length; i++) {
+          const chip = document.createElement('span');
+          chip.className = 'chip' + (i === lastFixedIndex ? ' highlight' : '');
+          chip.textContent = String(arr[i]);
+          sortedList.appendChild(chip);
+        }
+      }
+
+      function clearLog() {
+        logList.innerHTML = '';
+      }
+
+      function appendLog(step, before, after) {
+        const entry = document.createElement('div');
+        entry.className = 'entry';
+        const tag = document.createElement('span');
+        const text = document.createElement('span');
+        tag.className = 'tag';
+        if (step.type === 'compare') {
+          tag.classList.add('compare');
+          tag.textContent = 'COMPARE';
+          const va = before?.[step.a];
+          const vb = before?.[step.b];
+          text.textContent = `比較 idx ${step.a} (${va}) vs idx ${step.b} (${vb})`;
+        } else if (step.type === 'swap') {
+          tag.classList.add('swap');
+          tag.textContent = 'SWAP';
+          const ba = before?.[step.a];
+          const bb = before?.[step.b];
+          const aa = after?.[step.a];
+          const ab = after?.[step.b];
+          text.textContent = `交換 idx ${step.a} (${ba}) ⇄ idx ${step.b} (${bb}) → [${aa}, ${ab}]`;
+        } else if (step.type === 'heapSize') {
+          tag.classList.add('heap');
+          tag.textContent = 'HEAP';
+          text.textContent = `ヒープサイズ = ${step.value}`;
+        } else if (step.type === 'phase') {
+          tag.classList.add('phase');
+          tag.textContent = 'PHASE';
+          text.textContent = `フェーズ = ${step.name}`;
+        }
+        entry.appendChild(tag);
+        entry.appendChild(text);
+        logList.appendChild(entry);
+        if (autoScroll?.checked) {
+          logList.scrollTop = logList.scrollHeight;
+        }
+      }
+
+      // ステップの適用
+      function applyStep(step) {
+        const before = arr.slice();
+        switch (step.type) {
+          case 'compare':
+            render(step);
+            appendLog(step, before, before);
+            break;
+          case 'swap':
+            [arr[step.a], arr[step.b]] = [arr[step.b], arr[step.a]];
+            render(step);
+            appendLog(step, before, arr);
+            break;
+          case 'heapSize':
+            heapSize = step.value;
+            lastFixedIndex = step.value; // 新たに確定した先頭位置
+            updateLabels();
+            render();
+            appendLog(step, before, arr);
+            break;
+          case 'phase':
+            phase = step.name;
+            updateLabels();
+            render();
+            appendLog(step, before, arr);
+            break;
+        }
+      }
+
+      function stepOnce() {
+        if (cursor >= steps.length) return false;
+        const st = steps[cursor++];
+        applyStep(st);
+        return cursor < steps.length;
+      }
+
+      function play() {
+        if (playing) return;
+        playing = true;
+        btnPlay.disabled = true;
+        btnPause.disabled = false;
+        const baseMs = 420; // 基本速度
+        const tick = () => {
+          const speed = Number(speedInput.value);
+          const delay = Math.max(40, baseMs / speed);
+          const cont = stepOnce();
+          if (!cont) { pause(); return; }
+          timer = setTimeout(tick, delay);
+        };
+        tick();
+      }
+
+      function pause() {
+        playing = false;
+        btnPlay.disabled = false;
+        btnPause.disabled = true;
+        if (timer) { clearTimeout(timer); timer = null; }
+      }
+
+      function reset() {
+        pause();
+        resetToBase();
+      }
+
+      // イベント
+      sizeInput.addEventListener('input', () => {
+        sizeLabel.textContent = sizeInput.value;
+      });
+      sizeInput.addEventListener('change', () => {
+        init(Number(sizeInput.value));
+      });
+      speedInput.addEventListener('input', () => {
+        updateLabels();
+      });
+      btnRandom.addEventListener('click', () => {
+        init(Number(sizeInput.value));
+      });
+      btnStep.addEventListener('click', () => {
+        stepOnce();
+      });
+      btnPlay.addEventListener('click', play);
+      btnPause.addEventListener('click', pause);
+      btnReset.addEventListener('click', reset);
+      clearLogBtn.addEventListener('click', clearLog);
+      window.addEventListener('resize', () => {
+        // レイアウト変化時にSVG座標を再計算
+        render();
+      });
+
+      // 初期化
+      init(Number(sizeInput.value));
+    </script>
+  </body>
+  </html>

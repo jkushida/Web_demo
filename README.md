@@ -23,3 +23,6 @@
 *   [Polynomial Regression & Overfitting](https://jkushida.github.io/Web_demo/ML/polynomial-overfitting.html) - 次数とTrain/Test誤差の関係を可視化
 *   [PCA Educational Demo](https://jkushida.github.io/Web_demo/ML/pca_educational_demo.html) - PCAの計算過程（共分散・固有値・射影）を学習
 
+### MediaPipe
+*   [Finger Draw](https://jkushida.github.io/Web_demo/MediaPipe/finger_draw.html) - 手と顔の検出による3D描画
+

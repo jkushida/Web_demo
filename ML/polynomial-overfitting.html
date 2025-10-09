@@ -63,19 +63,19 @@
           <div><strong>Train MSE:</strong> <span id="trainMse">-</span></div>
           <div><strong>Test MSE:</strong> <span id="testMse">-</span></div>
         </div>
-        <div style="margin-top:8px; margin-bottom:6px;"><strong>次数-誤差</strong></div>
+        <div style="margin-top:8px; margin-bottom:6px;"><strong>Degree vs Error</strong></div>
         <canvas id="mseChart" width="260" height="140" style="width:100%;height:auto;"></canvas>
         <div class="note">
-          目的関数（真の関数）: y = sin(2πx) + 0.3x + 0.1<br>
-          高次の多項式ほど学習誤差は下がりやすい一方、検証誤差が増えると過学習の兆候です。
+          <strong>Ground truth</strong>: y = sin(2πx) + 0.3x + 0.1<br>
+          Higher-degree polynomials often reduce training error but may increase test error (overfitting).
         </div>
         <div class="note">
-          <strong>画面の見方</strong>
+          <strong>How to read the charts</strong>
           <ul style="margin:6px 0 0 18px; padding:0;">
-            <li>左図: 点は <span style="color:#0082c8;">学習=青</span>・<span style="color:#d62728;">検証=赤</span>、<span style="color:#999;">灰の点線=真の関数</span>、<span style="color:#667eea;">青い実線=推定曲線</span>。</li>
-            <li>上部メトリクス: 現在の <span style="color:#0082c8;">学習</span>/<span style="color:#d62728;">検証</span> MSE（平均二乗誤差）。</li>
-            <li>右図: <span style="color:#0082c8;">Train（青）</span>、<span style="color:#d62728;">Test（赤）</span> の「次数 d と誤差」。<span style="color:#d62728;">Test</span> が最小の d が目安。</li>
-            <li>次数 d を上げるほど曲線は複雑に。<span style="color:#0082c8;">Train</span> は下がり続けやすいが、<span style="color:#d62728;">Test</span> が上がり始めたら過学習。</li>
+            <li>Left: points <span style="color:#0082c8;">Train=blue</span>, <span style="color:#d62728;">Test=red</span>; <span style="color:#999;">gray dashed</span> = ground truth; <span style="color:#667eea;">blue line</span> = fitted curve.</li>
+            <li>Top metrics: current <span style="color:#0082c8;">Train</span>/<span style="color:#d62728;">Test</span> MSE.</li>
+            <li>Right: <span style="color:#0082c8;">Train</span> and <span style="color:#d62728;">Test</span> vs degree d. The degree where <span style="color:#d62728;">Test</span> is minimal is a good choice.</li>
+            <li>As degree increases, the curve gets more complex; <span style="color:#0082c8;">Train</span> typically decreases, while <span style="color:#d62728;">Test</span> rising indicates overfitting.</li>
           </ul>
         </div>
       </aside>
