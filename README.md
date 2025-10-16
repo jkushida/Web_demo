@@ -26,3 +26,4 @@
 ### MediaPipe
 *   [Finger Draw](https://jkushida.github.io/Web_demo/MediaPipe/finger_draw.html) - 手と顔の検出による3D描画
 *   [Boid Fish (Hand Control)](https://jkushida.github.io/Web_demo/MediaPipe/boid-fish-hand-control.html) - 手の動きで群れ（Boids）の魚を制御
+*   [3D Physics × Hand Tracking](https://jkushida.github.io/Web_demo/MediaPipe/mediapipe_physics_3d.html) - 3D物理空間で手で物体をつかむ・運ぶ・投げる
