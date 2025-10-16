@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaPipe + 3D Physics Engine Demo (Mirror Mode)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #videoElement {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 240px;
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 10px;
+            z-index: 10;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            /* 鏡像表示なし - カメラに手のひらを向けると手の甲が映る */
+        }
+        
+        #canvasElement {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            height: 240px;
+            z-index: 11;
+            pointer-events: none;
+            /* 鏡像表示なし */
+        }
+        
+        #output {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 10;
+            max-width: 350px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 15px;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .info {
+            margin: 10px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        
+        .status.active {
+            background: #4ade80;
+            color: white;
+        }
+        
+        .status.inactive {
+            background: #f87171;
+            color: white;
+        }
+        
+        .controls {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button.active {
+            background: #4ade80;
+        }
+        
+        #renderer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .instruction {
+            background: #fef3c7;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #92400e;
+            border-left: 4px solid #fbbf24;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="renderer"></canvas>
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="canvasElement"></canvas>
+        
+        <div id="output">
+            <h1>🎮 3D Physics × MediaPipe</h1>
+            <div class="info">
+                <strong>検出状態:</strong> <span class="status inactive" id="status">未検出</span>
+            </div>
+            <div class="info">
+                <strong>オブジェクト数:</strong> <span id="objectCount">0</span>
+            </div>
+            <div class="info">
+                <strong>削除数:</strong> <span id="removedCount">0</span>
+            </div>
+            <div class="info">
+                <strong>物理演算FPS:</strong> <span id="physicsFPS">0</span>
+            </div>
+            <div class="info">
+                <strong>手の速度:</strong> <span id="handSpeed">0.0</span> m/s
+            </div>
+            <div class="info">
+                <strong>加速度:</strong> <span id="handAccel">0.0</span> m/s²
+            </div>
+            <div class="info" style="background: #ffe4e6; padding: 5px; border-radius: 3px;">
+                <strong>MediaPipe生Z値:</strong> <span id="rawZ">0.0</span>
+            </div>
+            <div class="controls">
+                <button id="addBox">📦 箱を追加</button>
+                <button id="addSphere">⚽ 球を追加</button>
+                <button id="toggleSkeleton" class="active">🦴 スケルトン表示</button>
+                <button id="reset">🔄 リセット</button>
+            </div>
+            <div class="instruction">
+                <strong>💡 使い方:</strong><br>
+                ✋ カメラに手のひらを向ける（画面には手の甲が映ります）<br>
+                📏 カメラに手を近づけると3D空間で奥に移動します<br>
+                👆 人差し指と親指でつまんで物体をつかむ<br>
+                🖐️ 手を開いて物体を投げる<br>
+                🦴 手のスケルトンと影で位置を確認<br>
+                🚀 速く振ると加速度が大きくなり強く投げられる<br>
+                ⚖️ 大きな物体ほど重く、投げにくい
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Cannon.js 物理エンジン -->
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+    
+    <!-- MediaPipe -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script>
+        // MediaPipe設定
+        const videoElement = document.getElementById('videoElement');
+        const canvasElement = document.getElementById('canvasElement');
+        const canvasCtx = canvasElement.getContext('2d');
+        const statusElement = document.getElementById('status');
+        const objectCountElement = document.getElementById('objectCount');
+        const physicsFPSElement = document.getElementById('physicsFPS');
+        const handSpeedElement = document.getElementById('handSpeed');
+        const handAccelElement = document.getElementById('handAccel');
+        const removedCountElement = document.getElementById('removedCount');
+        const rawZElement = document.getElementById('rawZ');
+        
+        // 削除カウンタ
+        let removedObjectCount = 0;
+
+        // Three.jsシーン設定
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);
+        scene.fog = new THREE.Fog(0x87ceeb, 15, 70);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 8, 15);
+        camera.lookAt(0, 3, 0);
+
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: document.getElementById('renderer'),
+            antialias: true 
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+        // ライティング
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(8, 15, 8);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.left = -30;
+        directionalLight.shadow.camera.right = 30;
+        directionalLight.shadow.camera.top = 30;
+        directionalLight.shadow.camera.bottom = -30;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 50;
+        directionalLight.shadow.bias = -0.0001;
+        scene.add(directionalLight);
+
+        // Cannon.js物理世界
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);  // 地球の重力
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 10;
+        
+        // 材質の定義（グローバルスコープ）
+        const defaultMaterial = new CANNON.Material('default');
+        const groundMaterial = new CANNON.Material('ground');
+        
+        // 空気抵抗を追加（より自然な減速）
+        world.defaultContactMaterial.friction = 0.4;
+        world.defaultContactMaterial.restitution = 0.3;
+        
+        // 材質間の接触特性
+        const groundContactMaterial = new CANNON.ContactMaterial(
+            groundMaterial,
+            defaultMaterial,
+            {
+                friction: 0.4,      // 摩擦係数
+                restitution: 0.3,   // 反発係数（0=完全非弾性、1=完全弾性）
+                contactEquationStiffness: 1e8,
+                contactEquationRelaxation: 3
+            }
+        );
+        world.addContactMaterial(groundContactMaterial);
+        
+        // オブジェクト同士の接触特性
+        const objectContactMaterial = new CANNON.ContactMaterial(
+            defaultMaterial,
+            defaultMaterial,
+            {
+                friction: 0.3,
+                restitution: 0.4,   // オブジェクト同士は少し弾む
+                contactEquationStiffness: 1e8,
+                contactEquationRelaxation: 3
+            }
+        );
+        world.addContactMaterial(objectContactMaterial);
+
+        // 地面
+        const groundShape = new CANNON.Plane();
+        const groundBody = new CANNON.Body({ 
+            mass: 0,
+            material: groundMaterial
+        });
+        groundBody.addShape(groundShape);
+        groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+        world.addBody(groundBody);
+
+        const groundGeometry = new THREE.PlaneGeometry(60, 60);
+        const groundMeshMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x3d8b3d,
+            roughness: 0.8
+        });
+        const groundMesh = new THREE.Mesh(groundGeometry, groundMeshMaterial);
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.receiveShadow = true;
+        scene.add(groundMesh);
+
+        // 物理オブジェクト管理
+        const physicsObjects = [];
+
+        // 手の位置を保持
+        let handPosition = null;
+        let previousHandPosition = null;
+        let handVelocity = new THREE.Vector3(0, 0, 0);
+        let previousHandVelocity = new THREE.Vector3(0, 0, 0);
+        let handAcceleration = new THREE.Vector3(0, 0, 0);
+        let grabbedObject = null;
+        let isPinching = false;
+        let showSkeleton = true;
+
+        // 手のスケルトン用のグループ
+        const handSkeletonGroup = new THREE.Group();
+        scene.add(handSkeletonGroup);
+
+        // ランドマーク用の球体（21個）
+        const landmarkSpheres = [];
+        for (let i = 0; i < 21; i++) {
+            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            const material = new THREE.MeshStandardMaterial({ 
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.8,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.2
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.visible = false;
+            sphere.castShadow = true; // 影を落とす
+            sphere.receiveShadow = true;
+            handSkeletonGroup.add(sphere);
+            landmarkSpheres.push(sphere);
+        }
+
+        // 接続線用のマテリアル
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: 0x00ffff,
+            linewidth: 2,
+            transparent: true,
+            opacity: 0.8
+        });
+
+        // MediaPipeの手の接続定義
+        const HAND_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 4],           // 親指
+            [0, 5], [5, 6], [6, 7], [7, 8],           // 人差し指
+            [0, 9], [9, 10], [10, 11], [11, 12],      // 中指
+            [0, 13], [13, 14], [14, 15], [15, 16],    // 薬指
+            [0, 17], [17, 18], [18, 19], [19, 20],    // 小指
+            [5, 9], [9, 13], [13, 17]                 // 手のひら
+        ];
+
+        // 接続線のオブジェクト
+        const connectionLines = [];
+        HAND_CONNECTIONS.forEach(() => {
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(6); // 2点 × 3座標
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const line = new THREE.Line(geometry, lineMaterial);
+            line.visible = false;
+            handSkeletonGroup.add(line);
+            connectionLines.push(line);
+        });
+
+        // オブジェクト追加関数
+        function addBox() {
+            const size = Math.random() * 0.5 + 0.5;
+            const color = Math.random() * 0xffffff;
+
+            // Three.js メッシュ
+            const geometry = new THREE.BoxGeometry(size, size, size);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // 体積ベースの質量計算（木材の密度: 約600 kg/m³）
+            const volume = size * size * size;
+            const density = 600;  // kg/m³
+            const mass = volume * density;
+
+            // Cannon.js ボディ
+            const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
+            const body = new CANNON.Body({ 
+                mass: mass,
+                shape: shape,
+                material: defaultMaterial,
+                position: new CANNON.Vec3(
+                    Math.random() * 4 - 2,
+                    5 + Math.random() * 3,
+                    Math.random() * 4 - 2
+                ),
+                linearDamping: 0.1,   // 空気抵抗（線形減衰）
+                angularDamping: 0.1   // 回転抵抗（角減衰）
+            });
+            world.addBody(body);
+
+            physicsObjects.push({ mesh, body });
+            updateObjectCount();
+        }
+
+        function addSphere() {
+            const radius = Math.random() * 0.3 + 0.3;
+            const color = Math.random() * 0xffffff;
+
+            // Three.js メッシュ
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshStandardMaterial({ color: color });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+
+            // 体積ベースの質量計算（ゴムボールの密度: 約1000 kg/m³）
+            const volume = (4 / 3) * Math.PI * radius * radius * radius;
+            const density = 1000;  // kg/m³
+            const mass = volume * density;
+
+            // Cannon.js ボディ
+            const shape = new CANNON.Sphere(radius);
+            const body = new CANNON.Body({ 
+                mass: mass,
+                shape: shape,
+                material: defaultMaterial,
+                position: new CANNON.Vec3(
+                    Math.random() * 4 - 2,
+                    5 + Math.random() * 3,
+                    Math.random() * 4 - 2
+                ),
+                linearDamping: 0.05,   // 球体は空気抵抗が少ない
+                angularDamping: 0.05
+            });
+            world.addBody(body);
+
+            physicsObjects.push({ mesh, body });
+            updateObjectCount();
+        }
+
+        function resetScene() {
+            physicsObjects.forEach(obj => {
+                scene.remove(obj.mesh);
+                world.removeBody(obj.body);
+            });
+            physicsObjects.length = 0;
+            grabbedObject = null;
+            removedObjectCount = 0;
+            removedCountElement.textContent = '0';
+            updateObjectCount();
+        }
+
+        function updateObjectCount() {
+            objectCountElement.textContent = physicsObjects.length;
+        }
+
+        function toggleSkeletonDisplay() {
+            showSkeleton = !showSkeleton;
+            const btn = document.getElementById('toggleSkeleton');
+            if (showSkeleton) {
+                btn.classList.add('active');
+                btn.textContent = '🦴 スケルトン表示';
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '🦴 スケルトン非表示';
+                // すべて非表示
+                landmarkSpheres.forEach(sphere => sphere.visible = false);
+                connectionLines.forEach(line => line.visible = false);
+            }
+        }
+
+        // 初期オブジェクト追加
+        for (let i = 0; i < 5; i++) {
+            addBox();
+            addSphere();
+        }
+
+        // ボタンイベント
+        document.getElementById('addBox').addEventListener('click', addBox);
+        document.getElementById('addSphere').addEventListener('click', addSphere);
+        document.getElementById('reset').addEventListener('click', resetScene);
+        document.getElementById('toggleSkeleton').addEventListener('click', toggleSkeletonDisplay);
+
+        // MediaPipe Hands設定
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(onResults);
+
+        // カメラ設定
+        const camera2 = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+        camera2.start();
+
+        function onResults(results) {
+            canvasElement.width = videoElement.videoWidth;
+            canvasElement.height = videoElement.videoHeight;
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                statusElement.textContent = '検出中';
+                statusElement.className = 'status active';
+
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // 手のランドマーク描画
+                drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+                drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 1 });
+
+                // 人差し指の先端（ランドマーク8）
+                const indexTip = landmarks[8];
+                // 親指の先端（ランドマーク4）
+                const thumbTip = landmarks[4];
+                
+                // 正規化座標を3D空間座標に変換（左右反転）
+                const x = -(indexTip.x - 0.5) * 15;  // 符号を反転
+                const y = -(indexTip.y - 0.5) * 10 + 5;
+                const z = indexTip.z * 10;  // 符号反転：カメラに近づくと奥に行く
+
+                previousHandPosition = handPosition ? handPosition.clone() : new THREE.Vector3(x, y, z);
+                handPosition = new THREE.Vector3(x, y, z);
+
+                // 手の速度計算 (位置の変化率)
+                const currentVelocity = new THREE.Vector3(0, 0, 0);
+                if (previousHandPosition) {
+                    currentVelocity.copy(handPosition).sub(previousHandPosition).multiplyScalar(60);
+                }
+
+                // 手の加速度計算 (速度の変化率)
+                handAcceleration.copy(currentVelocity).sub(previousHandVelocity).multiplyScalar(60);
+                
+                // 速度を更新
+                previousHandVelocity.copy(handVelocity);
+                handVelocity.copy(currentVelocity);
+
+                // 速度と加速度を表示
+                const speed = handVelocity.length();
+                const accel = handAcceleration.length();
+                handSpeedElement.textContent = speed.toFixed(1);
+                handAccelElement.textContent = accel.toFixed(1);
+                rawZElement.textContent = indexTip.z.toFixed(4);  // 生のz値を表示
+
+                // 手のスケルトン表示
+                if (showSkeleton) {
+                    // 各ランドマークの3D位置を更新
+                    landmarks.forEach((landmark, index) => {
+                        const lx = -(landmark.x - 0.5) * 15;  // 左右反転
+                        const ly = -(landmark.y - 0.5) * 10 + 5;
+                        const lz = landmark.z * 10;  // 符号反転
+                        
+                        landmarkSpheres[index].position.set(lx, ly, lz);
+                        landmarkSpheres[index].visible = true;
+                        
+                        // ランドマークの種類によって色を変える
+                        if (index === 0) {
+                            // 手首
+                            landmarkSpheres[index].material.color.setHex(0xff0000);
+                            landmarkSpheres[index].material.emissive.setHex(0xff0000);
+                        } else if (index === 4 || index === 8 || index === 12 || index === 16 || index === 20) {
+                            // 指先
+                            landmarkSpheres[index].material.color.setHex(0xffff00);
+                            landmarkSpheres[index].material.emissive.setHex(0xffff00);
+                        } else {
+                            // その他
+                            landmarkSpheres[index].material.color.setHex(0x00ff00);
+                            landmarkSpheres[index].material.emissive.setHex(0x00ff00);
+                        }
+                    });
+
+                    // 接続線を更新
+                    HAND_CONNECTIONS.forEach((connection, index) => {
+                        const [start, end] = connection;
+                        const startPos = landmarkSpheres[start].position;
+                        const endPos = landmarkSpheres[end].position;
+                        
+                        const positions = connectionLines[index].geometry.attributes.position.array;
+                        positions[0] = startPos.x;
+                        positions[1] = startPos.y;
+                        positions[2] = startPos.z;
+                        positions[3] = endPos.x;
+                        positions[4] = endPos.y;
+                        positions[5] = endPos.z;
+                        
+                        connectionLines[index].geometry.attributes.position.needsUpdate = true;
+                        connectionLines[index].visible = true;
+                    });
+                } else {
+                    landmarkSpheres.forEach(sphere => sphere.visible = false);
+                    connectionLines.forEach(line => line.visible = false);
+                }
+
+                // ピンチ検出（親指と人差し指の距離）
+                const pinchDistance = Math.sqrt(
+                    Math.pow(indexTip.x - thumbTip.x, 2) +
+                    Math.pow(indexTip.y - thumbTip.y, 2) +
+                    Math.pow(indexTip.z - thumbTip.z, 2)
+                );
+
+                const wasPinching = isPinching;
+                isPinching = pinchDistance < 0.05;
+
+                // オブジェクトをつかむ
+                if (isPinching && !wasPinching && !grabbedObject) {
+                    // 最も近いオブジェクトを探す
+                    let closestObject = null;
+                    let closestDistance = Infinity;
+
+                    physicsObjects.forEach(obj => {
+                        const objPos = new THREE.Vector3(
+                            obj.body.position.x,
+                            obj.body.position.y,
+                            obj.body.position.z
+                        );
+                        const distance = handPosition.distanceTo(objPos);
+                        if (distance < closestDistance && distance < 2) {
+                            closestDistance = distance;
+                            closestObject = obj;
+                        }
+                    });
+
+                    if (closestObject) {
+                        grabbedObject = closestObject;
+                        // 元の質量を保存してから重力を無効化
+                        grabbedObject.originalMass = grabbedObject.body.mass;
+                        grabbedObject.body.mass = 0;
+                        grabbedObject.body.updateMassProperties();
+                    }
+                }
+
+                // オブジェクトを持ち上げる
+                if (grabbedObject && isPinching) {
+                    grabbedObject.body.position.set(handPosition.x, handPosition.y, handPosition.z);
+                    grabbedObject.body.velocity.set(0, 0, 0);
+                    grabbedObject.body.angularVelocity.set(0, 0, 0);
+                }
+
+                // オブジェクトを放す
+                if (!isPinching && wasPinching && grabbedObject) {
+                    // 元の質量を復元
+                    grabbedObject.body.mass = grabbedObject.originalMass || 1;
+                    grabbedObject.body.updateMassProperties();
+                    
+                    // 速度と加速度を組み合わせて投げる力を計算
+                    // 係数を小さくして投げる力を抑える
+                    const throwVelocity = new THREE.Vector3(
+                        handVelocity.x + handAcceleration.x * 0.008,
+                        handVelocity.y + handAcceleration.y * 0.008,
+                        handVelocity.z + handAcceleration.z * 0.008
+                    );
+                    
+                    // 速度係数を0.25→0.3に微調整（質量が大きくなったため）
+                    grabbedObject.body.velocity.set(
+                        throwVelocity.x * 0.3,
+                        throwVelocity.y * 0.3,
+                        throwVelocity.z * 0.3
+                    );
+                    
+                    // 回転も少し抑える
+                    const spinFactor = 0.05;
+                    grabbedObject.body.angularVelocity.set(
+                        handAcceleration.y * spinFactor,
+                        -handAcceleration.x * spinFactor,
+                        handAcceleration.z * spinFactor
+                    );
+                    
+                    grabbedObject = null;
+                }
+
+            } else {
+                statusElement.textContent = '未検出';
+                statusElement.className = 'status inactive';
+                handPosition = null;
+                
+                // 速度と加速度表示をリセット
+                handSpeedElement.textContent = '0.0';
+                handAccelElement.textContent = '0.0';
+                rawZElement.textContent = '0.0';
+                
+                // スケルトンを非表示
+                landmarkSpheres.forEach(sphere => sphere.visible = false);
+                connectionLines.forEach(line => line.visible = false);
+                
+                if (grabbedObject) {
+                    grabbedObject.body.mass = grabbedObject.originalMass || 1;
+                    grabbedObject.body.updateMassProperties();
+                    grabbedObject = null;
+                }
+            }
+
+            canvasCtx.restore();
+        }
+
+        // アニメーションループ
+        const timeStep = 1 / 60;
+        let lastTime = performance.now();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            // 物理シミュレーション更新
+            world.step(timeStep);
+
+            // 物理ボディとメッシュを同期 & 落下したオブジェクトを削除
+            for (let i = physicsObjects.length - 1; i >= 0; i--) {
+                const obj = physicsObjects[i];
+                obj.mesh.position.copy(obj.body.position);
+                obj.mesh.quaternion.copy(obj.body.quaternion);
+                
+                // 地面より下に落ちたら削除（y < -10）
+                if (obj.body.position.y < -10) {
+                    scene.remove(obj.mesh);
+                    world.removeBody(obj.body);
+                    physicsObjects.splice(i, 1);
+                    
+                    // 削除カウンタを増やす
+                    removedObjectCount++;
+                    removedCountElement.textContent = removedObjectCount;
+                    
+                    // つかんでいたオブジェクトが削除された場合
+                    if (grabbedObject === obj) {
+                        grabbedObject = null;
+                    }
+                    
+                    // メモリリーク防止のためのクリーンアップ
+                    delete obj.originalMass;
+                }
+            }
+            
+            // オブジェクト数を更新
+            updateObjectCount();
+
+            // FPS表示
+            physicsFPSElement.textContent = Math.round(1 / deltaTime);
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // リサイズ対応
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
