@@ -63,8 +63,8 @@
       <div class="subtitle">顔検出 → Pix2Pixスタイル変換 → キャンバス合成</div>
       <div class="row">
         <label for="modelUrl">Pix2PixモデルURL（model.json）</label>
-        <input id="modelUrl" type="text" placeholder="例: /assets/pix2pix/model.json" />
-        <div class="hint">注意: 256x256入力のPix2Pixモデルを想定。URLは同一オリジンを推奨。</div>
+        <input id="modelUrl" type="text" placeholder="例: ../assets/pix2pix/model.json" />
+        <div class="hint">注意: 256x256入力のPix2Pixモデルを想定。<br>このページは <span class="mono">MediaPipe/</span> 配下なので、リポジトリ直下 <span class="mono">assets/</span> へは <span class="mono">../assets/...</span> の相対パスで参照してください。</div>
       </div>
       <div class="row">
         <button id="loadBtn">モデルを読み込み</button>
@@ -102,7 +102,8 @@
     // face-api: モデルURL（vladmandicのモデルパックを利用）
     const FACEAPI_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
     // Pix2Pix: 既定のモデルURL（プロジェクト推奨: assets/ 配下に配置し相対参照）
-    const DEFAULT_MODEL_URL = 'assets/pix2pix/model.json';
+    // 注意: このページは MediaPipe/ 配下なので、リポジトリ直下の assets/ は ../assets/
+    const DEFAULT_MODEL_URL = '../assets/pix2pix/model.json';
 
     // 検出設定
     const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 });
@@ -126,8 +127,17 @@
       alphaValEl.textContent = Number(alphaEl.value).toFixed(2);
     });
 
+    function resolveModelUrl(u) {
+      if (!u) return u;
+      // 絶対URL or ルート相対はそのまま
+      if (/^https?:\/\//.test(u) || u.startsWith('/')) return u;
+      // MediaPipe/ 下からの相対: assets/ で始まる場合は ../ を補う
+      if (u.startsWith('assets/')) return '../' + u;
+      return u;
+    }
+
     async function loadPix2Pix(url) {
-      const u = (url || '').trim();
+      const u = resolveModelUrl((url || '').trim());
       if (!u) {
         modelStatusEl.textContent = 'モデルURLが空です';
         return;
@@ -137,8 +147,8 @@
         pix2pixModel = await ml5.pix2pix(u);
         modelStatusEl.textContent = 'モデル読み込み完了 ✅';
       } catch (e) {
-        console.error('Pix2Pix load error:', e);
-        modelStatusEl.textContent = 'モデル読み込みに失敗 ❌（URLと同一オリジンを確認）';
+        console.error('Pix2Pix load error for URL:', u, e);
+        modelStatusEl.textContent = 'モデル読み込みに失敗 ❌（URL/パスを確認）: ' + (e && e.message ? e.message : e);
       }
     }
 
@@ -230,18 +240,35 @@
           runPix2Pix(roi);
         }
 
-        // 合成: 生成結果があればブレンド
+        // 合成: 生成結果があればブレンド（顔ランドマークからマスク作成、フォールバックで楕円）
         if (lastPix2PixImage) {
           const alpha = Number(alphaEl.value);
-          // 丸めた楕円マスク（ソフト）
+          const lm = detection.landmarks ? detection.landmarks.getPositions() : null;
+
           ctx.save();
-          ctx.beginPath();
-          const cx = roi.x + roi.w / 2;
-          const cy = roi.y + roi.h / 2;
-          const rx = roi.w * 0.5;
-          const ry = roi.h * 0.62; // 少し縦長に
-          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-          ctx.clip();
+          if (lm && lm.length >= 68) {
+            // 68点ランドマーク: 顎(0-16) + 眉(17-26)を使ってポリゴンを構築
+            ctx.beginPath();
+            // 顎のライン 0 → 16
+            ctx.moveTo(lm[0].x, lm[0].y);
+            for (let i = 1; i <= 16; i++) ctx.lineTo(lm[i].x, lm[i].y);
+            // 右眉 26 → 22（逆順で外周っぽく）
+            for (let i = 26; i >= 22; i--) ctx.lineTo(lm[i].x, lm[i].y);
+            // 左眉 21 → 17（逆順）
+            for (let i = 21; i >= 17; i--) ctx.lineTo(lm[i].x, lm[i].y);
+            ctx.closePath();
+            ctx.clip();
+          } else {
+            // フォールバック: 楕円マスク
+            ctx.beginPath();
+            const cx = roi.x + roi.w / 2;
+            const cy = roi.y + roi.h / 2;
+            const rx = roi.w * 0.5;
+            const ry = roi.h * 0.62;
+            ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+            ctx.clip();
+          }
+
           ctx.globalAlpha = alpha;
           ctx.drawImage(lastPix2PixImage, roi.x, roi.y, roi.w, roi.h);
           ctx.restore();
@@ -268,7 +295,7 @@
       try {
         await setupCamera();
         await loadFaceApiModels();
-        // 既定URLを入力欄にセットし、自動でPix2Pixモデルを事前読み込み
+        // 既定URL（../assets/...）を入力欄にセットし、自動でPix2Pixモデルを事前読み込み
         modelUrlEl.value = DEFAULT_MODEL_URL;
         await loadPix2Pix(DEFAULT_MODEL_URL);
         isRunning = true;
