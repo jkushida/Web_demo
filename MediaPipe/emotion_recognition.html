@@ -646,6 +646,14 @@
                     // 口のランドマークを特別に表示
                     drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, 
                         {color: '#FF3030', lineWidth: 2});
+
+                    // 眉毛を左右ともに強調表示（両方）
+                    if (typeof FACEMESH_LEFT_EYEBROW !== 'undefined') {
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, { color: '#FFD700', lineWidth: 2 });
+                    }
+                    if (typeof FACEMESH_RIGHT_EYEBROW !== 'undefined') {
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, { color: '#FFD700', lineWidth: 2 });
+                    }
                 }
                 
                 // AI感情推定
