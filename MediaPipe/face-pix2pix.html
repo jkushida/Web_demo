@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Pix2Pix Filter (リアルタイム)</title>
+
+  <!-- 注意: デモ性重視のためCDNを使用。Pix2PixモデルURLは入力で指定 -->
+  <!-- face-api.js: 顔検出とランドマーク -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js" crossorigin="anonymous"></script>
+  <!-- p5.js は ml5.js が内部で参照するため同時読み込み -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js" crossorigin="anonymous"></script>
+  <!-- ml5.js: pix2pix ラッパー -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ml5/0.12.2/ml5.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      min-height: 100vh;
+      color: #fff;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .wrap { display: flex; gap: 24px; max-width: 1200px; width: 100%; }
+    .stage { flex: 1; }
+    .panel { width: 360px; background: rgba(0,0,0,0.25); border-radius: 16px; padding: 16px; }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    .subtitle { font-size: 12px; opacity: 0.9; margin-bottom: 16px; }
+    .view {
+      position: relative; width: 100%; aspect-ratio: 4/3; background: #000;
+      border-radius: 16px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    }
+    #video { display: none; }
+    #canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .row { margin: 10px 0; }
+    label { display: block; font-size: 13px; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.1); color: #fff; }
+    input[type="range"] { width: 100%; }
+    button { padding: 8px 12px; border: none; border-radius: 8px; background: #667eea; color: #fff; cursor: pointer; }
+    button:hover { background: #5469d4; }
+    .status { margin-top: 8px; font-size: 12px; opacity: 0.9; }
+    .kv { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 12px; }
+    .small { font-size: 12px; opacity: 0.85; }
+    .hint { font-size: 12px; opacity: 0.85; margin-top: 6px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="stage">
+      <div class="view">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+      </div>
+      <div class="kv"><span>FPS:</span><span id="fps" class="mono">0</span></div>
+    </div>
+    <div class="panel">
+      <h1>🎨 Face Pix2Pix Filter</h1>
+      <div class="subtitle">顔検出 → Pix2Pixスタイル変換 → キャンバス合成</div>
+      <div class="row">
+        <label for="modelUrl">Pix2PixモデルURL（model.json）</label>
+        <input id="modelUrl" type="text" placeholder="例: /assets/pix2pix/model.json" />
+        <div class="hint">注意: 256x256入力のPix2Pixモデルを想定。URLは同一オリジンを推奨。</div>
+      </div>
+      <div class="row">
+        <button id="loadBtn">モデルを読み込み</button>
+        <div id="modelStatus" class="status">未読み込み</div>
+      </div>
+      <div class="row">
+        <label for="alpha">スタイル強度: <span id="alphaVal">0.8</span></label>
+        <input id="alpha" type="range" min="0" max="1" step="0.01" value="0.8" />
+      </div>
+      <div class="row small">
+        <div>face-api.js: TinyFaceDetector + 68ランドマーク</div>
+        <div>処理負荷を考慮し、検出/変換は間引き（結果は保持）</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // DOM
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const fpsEl = document.getElementById('fps');
+    const alphaEl = document.getElementById('alpha');
+    const alphaValEl = document.getElementById('alphaVal');
+    const modelUrlEl = document.getElementById('modelUrl');
+    const loadBtn = document.getElementById('loadBtn');
+    const modelStatusEl = document.getElementById('modelStatus');
+
+    // 状態
+    let isRunning = false;
+    let lastTime = performance.now();
+    let frames = 0;
+    let lastFpsUpdate = performance.now();
+
+    // face-api: モデルURL（vladmandicのモデルパックを利用）
+    const FACEAPI_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
+
+    // 検出設定
+    const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 });
+    const detectEveryN = 2; // Nフレームに1回検出
+    const pixEveryN = 3;    // Nフレームに1回Pix2Pix
+    let frameCount = 0;
+
+    // Pix2Pix
+    let pix2pixModel = null;       // ml5.pix2pix インスタンス
+    let lastPix2PixImage = null;   // 前回の生成結果（HTMLImageElement）
+    let isTransferring = false;
+
+    // 作業用キャンバス
+    const offCanvas = document.createElement('canvas');
+    const offCtx = offCanvas.getContext('2d');
+    offCanvas.width = 256;
+    offCanvas.height = 256;
+
+    // UI
+    alphaEl.addEventListener('input', () => {
+      alphaValEl.textContent = Number(alphaEl.value).toFixed(2);
+    });
+
+    loadBtn.addEventListener('click', async () => {
+      const url = modelUrlEl.value.trim();
+      if (!url) {
+        modelStatusEl.textContent = 'URLを入力してください';
+        return;
+      }
+      try {
+        modelStatusEl.textContent = 'モデル読み込み中...';
+        pix2pixModel = await ml5.pix2pix(url);
+        modelStatusEl.textContent = 'モデル読み込み完了 ✅';
+      } catch (e) {
+        console.error(e);
+        modelStatusEl.textContent = 'モデル読み込みに失敗 ❌';
+      }
+    });
+
+    // カメラ開始
+    async function setupCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: 'user' } });
+      video.srcObject = stream;
+      await new Promise((res) => (video.onloadedmetadata = res));
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+
+    // face-api モデル読み込み
+    async function loadFaceApiModels() {
+      await faceapi.nets.tinyFaceDetector.loadFromUri(FACEAPI_MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(FACEAPI_MODEL_URL);
+    }
+
+    // ユーティリティ: ROI（顔のバウンディングボックス＋余白）
+    function getFaceRoi(box, pad = 0.25) {
+      const { x, y, width, height } = box;
+      const cx = x + width / 2;
+      const cy = y + height / 2;
+      const size = Math.max(width, height) * (1 + pad);
+      const left = Math.max(0, Math.floor(cx - size / 2));
+      const top = Math.max(0, Math.floor(cy - size / 2));
+      const right = Math.min(canvas.width, Math.ceil(cx + size / 2));
+      const bottom = Math.min(canvas.height, Math.ceil(cy + size / 2));
+      return { x: left, y: top, w: right - left, h: bottom - top };
+    }
+
+    // Pix2Pix 推論（間引き実行＆結果保持）
+    async function runPix2Pix(roi) {
+      if (!pix2pixModel || isTransferring) return; // 未ロード or 実行中
+      isTransferring = true;
+      try {
+        // ROIを256x256へ
+        offCtx.clearRect(0, 0, offCanvas.width, offCanvas.height);
+        offCtx.drawImage(canvas, roi.x, roi.y, roi.w, roi.h, 0, 0, 256, 256);
+
+        await new Promise((resolve) => {
+          pix2pixModel.transfer(offCanvas, (err, result) => {
+            if (err) {
+              console.error('pix2pix error:', err);
+              return resolve();
+            }
+            lastPix2PixImage = new Image();
+            lastPix2PixImage.onload = () => resolve();
+            lastPix2PixImage.src = result.image.src;
+          });
+        });
+      } catch (e) {
+        console.error(e);
+      } finally {
+        isTransferring = false;
+      }
+    }
+
+    // メインループ
+    async function loop() {
+      requestAnimationFrame(loop);
+      if (!isRunning) return;
+
+      // 背景フレーム描画
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // 顔検出（間引き）
+      let detection = null;
+      if (frameCount % detectEveryN === 0) {
+        const result = await faceapi
+          .detectSingleFace(video, detectorOptions)
+          .withFaceLandmarks();
+        if (result) detection = result;
+        window.__lastDet = detection || window.__lastDet || null;
+      } else {
+        detection = window.__lastDet || null;
+      }
+
+      if (detection && detection.detection) {
+        const box = detection.detection.box;
+        const roi = getFaceRoi(box, 0.35);
+
+        // Pix2Pix（間引き）
+        if (frameCount % pixEveryN === 0) {
+          runPix2Pix(roi);
+        }
+
+        // 合成: 生成結果があればブレンド
+        if (lastPix2PixImage) {
+          const alpha = Number(alphaEl.value);
+          // 丸めた楕円マスク（ソフト）
+          ctx.save();
+          ctx.beginPath();
+          const cx = roi.x + roi.w / 2;
+          const cy = roi.y + roi.h / 2;
+          const rx = roi.w * 0.5;
+          const ry = roi.h * 0.62; // 少し縦長に
+          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+          ctx.clip();
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(lastPix2PixImage, roi.x, roi.y, roi.w, roi.h);
+          ctx.restore();
+          ctx.globalAlpha = 1.0;
+        }
+
+        // デバッグ: ROI表示（薄枠）
+        // ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+        // ctx.strokeRect(roi.x, roi.y, roi.w, roi.h);
+      }
+
+      // FPS
+      frames++;
+      const now = performance.now();
+      if (now - lastFpsUpdate > 1000) {
+        fpsEl.textContent = String(frames);
+        frames = 0;
+        lastFpsUpdate = now;
+      }
+      frameCount++;
+    }
+
+    (async function main() {
+      try {
+        await setupCamera();
+        await loadFaceApiModels();
+        isRunning = true;
+        loop();
+      } catch (e) {
+        console.error(e);
+        alert('初期化に失敗しました: ' + e.message);
+      }
+    })();
+  </script>
+</body>
+</html>
+
