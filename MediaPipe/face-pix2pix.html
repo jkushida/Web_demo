@@ -101,6 +101,8 @@
 
     // face-api: モデルURL（vladmandicのモデルパックを利用）
     const FACEAPI_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
+    // Pix2Pix: 既定のモデルURL（プロジェクト推奨: assets/ 配下に配置し相対参照）
+    const DEFAULT_MODEL_URL = 'assets/pix2pix/model.json';
 
     // 検出設定
     const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 256, scoreThreshold: 0.5 });
@@ -124,20 +126,24 @@
       alphaValEl.textContent = Number(alphaEl.value).toFixed(2);
     });
 
-    loadBtn.addEventListener('click', async () => {
-      const url = modelUrlEl.value.trim();
-      if (!url) {
-        modelStatusEl.textContent = 'URLを入力してください';
+    async function loadPix2Pix(url) {
+      const u = (url || '').trim();
+      if (!u) {
+        modelStatusEl.textContent = 'モデルURLが空です';
         return;
       }
       try {
         modelStatusEl.textContent = 'モデル読み込み中...';
-        pix2pixModel = await ml5.pix2pix(url);
+        pix2pixModel = await ml5.pix2pix(u);
         modelStatusEl.textContent = 'モデル読み込み完了 ✅';
       } catch (e) {
-        console.error(e);
-        modelStatusEl.textContent = 'モデル読み込みに失敗 ❌';
+        console.error('Pix2Pix load error:', e);
+        modelStatusEl.textContent = 'モデル読み込みに失敗 ❌（URLと同一オリジンを確認）';
       }
+    }
+
+    loadBtn.addEventListener('click', async () => {
+      await loadPix2Pix(modelUrlEl.value);
     });
 
     // カメラ開始
@@ -262,6 +268,9 @@
       try {
         await setupCamera();
         await loadFaceApiModels();
+        // 既定URLを入力欄にセットし、自動でPix2Pixモデルを事前読み込み
+        modelUrlEl.value = DEFAULT_MODEL_URL;
+        await loadPix2Pix(DEFAULT_MODEL_URL);
         isRunning = true;
         loop();
       } catch (e) {
@@ -272,4 +281,3 @@
   </script>
 </body>
 </html>
-
