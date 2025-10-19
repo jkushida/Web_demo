@@ -647,16 +647,14 @@
                     drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, 
                         {color: '#FF3030', lineWidth: 2});
 
-                    // 眉毛を左右ともに強調表示（両方）
+                    // 眉毛は線のみ強調表示（キーポイントは描かない）
                     if (typeof FACEMESH_LEFT_EYEBROW !== 'undefined') {
                         drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, { color: '#FFD700', lineWidth: 2 });
                     }
                     if (typeof FACEMESH_RIGHT_EYEBROW !== 'undefined') {
                         drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, { color: '#FFD700', lineWidth: 2 });
                     }
-
-                    // 眉の両端（各眉の端点）を強調表示
-                    drawEyebrowEndpoints(landmarks);
+                    // 両端キーポイントは非表示
                 }
                 
                 // AI感情推定
@@ -689,12 +687,7 @@
             drawLandmark(landmarks[LANDMARKS.RIGHT_EYE_TOP], 3);
             drawLandmark(landmarks[LANDMARKS.RIGHT_EYE_BOTTOM], 3);
             
-            // 眉を黄色で表示（内側と外側）
-            canvasCtx.fillStyle = '#FFFF00';
-            drawLandmark(landmarks[LANDMARKS.LEFT_EYEBROW_INNER], 3);
-            drawLandmark(landmarks[LANDMARKS.LEFT_EYEBROW_OUTER], 3);
-            drawLandmark(landmarks[LANDMARKS.RIGHT_EYEBROW_INNER], 3);
-            drawLandmark(landmarks[LANDMARKS.RIGHT_EYEBROW_OUTER], 3);
+            // 眉のキーポイントは描画しない（線のみ表示）
         }
         
         function drawLandmark(landmark, size = 3) {
@@ -708,40 +701,7 @@
             canvasCtx.fill();
         }
 
-        // 眉の端点（左右ともに）をコネクタ定義から自動抽出して描画
-        function drawEyebrowEndpoints(landmarks) {
-            canvasCtx.fillStyle = '#FFD700'; // ゴールド
-            const drawEndpointsFromConnectors = (connector) => {
-                if (!connector) return;
-                const indices = new Set();
-                connector.forEach(([a, b]) => { indices.add(a); indices.add(b); });
-                const pts = Array.from(indices).map(i => ({ i, p: landmarks[i] })).filter(v => v.p);
-                if (pts.length === 0) return;
-                // x方向の両端を端点として採用
-                let minX = pts[0], maxX = pts[0];
-                for (const v of pts) {
-                    if (v.p.x < minX.p.x) minX = v;
-                    if (v.p.x > maxX.p.x) maxX = v;
-                }
-                drawLandmark(minX.p, 5);
-                drawLandmark(maxX.p, 5);
-            };
-            if (typeof FACEMESH_LEFT_EYEBROW !== 'undefined') {
-                drawEndpointsFromConnectors(FACEMESH_LEFT_EYEBROW);
-            }
-            if (typeof FACEMESH_RIGHT_EYEBROW !== 'undefined') {
-                drawEndpointsFromConnectors(FACEMESH_RIGHT_EYEBROW);
-            }
-
-            // フォールバック（コネクタ未定義環境用）: 既存のランドマークIDから描画
-            if (typeof FACEMESH_LEFT_EYEBROW === 'undefined' || typeof FACEMESH_RIGHT_EYEBROW === 'undefined') {
-                canvasCtx.fillStyle = '#FFD700';
-                drawLandmark(landmarks[LANDMARKS.LEFT_EYEBROW_INNER], 5);
-                drawLandmark(landmarks[LANDMARKS.LEFT_EYEBROW_OUTER], 5);
-                drawLandmark(landmarks[LANDMARKS.RIGHT_EYEBROW_INNER], 5);
-                drawLandmark(landmarks[LANDMARKS.RIGHT_EYEBROW_OUTER], 5);
-            }
-        }
+        // 眉の端点描画は行わない（線のみ）
         
         function getDefaultEmotions() {
             return {
