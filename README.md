@@ -29,3 +29,4 @@
 *   [3D Physics × Hand Tracking](https://jkushida.github.io/Web_demo/MediaPipe/mediapipe_physics_3d.html) - 3D物理空間で手で物体をつかむ・運ぶ・投げる
 *   [Emotion Recognition](https://jkushida.github.io/Web_demo/MediaPipe/emotion_recognition.html) - Face Mesh + Face-api.js による表情認識と可視化
 *   [Face Pix2Pix Filter](https://jkushida.github.io/Web_demo/MediaPipe/face-pix2pix.html) - face-api.jsで顔検出 → Pix2Pixでスタイル変換 → Canvas合成
+*   [Face Mesh Generative (HTML-only)](https://jkushida.github.io/Web_demo/MediaPipe/face-mesh-generative.html) - Face Meshのランドマークでネオンワイヤー/点彩の生成描画

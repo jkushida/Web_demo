@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>MediaPipe Face Mesh → メッシュ駆動 画像生成（HTMLのみ）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { color-scheme: dark; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans JP","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif; background:#0b0b0f; color:#eaeaf0; }
+    header { position:sticky; top:0; background:#101018; padding:12px 16px; border-bottom:1px solid #1d1d27; display:flex; gap:12px; flex-wrap:wrap; align-items:center; z-index:10; }
+    .row { display:flex; gap:16px; padding:16px; flex-wrap:wrap; }
+    .card { background:#0f0f16; border:1px solid #1e1e29; border-radius:14px; padding:12px; }
+    video, canvas { border-radius:12px; background:#000; display:block; }
+    label, select, button { font-size:14px; }
+    select, button { padding:8px 10px; border-radius:8px; border:1px solid #33384b; background:#171a26; color:#eaeaf0; }
+    #status { opacity:.8; }
+    .stack { display:flex; flex-direction:column; gap:8px; }
+  </style>
+</head>
+<body>
+<header>
+  <strong>MediaPipe Face Mesh → ランドマーク駆動 画像生成</strong>
+  <label>生成モード：
+    <select id="mode">
+      <option value="wire">ネオンワイヤーフレーム</option>
+      <option value="points">ポイント描画（点彩）</option>
+    </select>
+  </label>
+  <label>解像度：
+    <select id="size">
+      <option value="512">512</option>
+      <option value="640" selected>640</option>
+      <option value="768">768</option>
+    </select>
+  </label>
+  <button id="saveBtn">PNG保存</button>
+  <span id="status">初期化中…</span>
+</header>
+
+<div class="row">
+  <div class="card stack">
+    <div style="position:relative; width:640px; height:480px;">
+      <video id="video" width="640" height="480" playsinline muted></video>
+      <canvas id="overlay" width="640" height="480" style="position:absolute; left:0; top:0;"></canvas>
+    </div>
+    <small>左は参照用のカメラ映像＋メッシュである。</small>
+  </div>
+
+  <div class="card stack">
+    <canvas id="gen" width="640" height="640"></canvas>
+    <small>右はランドマークに基づいて生成したスタイライズ画像である。モードを切り替えると表現が変わる。</small>
+  </div>
+</div>
+
+<!-- MediaPipe CDN（公式パッケージ） -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+<script>
+(async () => {
+  const statusEl = document.getElementById('status');
+  const modeSel  = document.getElementById('mode');
+  const sizeSel  = document.getElementById('size');
+  const saveBtn  = document.getElementById('saveBtn');
+
+  const video    = document.getElementById('video');
+  const overlay  = document.getElementById('overlay');
+  const octx     = overlay.getContext('2d');
+
+  const gen      = document.getElementById('gen');
+  const gctx     = gen.getContext('2d', { willReadFrequently:true });
+
+  // 入力サイズ
+  const W = 640, H = 480;
+  // 生成キャンバスの初期サイズ
+  gen.width = 640; gen.height = 640;
+
+  // オフスクリーンにビデオフレームを描き，色サンプリングで使う
+  const off = document.createElement('canvas');
+  off.width = W; off.height = H;
+  const offctx = off.getContext('2d');
+
+  // Face Mesh 準備（先に用意してからCameraを開始）
+  const faceMesh = new FaceMesh({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  // ワイヤー描画用のヘルパ（エッジを間引いて軽量化）
+  const EDGES = [];
+  for (let i = 0; i < FACEMESH_TESSELATION.length; i += 6) {
+    EDGES.push(FACEMESH_TESSELATION[i]);
+  }
+
+  function drawWire(lms) {
+    // ネオン風下地
+    gctx.fillStyle = '#06070a';
+    gctx.fillRect(0,0,gen.width, gen.height);
+
+    // 顔のバウンディングからスケール合わせ（縦横比を保って正方キャンバスに収める）
+    let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    for (const p of lms) { minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); }
+    const bw = (maxX-minX)*W, bh = (maxY-minY)*H;
+    const scale = 0.9 * Math.min(gen.width/bw, gen.height/bh);
+    const cx = (minX+maxX)*0.5*W, cy = (minY+maxY)*0.5*H;
+
+    // ネオン線
+    gctx.lineWidth = Math.max(1, scale*0.004);
+    gctx.shadowBlur = 6;
+    gctx.shadowColor = 'rgba(0,255,200,0.8)';
+    gctx.strokeStyle = 'rgba(0,255,200,0.9)';
+
+    gctx.beginPath();
+    for (const [i,j] of EDGES) {
+      const pi=lms[i], pj=lms[j];
+      const x1 = ( (pi.x*W - cx) * scale ) + gen.width/2;
+      const y1 = ( (pi.y*H - cy) * scale ) + gen.height/2;
+      const x2 = ( (pj.x*W - cx) * scale ) + gen.width/2;
+      const y2 = ( (pj.y*H - cy) * scale ) + gen.height/2;
+      gctx.moveTo(x1,y1); gctx.lineTo(x2,y2);
+    }
+    gctx.stroke();
+
+    // 球状グラデーションによる発光
+    const grad = gctx.createRadialGradient(gen.width/2, gen.height/2, gen.width*0.05, gen.width/2, gen.height/2, gen.width*0.6);
+    grad.addColorStop(0,'rgba(0,255,200,0.15)');
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    gctx.fillStyle = grad;
+    gctx.fillRect(0,0,gen.width, gen.height);
+  }
+
+  function drawPoints(lms) {
+    // 背景を薄く残して残像効果
+    gctx.fillStyle = 'rgba(10,10,16,0.25)';
+    gctx.fillRect(0,0,gen.width, gen.height);
+
+    // 最新フレームをオフスクリーンへ（色サンプリング用）
+    offctx.drawImage(video, 0,0, W,H);
+
+    // 顔枠でスケール合わせ
+    let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    for (const p of lms) { minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); }
+    const bw = (maxX-minX)*W, bh = (maxY-minY)*H;
+    const scale = 0.95 * Math.min(gen.width/bw, gen.height/bh);
+    const cx = (minX+maxX)*0.5*W, cy = (minY+maxY)*0.5*H;
+
+    // 468点のうち間引いてサンプリング（性能確保）
+    for (let k=0; k<lms.length; k+=2) {
+      const p = lms[k];
+      const sx = Math.floor(p.x*W), sy = Math.floor(p.y*H);
+      const img = offctx.getImageData(Math.min(W-1,Math.max(0,sx)), Math.min(H-1,Math.max(0,sy)), 1,1).data;
+      const r=img[0], g=img[1], b=img[2];
+
+      const x = ( (p.x*W - cx) * scale ) + gen.width/2;
+      const y = ( (p.y*H - cy) * scale ) + gen.height/2;
+
+      // 深度（z）を点サイズに反映（zは負が手前）
+      const z = p.z ?? 0;
+      const size = Math.max(1.2, 4.5 - z*8);
+
+      gctx.fillStyle = `rgba(${r},${g},${b},0.95)`;
+      gctx.beginPath();
+      gctx.arc(x, y, size, 0, Math.PI*2);
+      gctx.fill();
+    }
+  }
+
+  function onResults(results) {
+    // 左：参照可視化
+    octx.clearRect(0,0,overlay.width, overlay.height);
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+      const lms = results.multiFaceLandmarks[0];
+      // 参照オーバーレイ（軽量ワイヤー）
+      drawConnectors(octx, lms, FACEMESH_TESSELATION, { color:'#33ffaa22', lineWidth:1 });
+      drawLandmarks(octx, lms, { color:'#66ccff', radius:1.2 });
+
+      // 右：生成
+      const mode = modeSel.value;
+      if (mode === 'wire') drawWire(lms);
+      else drawPoints(lms);
+      statusEl.textContent = '推論中（顔検出）…';
+    } else {
+      statusEl.textContent = '顔未検出である。';
+      // 生成キャンバスを暗転フェード
+      gctx.fillStyle = 'rgba(0,0,0,0.15)';
+      gctx.fillRect(0,0,gen.width, gen.height);
+    }
+  }
+
+  faceMesh.onResults(onResults);
+
+  modeSel.addEventListener('change', () => {
+    // モード変更時に軽くフェード
+    gctx.fillStyle = 'rgba(0,0,0,0.4)';
+    gctx.fillRect(0,0,gen.width, gen.height);
+  });
+
+  sizeSel.addEventListener('change', () => {
+    const s = parseInt(sizeSel.value,10);
+    gen.width = s; gen.height = s;
+  });
+
+  saveBtn.addEventListener('click', () => {
+    const url = gen.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'face_mesh_generated.png';
+    a.click();
+  });
+
+  // カメラ起動（faceMesh準備後に開始）
+  try {
+    const cam = new Camera(video, {
+      onFrame: async () => { await faceMesh.send({ image: video }); },
+      width: W, height: H
+    });
+    await cam.start();
+    statusEl.textContent = '準備完了である。';
+  } catch (e) {
+    statusEl.textContent = 'カメラ起動に失敗した。HTTPSと権限を確認すること。';
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
+
