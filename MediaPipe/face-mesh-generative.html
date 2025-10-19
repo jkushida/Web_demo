@@ -24,6 +24,7 @@
     <select id="mode">
       <option value="wire">ネオンワイヤーフレーム</option>
       <option value="points">ポイント描画（点彩）</option>
+      <option value="halftone">ハーフトーン（網点）</option>
     </select>
   </label>
   <label>解像度：
@@ -171,6 +172,45 @@
     }
   }
 
+  function drawHalftone(lms) {
+    // 背景を薄く残して残像効果
+    gctx.fillStyle = 'rgba(10,10,16,0.25)';
+    gctx.fillRect(0,0,gen.width, gen.height);
+
+    // 最新フレームをオフスクリーンへ（色サンプリング用）
+    offctx.drawImage(video, 0,0, W,H);
+
+    // 顔枠でスケール合わせ（生成→ビデオ座標の逆変換に使用）
+    let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    for (const p of lms) { minX=Math.min(minX,p.x); maxX=Math.max(maxX,p.x); minY=Math.min(minY,p.y); maxY=Math.max(maxY,p.y); }
+    const bw = (maxX-minX)*W, bh = (maxY-minY)*H;
+    const scale = 0.95 * Math.min(gen.width/bw, gen.height/bh);
+    const cx = (minX+maxX)*0.5*W, cy = (minY+maxY)*0.5*H;
+
+    // グリッド間隔（解像度に応じて調整）
+    const cell = Math.max(6, Math.round(gen.width / 72)); // 約72セル/幅
+    const maxR = cell * 0.55;
+
+    for (let y = cell/2; y < gen.height; y += cell) {
+      for (let x = cell/2; x < gen.width; x += cell) {
+        // 生成→ビデオ座標へ逆変換
+        const vx = ((x - gen.width/2) / scale) + cx;
+        const vy = ((y - gen.height/2) / scale) + cy;
+        if (vx < 0 || vy < 0 || vx >= W || vy >= H) continue;
+
+        const rgba = offctx.getImageData(vx|0, vy|0, 1, 1).data;
+        const r = rgba[0], g = rgba[1], b = rgba[2];
+        const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255; // 輝度
+        const radius = Math.max(0.5, (1 - lum) * maxR);
+
+        gctx.fillStyle = `rgb(${r},${g},${b})`;
+        gctx.beginPath();
+        gctx.arc(x, y, radius, 0, Math.PI*2);
+        gctx.fill();
+      }
+    }
+  }
+
   function onResults(results) {
     // 左：参照可視化
     octx.clearRect(0,0,overlay.width, overlay.height);
@@ -184,7 +224,8 @@
       // 右：生成
       const mode = modeSel.value;
       if (mode === 'wire') drawWire(lms);
-      else drawPoints(lms);
+      else if (mode === 'points') drawPoints(lms);
+      else if (mode === 'halftone') drawHalftone(lms);
       statusEl.textContent = '推論中（顔検出）…';
     } else {
       statusEl.textContent = '顔未検出である。';
