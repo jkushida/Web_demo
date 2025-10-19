@@ -635,15 +635,23 @@
                         
                         // ランドマークの種類によって色を変える
                         if (index === 0) {
-                            // 手首
+                            // 手首: 赤
                             sphere.material.color.setHex(0xff0000);
                             sphere.material.emissive.setHex(0xff0000);
-                        } else if (index === 4 || index === 8 || index === 12 || index === 16 || index === 20) {
-                            // 指先
+                        } else if (index === 4) {
+                            // 親指先端: オレンジ
+                            sphere.material.color.setHex(0xffa500);
+                            sphere.material.emissive.setHex(0xffa500);
+                        } else if (index === 8) {
+                            // 人差し指先端: シアン
+                            sphere.material.color.setHex(0x00ccff);
+                            sphere.material.emissive.setHex(0x00ccff);
+                        } else if (index === 12 || index === 16 || index === 20) {
+                            // その他の指先: 黄
                             sphere.material.color.setHex(0xffff00);
                             sphere.material.emissive.setHex(0xffff00);
                         } else {
-                            // その他
+                            // その他: 緑
                             sphere.material.color.setHex(0x00ff00);
                             sphere.material.emissive.setHex(0x00ff00);
                         }
