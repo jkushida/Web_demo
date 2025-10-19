@@ -304,9 +304,7 @@
                 <button class="toggle-button active" id="meshToggle" onclick="toggleMesh()">
                     🔗 メッシュ表示
                 </button>
-                <button class="toggle-button" id="pauseToggle" onclick="togglePause()">
-                    ⏸️ 一時停止
-                </button>
+                
             </div>
         </div>
 
@@ -412,7 +410,6 @@
         let camera = null;
         let faceMesh = null;
         let isRunning = false;
-        let isPaused = false;
         let lastFrameTime = Date.now();
         let frameCount = 0;
         
@@ -597,7 +594,7 @@
             
             camera = new Camera(videoElement, {
                 onFrame: async () => {
-                    if (faceMesh && isRunning && !isPaused) {
+                    if (faceMesh && isRunning) {
                         await faceMesh.send({image: videoElement});
                     }
                 },
@@ -929,12 +926,7 @@
         
         // ビデオ表示は常時オフ（描画負荷軽減のためキャンバスのみ使用）
         
-        function togglePause() {
-            isPaused = !isPaused;
-            const button = document.getElementById('pauseToggle');
-            button.classList.toggle('active');
-            button.textContent = isPaused ? '▶️ 再開' : '⏸️ 一時停止';
-        }
+        // 一時停止機能は削除（常時処理）
         
         function updateSensitivity(type) {
             if (type === 'happy') {
