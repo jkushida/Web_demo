@@ -24,27 +24,13 @@
         }
         
         #videoElement {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 320px;
-            height: 240px;
-            border: 3px solid rgba(255, 255, 255, 0.8);
-            border-radius: 10px;
-            z-index: 10;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            /* 鏡像表示なし - カメラに手のひらを向けると手の甲が映る */
+            /* カメラ画像は表示しない */
+            display: none;
         }
         
         #canvasElement {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            width: 320px;
-            height: 240px;
-            z-index: 11;
-            pointer-events: none;
-            /* 鏡像表示なし */
+            /* 右上の2Dオーバーレイ（手の描画）は不要のため非表示 */
+            display: none;
         }
         
         #output {
@@ -171,13 +157,12 @@
             <div class="controls">
                 <button id="addBox">📦 箱を追加</button>
                 <button id="addSphere">⚽ 球を追加</button>
-                <button id="toggleSkeleton" class="active">🦴 スケルトン表示</button>
                 <button id="reset">🔄 リセット</button>
             </div>
             <div class="instruction">
                 <strong>💡 使い方:</strong><br>
-                ✋ カメラに手のひらを向ける（画面には手の甲が映ります）<br>
-                📏 カメラに手を近づけると3D空間で奥に移動します<br>
+                ✋ カメラに手のひらを向ける（プレビュー映像は表示されません）<br>
+                📏 カメラに手を近づけると3D空間で手前に移動します<br>
                 👆 人差し指と親指でつまんで物体をつかむ<br>
                 🖐️ 手を開いて物体を投げる<br>
                 🦴 手のスケルトンと影で位置を確認<br>
@@ -309,6 +294,12 @@
         groundMesh.receiveShadow = true;
         scene.add(groundMesh);
 
+        // フィールド境界（地面サイズに基づく削除判定）
+        const FIELD_HALF_SIZE = 30;   // groundGeometryの半サイズ
+        const FIELD_MARGIN = 10;      // 画面外に出てから消す余白
+        const FIELD_MIN_Y = -10;      // 落下で削除
+        const FIELD_MAX_Y = 50;       // 高すぎる場合も削除
+
         // 物理オブジェクト管理
         const physicsObjects = [];
 
@@ -322,6 +313,33 @@
         let isPinching = false;
         let showSkeleton = true;
 
+        // 操作感向上のための平滑化・しきい値
+        let filteredHandPosition = null;
+        let filteredHandVelocity = new THREE.Vector3(0, 0, 0);
+        let previousFilteredVelocity = new THREE.Vector3(0, 0, 0);
+        let filteredHandAcceleration = new THREE.Vector3(0, 0, 0);
+        const POS_SMOOTH_XY = 0.25; // XYの平滑化係数（0…保持/1…即時）
+        const POS_SMOOTH_Z  = 0.40; // Zはやや応答性を上げる
+        const VEL_SMOOTH = 0.3;    // 手速度の平滑化係数
+        const PINCH_ON = 0.045;    // ピンチ開始しきい値（ヒステリシス）
+        const PINCH_OFF = 0.055;   // ピンチ終了しきい値
+        const GRAB_DISTANCE = 2.5; // 掴み対象の探索距離（オブジェクト拡大に合わせて少し広め）
+        const FOLLOW_LERP = 0.35;  // 掴み中に手へ追従させる位置補間係数（互換維持）
+        const FOLLOW_LERP_NEAR = 0.6; // 近距離時の追従係数（速め）
+        const FOLLOW_LERP_FAR  = 0.9; // 遠距離時の追従係数（さらに速め）
+        const SNAP_DISTANCE    = 0.75; // この距離を超えたらスナップ
+        const GRAB_COOLDOWN_MS = 200; // 離した直後に再度掴まないためのクールダウン
+        let lastReleaseTime = 0;
+        const DROP_SPEED_THRESHOLD = 1.0; // この速度未満なら真下に落とす（投げない）
+
+        // 手前に来るほどランドマークを少し大きく見せる
+        const DEPTH_SIZE_GAIN = 0.06; // Zに対する増加率（控えめ）
+        const DEPTH_SIZE_MIN = 0.9;   // 縮小下限
+        const DEPTH_SIZE_MAX = 1.4;   // 拡大上限
+
+        // Z方向の可動域を拡大（MediaPipeのzは値幅が小さいためスケール）
+        const Z_SCALE = 35; // 既存10→35へ拡大（必要に応じて再調整）
+
         // 手のスケルトン用のグループ
         const handSkeletonGroup = new THREE.Group();
         scene.add(handSkeletonGroup);
@@ -329,7 +347,9 @@
         // ランドマーク用の球体（21個）
         const landmarkSpheres = [];
         for (let i = 0; i < 21; i++) {
-            const geometry = new THREE.SphereGeometry(0.1, 16, 16);
+            // 手首（index 0）は少し大きめにして影を強調
+            const radius = (i === 0) ? 0.16 : 0.1;
+            const geometry = new THREE.SphereGeometry(radius, 16, 16);
             const material = new THREE.MeshStandardMaterial({ 
                 color: 0x00ff00,
                 transparent: true,
@@ -376,8 +396,9 @@
         });
 
         // オブジェクト追加関数
-        function addBox() {
-            const size = Math.random() * 0.5 + 0.5;
+        function addBox(opts = {}) {
+            // 以前: 0.5〜1.0 → 少し大きめに: 1.0〜2.0
+            const size = Math.random() * 1.0 + 1.0;
             const color = Math.random() * 0xffffff;
 
             // Three.js メッシュ
@@ -400,21 +421,26 @@
                 shape: shape,
                 material: defaultMaterial,
                 position: new CANNON.Vec3(
-                    Math.random() * 4 - 2,
-                    5 + Math.random() * 3,
-                    Math.random() * 4 - 2
+                    (opts.position && typeof opts.position.x === 'number') ? opts.position.x : (Math.random() * 4 - 2),
+                    (opts.position && typeof opts.position.y === 'number') ? opts.position.y : (5 + Math.random() * 3),
+                    (opts.position && typeof opts.position.z === 'number') ? opts.position.z : (Math.random() * 4 - 2)
                 ),
                 linearDamping: 0.1,   // 空気抵抗（線形減衰）
                 angularDamping: 0.1   // 回転抵抗（角減衰）
             });
+            // 安定化（静止しやすく）
+            body.allowSleep = true;
+            body.sleepSpeedLimit = 0.1;   // 速度がこの値未満で
+            body.sleepTimeLimit = 0.5;    // 指定時間経過でスリープ
             world.addBody(body);
 
             physicsObjects.push({ mesh, body });
             updateObjectCount();
         }
 
-        function addSphere() {
-            const radius = Math.random() * 0.3 + 0.3;
+        function addSphere(opts = {}) {
+            // 以前: 0.3〜0.6 → 少し大きめに: 0.5〜1.0
+            const radius = Math.random() * 0.5 + 0.5;
             const color = Math.random() * 0xffffff;
 
             // Three.js メッシュ
@@ -437,13 +463,17 @@
                 shape: shape,
                 material: defaultMaterial,
                 position: new CANNON.Vec3(
-                    Math.random() * 4 - 2,
-                    5 + Math.random() * 3,
-                    Math.random() * 4 - 2
+                    (opts.position && typeof opts.position.x === 'number') ? opts.position.x : (Math.random() * 4 - 2),
+                    (opts.position && typeof opts.position.y === 'number') ? opts.position.y : (5 + Math.random() * 3),
+                    (opts.position && typeof opts.position.z === 'number') ? opts.position.z : (Math.random() * 4 - 2)
                 ),
                 linearDamping: 0.05,   // 球体は空気抵抗が少ない
                 angularDamping: 0.05
             });
+            // 安定化（静止しやすく）
+            body.allowSleep = true;
+            body.sleepSpeedLimit = 0.1;
+            body.sleepTimeLimit = 0.5;
             world.addBody(body);
 
             physicsObjects.push({ mesh, body });
@@ -466,32 +496,37 @@
             objectCountElement.textContent = physicsObjects.length;
         }
 
-        function toggleSkeletonDisplay() {
-            showSkeleton = !showSkeleton;
-            const btn = document.getElementById('toggleSkeleton');
-            if (showSkeleton) {
-                btn.classList.add('active');
-                btn.textContent = '🦴 スケルトン表示';
-            } else {
-                btn.classList.remove('active');
-                btn.textContent = '🦴 スケルトン非表示';
-                // すべて非表示
-                landmarkSpheres.forEach(sphere => sphere.visible = false);
-                connectionLines.forEach(line => line.visible = false);
+        
+
+        // 初期オブジェクトは低い高さ・整列配置で重なりと跳ねを抑制
+        function addInitialObjects() {
+            const positions = [];
+            const cols = 4; // 横方向配置数
+            const spacing = 3.5; // オブジェクトの最大サイズを考慮した間隔
+            const rows = 3; // 縦方向配置数
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    positions.push({
+                        x: (c - (cols - 1) / 2) * spacing,
+                        y: 1.2, // 低い高さから開始し、跳ねを抑制
+                        z: (r - (rows - 1) / 2) * spacing
+                    });
+                }
+            }
+            // 必要数だけ利用（従来と同数: 10個 = 箱5 + 球5）
+            for (let i = 0; i < 5; i++) {
+                const p1 = positions[i % positions.length];
+                const p2 = positions[(i + 6) % positions.length]; // 少し離れた別座標
+                addBox({ position: p1 });
+                addSphere({ position: p2 });
             }
         }
-
-        // 初期オブジェクト追加
-        for (let i = 0; i < 5; i++) {
-            addBox();
-            addSphere();
-        }
+        addInitialObjects();
 
         // ボタンイベント
         document.getElementById('addBox').addEventListener('click', addBox);
         document.getElementById('addSphere').addEventListener('click', addSphere);
         document.getElementById('reset').addEventListener('click', resetScene);
-        document.getElementById('toggleSkeleton').addEventListener('click', toggleSkeletonDisplay);
 
         // MediaPipe Hands設定
         const hands = new Hands({
@@ -543,10 +578,20 @@
                 // 正規化座標を3D空間座標に変換（左右反転）
                 const x = -(indexTip.x - 0.5) * 15;  // 符号を反転
                 const y = -(indexTip.y - 0.5) * 10 + 5;
-                const z = indexTip.z * 10;  // 符号反転：カメラに近づくと奥に行く
+                const z = -indexTip.z * Z_SCALE;  // Zスケール拡大：近づくほど手前に動きやすく
 
                 previousHandPosition = handPosition ? handPosition.clone() : new THREE.Vector3(x, y, z);
                 handPosition = new THREE.Vector3(x, y, z);
+
+                // 手位置・速度を平滑化
+                if (!filteredHandPosition) {
+                    filteredHandPosition = handPosition.clone();
+                } else {
+                    // 成分ごとに平滑化係数を調整（Zは応答性高め）
+                    filteredHandPosition.x += (handPosition.x - filteredHandPosition.x) * POS_SMOOTH_XY;
+                    filteredHandPosition.y += (handPosition.y - filteredHandPosition.y) * POS_SMOOTH_XY;
+                    filteredHandPosition.z += (handPosition.z - filteredHandPosition.z) * POS_SMOOTH_Z;
+                }
 
                 // 手の速度計算 (位置の変化率)
                 const currentVelocity = new THREE.Vector3(0, 0, 0);
@@ -557,13 +602,18 @@
                 // 手の加速度計算 (速度の変化率)
                 handAcceleration.copy(currentVelocity).sub(previousHandVelocity).multiplyScalar(60);
                 
-                // 速度を更新
+                // 速度を更新（生値）
                 previousHandVelocity.copy(handVelocity);
                 handVelocity.copy(currentVelocity);
 
+                // 平滑化した速度・加速度
+                previousFilteredVelocity.copy(filteredHandVelocity);
+                filteredHandVelocity.lerp(currentVelocity, VEL_SMOOTH);
+                filteredHandAcceleration.copy(filteredHandVelocity).sub(previousFilteredVelocity).multiplyScalar(60);
+
                 // 速度と加速度を表示
-                const speed = handVelocity.length();
-                const accel = handAcceleration.length();
+                const speed = filteredHandVelocity.length();
+                const accel = filteredHandAcceleration.length();
                 handSpeedElement.textContent = speed.toFixed(1);
                 handAccelElement.textContent = accel.toFixed(1);
                 rawZElement.textContent = indexTip.z.toFixed(4);  // 生のz値を表示
@@ -574,24 +624,28 @@
                     landmarks.forEach((landmark, index) => {
                         const lx = -(landmark.x - 0.5) * 15;  // 左右反転
                         const ly = -(landmark.y - 0.5) * 10 + 5;
-                        const lz = landmark.z * 10;  // 符号反転
+                        const lz = -landmark.z * Z_SCALE;  // 符号反転（近づくほど手前）
                         
-                        landmarkSpheres[index].position.set(lx, ly, lz);
-                        landmarkSpheres[index].visible = true;
+                        const sphere = landmarkSpheres[index];
+                        sphere.position.set(lx, ly, lz);
+                        sphere.visible = true;
+                        // 手前に来るほど少し大きく（Zに比例、上限・下限でクランプ）
+                        const depthScale = Math.min(DEPTH_SIZE_MAX, Math.max(DEPTH_SIZE_MIN, 1 + DEPTH_SIZE_GAIN * lz));
+                        sphere.scale.set(depthScale, depthScale, depthScale);
                         
                         // ランドマークの種類によって色を変える
                         if (index === 0) {
                             // 手首
-                            landmarkSpheres[index].material.color.setHex(0xff0000);
-                            landmarkSpheres[index].material.emissive.setHex(0xff0000);
+                            sphere.material.color.setHex(0xff0000);
+                            sphere.material.emissive.setHex(0xff0000);
                         } else if (index === 4 || index === 8 || index === 12 || index === 16 || index === 20) {
                             // 指先
-                            landmarkSpheres[index].material.color.setHex(0xffff00);
-                            landmarkSpheres[index].material.emissive.setHex(0xffff00);
+                            sphere.material.color.setHex(0xffff00);
+                            sphere.material.emissive.setHex(0xffff00);
                         } else {
                             // その他
-                            landmarkSpheres[index].material.color.setHex(0x00ff00);
-                            landmarkSpheres[index].material.emissive.setHex(0x00ff00);
+                            sphere.material.color.setHex(0x00ff00);
+                            sphere.material.emissive.setHex(0x00ff00);
                         }
                     });
 
@@ -625,10 +679,17 @@
                 );
 
                 const wasPinching = isPinching;
-                isPinching = pinchDistance < 0.05;
+                if (wasPinching) {
+                    isPinching = pinchDistance < PINCH_OFF;
+                } else {
+                    isPinching = pinchDistance < PINCH_ON;
+                }
 
-                // オブジェクトをつかむ
-                if (isPinching && !wasPinching && !grabbedObject) {
+                // オブジェクトをつかむ（離した直後は抑制）
+                if (
+                    isPinching && !wasPinching && !grabbedObject &&
+                    (performance.now() - lastReleaseTime > GRAB_COOLDOWN_MS)
+                ) {
                     // 最も近いオブジェクトを探す
                     let closestObject = null;
                     let closestDistance = Infinity;
@@ -639,8 +700,9 @@
                             obj.body.position.y,
                             obj.body.position.z
                         );
-                        const distance = handPosition.distanceTo(objPos);
-                        if (distance < closestDistance && distance < 2) {
+                        const refPos = filteredHandPosition || handPosition;
+                        const distance = refPos.distanceTo(objPos);
+                        if (distance < closestDistance && distance < GRAB_DISTANCE) {
                             closestDistance = distance;
                             closestObject = obj;
                         }
@@ -655,11 +717,33 @@
                     }
                 }
 
-                // オブジェクトを持ち上げる
+                // オブジェクトを持ち上げる（手位置へ素早く追従、遅れを抑制）
                 if (grabbedObject && isPinching) {
-                    grabbedObject.body.position.set(handPosition.x, handPosition.y, handPosition.z);
+                    // 掴み中は生の手位置を優先して追従（フィルタ遅延を回避）
+                    const target = handPosition;
+                    const bx = grabbedObject.body.position.x;
+                    const by = grabbedObject.body.position.y;
+                    const bz = grabbedObject.body.position.z;
+                    const dx = target.x - bx;
+                    const dy = target.y - by;
+                    const dz = target.z - bz;
+                    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+
+                    if (dist > SNAP_DISTANCE) {
+                        // 大きく外れたら即スナップして遅れを解消
+                        grabbedObject.body.position.set(target.x, target.y, target.z);
+                    } else {
+                        // 距離に応じて追従係数を上げる
+                        const t = dist / SNAP_DISTANCE;
+                        const lerpK = THREE.MathUtils.lerp(FOLLOW_LERP_NEAR, FOLLOW_LERP_FAR, t);
+                        grabbedObject.body.position.x += dx * lerpK;
+                        grabbedObject.body.position.y += dy * lerpK;
+                        grabbedObject.body.position.z += dz * lerpK;
+                    }
+
                     grabbedObject.body.velocity.set(0, 0, 0);
-                    grabbedObject.body.angularVelocity.set(0, 0, 0);
+                    // 回転はゆっくり減衰
+                    grabbedObject.body.angularVelocity.scale(0.6, grabbedObject.body.angularVelocity);
                 }
 
                 // オブジェクトを放す
@@ -668,29 +752,48 @@
                     grabbedObject.body.mass = grabbedObject.originalMass || 1;
                     grabbedObject.body.updateMassProperties();
                     
-                    // 速度と加速度を組み合わせて投げる力を計算
-                    // 係数を小さくして投げる力を抑える
-                    const throwVelocity = new THREE.Vector3(
-                        handVelocity.x + handAcceleration.x * 0.008,
-                        handVelocity.y + handAcceleration.y * 0.008,
-                        handVelocity.z + handAcceleration.z * 0.008
-                    );
+                    // 平滑化した手速度の大きさで「落とす/投げる」を分岐
+                    const speedNow = filteredHandVelocity.length();
+
+                    // オブジェクトの代表半径（オフセット量に使用）
+                    let radius = 0.5;
+                    const geom = grabbedObject.mesh.geometry;
+                    if (geom && !geom.boundingSphere) geom.computeBoundingSphere();
+                    if (geom && geom.boundingSphere) radius = geom.boundingSphere.radius;
+
+                    if (speedNow < DROP_SPEED_THRESHOLD) {
+                        // ドロップ: 横方向の速度を与えず、真下に自然落下
+                        const downOffset = radius * 0.4 + 0.05; // 少し下に離して指と分離
+                        grabbedObject.body.position.y -= downOffset;
+                        grabbedObject.body.velocity.set(0, 0, 0);
+                        grabbedObject.body.angularVelocity.set(0, 0, 0);
+                    } else {
+                        // 投げ: 速度上限と係数で自然な投擲に
+                        const throwVelocity = filteredHandVelocity.clone();
+                        const maxThrow = 12.0;
+                        if (speedNow > maxThrow) throwVelocity.multiplyScalar(maxThrow / speedNow);
+                        throwVelocity.multiplyScalar(0.6);
+
+                        // 手の進行方向へ少し離して指に引っかからないように
+                        const dir = throwVelocity.clone().normalize();
+                        const offset = radius * 0.6 + 0.1;
+                        grabbedObject.body.position.x += dir.x * offset;
+                        grabbedObject.body.position.y += dir.y * offset;
+                        grabbedObject.body.position.z += dir.z * offset;
+                        grabbedObject.body.velocity.set(throwVelocity.x, throwVelocity.y, throwVelocity.z);
+
+                        // 回転は控えめに付与（平滑加速度由来）
+                        const spinFactor = 0.03;
+                        grabbedObject.body.angularVelocity.set(
+                            filteredHandAcceleration.y * spinFactor,
+                            -filteredHandAcceleration.x * spinFactor,
+                            filteredHandAcceleration.z * spinFactor
+                        );
+                    }
                     
-                    // 速度係数を0.25→0.3に微調整（質量が大きくなったため）
-                    grabbedObject.body.velocity.set(
-                        throwVelocity.x * 0.3,
-                        throwVelocity.y * 0.3,
-                        throwVelocity.z * 0.3
-                    );
-                    
-                    // 回転も少し抑える
-                    const spinFactor = 0.05;
-                    grabbedObject.body.angularVelocity.set(
-                        handAcceleration.y * spinFactor,
-                        -handAcceleration.x * spinFactor,
-                        handAcceleration.z * spinFactor
-                    );
-                    
+                    // 掴み再開クールダウン
+                    lastReleaseTime = performance.now();
+
                     grabbedObject = null;
                 }
 
@@ -729,17 +832,27 @@
             const deltaTime = (currentTime - lastTime) / 1000;
             lastTime = currentTime;
 
-            // 物理シミュレーション更新
-            world.step(timeStep);
+            // 物理シミュレーション更新（可変dt対応、最大サブステップ3）
+            world.step(timeStep, deltaTime, 3);
 
-            // 物理ボディとメッシュを同期 & 落下したオブジェクトを削除
+            // 物理ボディとメッシュを同期 & フィールド外のオブジェクトを削除
             for (let i = physicsObjects.length - 1; i >= 0; i--) {
                 const obj = physicsObjects[i];
                 obj.mesh.position.copy(obj.body.position);
                 obj.mesh.quaternion.copy(obj.body.quaternion);
                 
-                // 地面より下に落ちたら削除（y < -10）
-                if (obj.body.position.y < -10) {
+                // フィールド境界判定
+                const bx = obj.body.position.x;
+                const by = obj.body.position.y;
+                const bz = obj.body.position.z;
+
+                const outOfBounds = (
+                    Math.abs(bx) > (FIELD_HALF_SIZE + FIELD_MARGIN) ||
+                    Math.abs(bz) > (FIELD_HALF_SIZE + FIELD_MARGIN) ||
+                    by < FIELD_MIN_Y || by > FIELD_MAX_Y
+                );
+
+                if (outOfBounds) {
                     scene.remove(obj.mesh);
                     world.removeBody(obj.body);
                     physicsObjects.splice(i, 1);
