@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オセロAI - ビーム探索の可視化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .board-cell {
+            width: 40px;
+            height: 40px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .board-cell:hover {
+            background-color: rgba(59, 130, 246, 0.2);
+        }
+        .disc {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+        .disc.black {
+            background: radial-gradient(circle at 30% 30%, #4a4a4a, #000);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .disc.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #e0e0e0);
+            box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .possible-move {
+            width: 10px;
+            height: 10px;
+            background: rgba(59, 130, 246, 0.6);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+            50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.2); }
+        }
+        .tree-node {
+            transition: all 0.5s ease;
+            cursor: pointer;
+        }
+        .tree-node.selected {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+        }
+        .tree-node.eliminated {
+            opacity: 0.3;
+            transform: scale(0.95);
+        }
+        .tree-edge {
+            transition: all 0.5s ease;
+        }
+        .tree-edge.active {
+            stroke-width: 3;
+            stroke: #3b82f6;
+        }
+        .mini-board {
+            display: grid;
+            grid-template-columns: repeat(8, 6px);
+            grid-template-rows: repeat(8, 6px);
+            gap: 1px;
+            background: #2a2a2a;
+            padding: 2px;
+            border-radius: 2px;
+        }
+        .mini-cell {
+            background: #4a7c59;
+        }
+        .mini-cell.black {
+            background: #000;
+        }
+        .mini-cell.white {
+            background: #fff;
+        }
+        .mini-cell.last-move {
+            background: #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-2 text-gray-800">オセロAI - ビーム探索の可視化</h1>
+        <p class="text-center text-gray-600 mb-8">AIがどのように最適な手を探索するかを観察してみましょう</p>
+        
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <!-- 左側: ゲーム盤面 -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">🎮 現在の盤面</h2>
+                
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-black"></div>
+                            <span class="font-bold">黒: <span id="blackCount">2</span></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-white border border-gray-300"></div>
+                            <span class="font-bold">白: <span id="whiteCount">2</span></span>
+                        </div>
+                    </div>
+                    <div class="text-center font-bold text-lg" id="currentTurn">黒の番</div>
+                </div>
+                
+                <div class="inline-block bg-green-700 p-4 rounded-lg">
+                    <div id="gameBoard" class="grid grid-cols-8 gap-0.5">
+                        <!-- ボードはJSで生成 -->
+                    </div>
+                </div>
+                
+                <div class="mt-4 space-y-2">
+                    <div class="bg-gray-100 p-3 rounded">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ゲームモード</label>
+                        <select id="gameMode" class="w-full border border-gray-300 rounded px-3 py-1">
+                            <option value="human-vs-ai">人間(黒) vs ルールベースAI(白)</option>
+                            <option value="ai-vs-ai">ビーム探索AI(黒) vs ルールベースAI(白)</option>
+                        </select>
+                    </div>
+                    <button id="aiMoveBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                        ビーム探索AIの手
+                    </button>
+                    <button id="autoPlayBtn" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded hidden">
+                        自動対戦開始
+                    </button>
+                    <button id="stopAutoBtn" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded hidden">
+                        自動対戦停止
+                    </button>
+                    <button id="resetBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                        ゲームをリセット
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 右側: 探索設定と説明 -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">⚙️ 探索設定</h2>
+                
+                <div class="space-y-4 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ビーム幅 (k)</label>
+                        <select id="beamWidth" class="w-full border border-gray-300 rounded px-4 py-2">
+                            <option value="1">1 (貪欲探索)</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">探索の深さ</label>
+                        <select id="searchDepth" class="w-full border border-gray-300 rounded px-4 py-2">
+                            <option value="1">1手先</option>
+                            <option value="2" selected>2手先</option>
+                            <option value="3">3手先</option>
+                            <option value="4">4手先</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                    <h3 class="font-bold text-blue-800 mb-2">📊 ビーム探索AI（黒）の評価関数</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>石の数</strong>: 自分の石が多いほど高評価</li>
+                        <li>• <strong>角の確保</strong>: 角を取ると+20点</li>
+                        <li>• <strong>辺の制御</strong>: 辺の石は+3〜11点</li>
+                        <li>• <strong>可動性</strong>: 相手の着手可能数を制限</li>
+                        <li>• <strong>位置評価</strong>: 盤面位置による重み付け</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+                    <h3 class="font-bold text-green-800 mb-2">🤖 ルールベースAI（白）の戦略</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>最優先</strong>: 角が取れるなら必ず取る（+1000点）</li>
+                        <li>• <strong>高優先</strong>: 辺を確保する（+100点）</li>
+                        <li>• <strong>回避</strong>: 角の隣（X,Cスクエア）は避ける（-50点）</li>
+                        <li>• <strong>基本戦略</strong>: より多くの石をひっくり返す</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <h3 class="font-bold text-yellow-800 mb-2">🎯 ビーム探索の利点</h3>
+                    <p class="text-sm text-gray-700">
+                        完全探索は計算量が膨大（毎ターン約10手×深さ）になりますが、
+                        ビーム探索では各深さで上位k個の候補のみを保持することで、
+                        効率的に有望な手順を探索できます。
+                    </p>
+                </div>
+                
+                <div id="searchStatus" class="mt-4 p-3 bg-gray-100 rounded text-center font-semibold text-gray-700">
+                    待機中...
+                </div>
+            </div>
+        </div>
+        
+        <!-- 探索木の可視化 -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">🌳 探索木</h2>
+            <div id="searchTreeContainer" class="relative bg-gray-50 rounded-lg p-8 min-h-[400px] overflow-x-auto">
+                <svg id="treeSvg" style="position: absolute; top: 0; left: 0; z-index: 1;"></svg>
+                <div id="treeNodes" style="position: relative; z-index: 2;"></div>
+                <div class="absolute top-4 left-4 text-sm text-gray-500">
+                    ※ 各ノードは盤面状態を表し、スコアが高いほど有利な局面です
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ゲームの状態管理
+        const EMPTY = 0;
+        const BLACK = 1;
+        const WHITE = 2;
+        
+        let board = [];
+        let currentPlayer = BLACK;
+        let searchTree = [];
+        let isSearching = false;
+        let gameMode = 'human-vs-ai'; // 'human-vs-ai', 'ai-vs-ai'
+        let autoPlayInterval = null;
+        
+        // DOM要素
+        const gameBoard = document.getElementById('gameBoard');
+        const blackCount = document.getElementById('blackCount');
+        const whiteCount = document.getElementById('whiteCount');
+        const currentTurn = document.getElementById('currentTurn');
+        const aiMoveBtn = document.getElementById('aiMoveBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const beamWidthSelect = document.getElementById('beamWidth');
+        const searchDepthSelect = document.getElementById('searchDepth');
+        const searchStatus = document.getElementById('searchStatus');
+        const treeContainer = document.getElementById('searchTreeContainer');
+        const treeSvg = document.getElementById('treeSvg');
+        const treeNodes = document.getElementById('treeNodes');
+        const gameModeSelect = document.getElementById('gameMode');
+        const autoPlayBtn = document.getElementById('autoPlayBtn');
+        const stopAutoBtn = document.getElementById('stopAutoBtn');
+        
+        // 初期化
+        function initBoard() {
+            // 自動対戦を停止
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+            
+            board = Array(8).fill(null).map(() => Array(8).fill(EMPTY));
+            board[3][3] = WHITE;
+            board[3][4] = BLACK;
+            board[4][3] = BLACK;
+            board[4][4] = WHITE;
+            currentPlayer = BLACK;
+            renderBoard();
+            updateScore();
+            searchTree = [];
+            clearSearchTree();
+            
+            // UIをリセット
+            if (gameMode === 'ai-vs-ai') {
+                stopAutoBtn.style.display = 'none';
+                autoPlayBtn.style.display = 'block';
+            }
+        }
+        
+        // 盤面の描画
+        function renderBoard() {
+            gameBoard.innerHTML = '';
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'board-cell bg-green-600 border border-green-800';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    
+                    if (board[row][col] === BLACK) {
+                        const disc = document.createElement('div');
+                        disc.className = 'disc black';
+                        cell.appendChild(disc);
+                    } else if (board[row][col] === WHITE) {
+                        const disc = document.createElement('div');
+                        disc.className = 'disc white';
+                        cell.appendChild(disc);
+                    }
+                    
+                    // 可能な手を表示（人間が操作できる場合のみクリック可能）
+                    if (isValidMove(row, col, currentPlayer)) {
+                        const hint = document.createElement('div');
+                        hint.className = 'possible-move';
+                        cell.appendChild(hint);
+                        
+                        // 人間の番（黒）かつhuman-vs-aiモードの場合のみクリック可能
+                        if (gameMode === 'human-vs-ai' && currentPlayer === BLACK && !isSearching) {
+                            cell.onclick = () => makeMove(row, col);
+                            cell.style.cursor = 'pointer';
+                        } else {
+                            cell.style.cursor = 'default';
+                        }
+                    }
+                    
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+        
+        // 有効な手かチェック
+        function isValidMove(row, col, player) {
+            if (board[row][col] !== EMPTY) return false;
+            
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            for (const [dr, dc] of directions) {
+                if (checkDirection(row, col, dr, dc, player)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // 特定方向のチェック
+        function checkDirection(row, col, dr, dc, player) {
+            const opponent = player === BLACK ? WHITE : BLACK;
+            let r = row + dr;
+            let c = col + dc;
+            let hasOpponent = false;
+            
+            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                if (board[r][c] === EMPTY) return false;
+                if (board[r][c] === opponent) {
+                    hasOpponent = true;
+                } else if (board[r][c] === player) {
+                    return hasOpponent;
+                }
+                r += dr;
+                c += dc;
+            }
+            return false;
+        }
+        
+        // 石をひっくり返す
+        function flipDiscs(row, col, player) {
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            const toFlip = [];
+            
+            for (const [dr, dc] of directions) {
+                const discs = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (board[r][c] === EMPTY) break;
+                    if (board[r][c] === (player === BLACK ? WHITE : BLACK)) {
+                        discs.push([r, c]);
+                    } else if (board[r][c] === player) {
+                        toFlip.push(...discs);
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+            
+            toFlip.forEach(([r, c]) => {
+                board[r][c] = player;
+            });
+        }
+        
+        // 手を打つ
+        async function makeMove(row, col, isAiMove = false) {
+            if (isSearching && !isAiMove) return;
+            if (!isValidMove(row, col, currentPlayer)) return;
+            
+            board[row][col] = currentPlayer;
+            flipDiscs(row, col, currentPlayer);
+            currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
+            
+            renderBoard();
+            updateScore();
+            updateTurnDisplay();
+            
+            // ゲームモードに応じて次の手を自動実行
+            if (gameMode === 'human-vs-ai' && currentPlayer === WHITE && !isAiMove) {
+                // 人間が打った後、ルールベースAIが白を打つ
+                await sleep(500);
+                await makeRuleBasedMove();
+            } else if (gameMode === 'ai-vs-ai' && !isAiMove && autoPlayInterval) {
+                // AI対AI自動対戦中
+                await sleep(1000);
+                if (currentPlayer === BLACK) {
+                    // ビーム探索AIの番
+                    await performBeamSearch(true);
+                } else {
+                    // ルールベースAIの番
+                    await makeRuleBasedMove();
+                }
+            }
+        }
+        
+        // ルールベースAIの手
+        async function makeRuleBasedMove() {
+            const moves = getAllValidMoves(board, WHITE);
+            if (moves.length === 0) {
+                // パス
+                currentPlayer = BLACK;
+                updateTurnDisplay();
+                return;
+            }
+            
+            searchStatus.textContent = 'ルールベースAIが考え中...';
+            
+            // 評価基準：
+            // 1. 角が取れるなら最優先
+            // 2. 辺が取れるなら次に優先
+            // 3. 角の隣（X,C squares）は避ける
+            // 4. それ以外は取れる石の数で評価
+            
+            const corners = [[0,0], [0,7], [7,0], [7,7]];
+            const edges = [];
+            for (let i = 2; i <= 5; i++) {
+                edges.push([0, i], [7, i], [i, 0], [i, 7]);
+            }
+            const badSquares = [[0,1], [1,0], [1,1], 
+                                [0,6], [1,6], [1,7],
+                                [6,0], [6,1], [7,1],
+                                [6,6], [6,7], [7,6]];
+            
+            let bestMove = null;
+            let bestPriority = -1000;
+            
+            for (const [row, col] of moves) {
+                let priority = 0;
+                
+                // 角のチェック
+                if (corners.some(([r, c]) => r === row && c === col)) {
+                    priority = 1000;
+                }
+                // 辺のチェック
+                else if (edges.some(([r, c]) => r === row && c === col)) {
+                    priority = 100;
+                }
+                // 悪い位置のチェック
+                else if (badSquares.some(([r, c]) => r === row && c === col)) {
+                    priority = -50;
+                }
+                
+                // ひっくり返せる石の数を計算
+                const testBoard = makeVirtualMove(board, row, col, WHITE);
+                let flipped = 0;
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if (board[r][c] !== testBoard[r][c]) {
+                            flipped++;
+                        }
+                    }
+                }
+                priority += flipped * 10;
+                
+                if (priority > bestPriority) {
+                    bestPriority = priority;
+                    bestMove = [row, col];
+                }
+            }
+            
+            if (bestMove) {
+                await sleep(500);
+                searchStatus.textContent = `ルールベースAI: (${bestMove[0]}, ${bestMove[1]})`;
+                await makeMove(bestMove[0], bestMove[1], true);
+            }
+            
+            searchStatus.textContent = '待機中...';
+        }
+        
+        // スコア更新
+        function updateScore() {
+            let black = 0;
+            let white = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === BLACK) black++;
+                    else if (board[row][col] === WHITE) white++;
+                }
+            }
+            blackCount.textContent = black;
+            whiteCount.textContent = white;
+        }
+        
+        // ターン表示更新
+        function updateTurnDisplay() {
+            currentTurn.textContent = currentPlayer === BLACK ? '黒の番' : '白の番';
+        }
+        
+        // 盤面の評価関数
+        function evaluateBoard(boardState, player) {
+            let score = 0;
+            const opponent = player === BLACK ? WHITE : BLACK;
+            
+            // 石の数
+            let myDiscs = 0;
+            let oppDiscs = 0;
+            
+            // 位置の重み付け
+            const weights = [
+                [20, -3, 11, 8, 8, 11, -3, 20],
+                [-3, -7, -4, 1, 1, -4, -7, -3],
+                [11, -4, 2, 2, 2, 2, -4, 11],
+                [8, 1, 2, -3, -3, 2, 1, 8],
+                [8, 1, 2, -3, -3, 2, 1, 8],
+                [11, -4, 2, 2, 2, 2, -4, 11],
+                [-3, -7, -4, 1, 1, -4, -7, -3],
+                [20, -3, 11, 8, 8, 11, -3, 20]
+            ];
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (boardState[row][col] === player) {
+                        myDiscs++;
+                        score += weights[row][col];
+                    } else if (boardState[row][col] === opponent) {
+                        oppDiscs++;
+                        score -= weights[row][col];
+                    }
+                }
+            }
+            
+            // 石数の差
+            score += (myDiscs - oppDiscs) * 2;
+            
+            // 可動性（相手の着手可能数を減らす）
+            const myMoves = getAllValidMoves(boardState, player).length;
+            const oppMoves = getAllValidMoves(boardState, opponent).length;
+            score += (myMoves - oppMoves) * 5;
+            
+            return score;
+        }
+        
+        // すべての有効な手を取得
+        function getAllValidMoves(boardState, player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (isValidMoveOnBoard(boardState, row, col, player)) {
+                        moves.push([row, col]);
+                    }
+                }
+            }
+            return moves;
+        }
+        
+        // 特定の盤面での有効手チェック
+        function isValidMoveOnBoard(boardState, row, col, player) {
+            if (boardState[row][col] !== EMPTY) return false;
+            
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            for (const [dr, dc] of directions) {
+                if (checkDirectionOnBoard(boardState, row, col, dr, dc, player)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // 特定盤面での方向チェック
+        function checkDirectionOnBoard(boardState, row, col, dr, dc, player) {
+            const opponent = player === BLACK ? WHITE : BLACK;
+            let r = row + dr;
+            let c = col + dc;
+            let hasOpponent = false;
+            
+            while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                if (boardState[r][c] === EMPTY) return false;
+                if (boardState[r][c] === opponent) {
+                    hasOpponent = true;
+                } else if (boardState[r][c] === player) {
+                    return hasOpponent;
+                }
+                r += dr;
+                c += dc;
+            }
+            return false;
+        }
+        
+        // 盤面のコピー
+        function copyBoard(boardState) {
+            return boardState.map(row => [...row]);
+        }
+        
+        // 仮想的に手を打つ
+        function makeVirtualMove(boardState, row, col, player) {
+            const newBoard = copyBoard(boardState);
+            newBoard[row][col] = player;
+            
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            
+            for (const [dr, dc] of directions) {
+                const toFlip = [];
+                let r = row + dr;
+                let c = col + dc;
+                
+                while (r >= 0 && r < 8 && c >= 0 && c < 8) {
+                    if (newBoard[r][c] === EMPTY) break;
+                    if (newBoard[r][c] === (player === BLACK ? WHITE : BLACK)) {
+                        toFlip.push([r, c]);
+                    } else if (newBoard[r][c] === player) {
+                        toFlip.forEach(([fr, fc]) => {
+                            newBoard[fr][fc] = player;
+                        });
+                        break;
+                    }
+                    r += dr;
+                    c += dc;
+                }
+            }
+            
+            return newBoard;
+        }
+        
+        // 探索ノードクラス
+        class SearchNode {
+            constructor(boardState, move, score, depth, player, parent = null) {
+                this.boardState = boardState;
+                this.move = move;
+                this.score = score;
+                this.depth = depth;
+                this.player = player;
+                this.parent = parent;
+                this.children = [];
+                this.selected = false;
+                this.eliminated = false;
+            }
+        }
+        
+        // ビーム探索の実行
+        async function performBeamSearch(autoPlay = false) {
+            if (isSearching) return;
+            isSearching = true;
+            aiMoveBtn.disabled = true;
+            
+            const beamWidth = parseInt(beamWidthSelect.value);
+            const maxDepth = parseInt(searchDepthSelect.value);
+            
+            searchTree = [];
+            clearSearchTree();
+            
+            // ルートノード（現在の盤面）
+            const root = new SearchNode(
+                copyBoard(board),
+                null,
+                evaluateBoard(board, currentPlayer),
+                0,
+                currentPlayer
+            );
+            root.selected = true;
+            searchTree.push([root]);
+            
+            renderSearchTree();
+            
+            for (let depth = 1; depth <= maxDepth; depth++) {
+                searchStatus.textContent = `深さ ${depth} を探索中...`;
+                await sleep(autoPlay ? 500 : 1000);
+                
+                const currentLevel = searchTree[depth - 1];
+                const selectedNodes = currentLevel.filter(n => n.selected);
+                const nextLevel = [];
+                
+                for (const node of selectedNodes) {
+                    const nextPlayer = depth % 2 === 1 ? node.player : (node.player === BLACK ? WHITE : BLACK);
+                    const moves = getAllValidMoves(node.boardState, nextPlayer);
+                    
+                    for (const [row, col] of moves) {
+                        const newBoard = makeVirtualMove(node.boardState, row, col, nextPlayer);
+                        const score = evaluateBoard(newBoard, currentPlayer);
+                        
+                        const newNode = new SearchNode(
+                            newBoard,
+                            [row, col],
+                            score,
+                            depth,
+                            nextPlayer,
+                            node
+                        );
+                        
+                        node.children.push(newNode);
+                        nextLevel.push(newNode);
+                    }
+                }
+                
+                if (nextLevel.length === 0) break;
+                
+                // スコアでソートして上位k個を選択
+                nextLevel.sort((a, b) => {
+                    // 自分のターンは最大化、相手のターンは最小化
+                    if (depth % 2 === 1) {
+                        return b.score - a.score;
+                    } else {
+                        return a.score - b.score;
+                    }
+                });
+                
+                for (let i = 0; i < Math.min(beamWidth, nextLevel.length); i++) {
+                    nextLevel[i].selected = true;
+                }
+                for (let i = beamWidth; i < nextLevel.length; i++) {
+                    nextLevel[i].eliminated = true;
+                }
+                
+                searchTree.push(nextLevel);
+                renderSearchTree();
+                await sleep(autoPlay ? 750 : 1500);
+            }
+            
+            // 最良の手を選択
+            const firstLevel = searchTree[1];
+            if (firstLevel) {
+                const bestMove = firstLevel.filter(n => n.selected)
+                    .sort((a, b) => b.score - a.score)[0];
+                
+                if (bestMove && bestMove.move) {
+                    searchStatus.textContent = `最良の手: (${bestMove.move[0]}, ${bestMove.move[1]}) スコア: ${bestMove.score}`;
+                    await sleep(autoPlay ? 500 : 1000);
+                    
+                    // 実際に手を打つ
+                    await makeMove(bestMove.move[0], bestMove.move[1], true);
+                }
+            }
+            
+            isSearching = false;
+            aiMoveBtn.disabled = false;
+        }
+        
+        // 探索木の描画
+        function renderSearchTree() {
+            treeNodes.innerHTML = '';
+            treeSvg.innerHTML = '';
+            
+            if (searchTree.length === 0) return;
+            
+            const nodeWidth = 120;
+            const nodeHeight = 100;
+            const levelGap = 180;
+            const nodeGap = 10;
+            
+            let maxWidth = 0;
+            let maxHeight = 0;
+            
+            // ノードの位置計算と作成
+            searchTree.forEach((level, levelIndex) => {
+                const levelY = 50 + levelIndex * levelGap;
+                const totalWidth = level.length * (nodeWidth + nodeGap) - nodeGap;
+                const startX = Math.max(50, (1200 - totalWidth) / 2);
+                
+                level.forEach((node, nodeIndex) => {
+                    const x = startX + nodeIndex * (nodeWidth + nodeGap);
+                    const y = levelY;
+                    
+                    node.x = x;
+                    node.y = y;
+                    
+                    maxWidth = Math.max(maxWidth, x + nodeWidth + 50);
+                    maxHeight = Math.max(maxHeight, y + nodeHeight + 50);
+                    
+                    // ノード要素の作成
+                    const nodeDiv = document.createElement('div');
+                    nodeDiv.className = `tree-node absolute rounded-lg p-2 border-2 ${
+                        node.selected ? 'bg-blue-100 border-blue-500' : 
+                        node.eliminated ? 'bg-gray-200 border-gray-400' : 
+                        'bg-white border-gray-300'
+                    }`;
+                    nodeDiv.style.left = x + 'px';
+                    nodeDiv.style.top = y + 'px';
+                    nodeDiv.style.width = nodeWidth + 'px';
+                    
+                    // ミニ盤面の作成
+                    const miniBoard = document.createElement('div');
+                    miniBoard.className = 'mini-board mb-1';
+                    
+                    for (let r = 0; r < 8; r++) {
+                        for (let c = 0; c < 8; c++) {
+                            const cell = document.createElement('div');
+                            cell.className = 'mini-cell';
+                            
+                            if (node.boardState[r][c] === BLACK) {
+                                cell.classList.add('black');
+                            } else if (node.boardState[r][c] === WHITE) {
+                                cell.classList.add('white');
+                            }
+                            
+                            // 最後の手をハイライト
+                            if (node.move && node.move[0] === r && node.move[1] === c) {
+                                cell.classList.add('last-move');
+                            }
+                            
+                            miniBoard.appendChild(cell);
+                        }
+                    }
+                    
+                    nodeDiv.appendChild(miniBoard);
+                    
+                    // スコア表示
+                    const scoreDiv = document.createElement('div');
+                    scoreDiv.className = 'text-xs text-center font-bold';
+                    scoreDiv.textContent = `スコア: ${node.score}`;
+                    nodeDiv.appendChild(scoreDiv);
+                    
+                    // 手の情報
+                    if (node.move) {
+                        const moveDiv = document.createElement('div');
+                        moveDiv.className = 'text-xs text-center text-gray-600';
+                        moveDiv.textContent = `(${node.move[0]}, ${node.move[1]})`;
+                        nodeDiv.appendChild(moveDiv);
+                    }
+                    
+                    if (node.selected) {
+                        nodeDiv.classList.add('selected');
+                    }
+                    if (node.eliminated) {
+                        nodeDiv.classList.add('eliminated');
+                    }
+                    
+                    treeNodes.appendChild(nodeDiv);
+                });
+            });
+            
+            // SVGのサイズ設定
+            treeSvg.setAttribute('width', maxWidth);
+            treeSvg.setAttribute('height', maxHeight);
+            treeSvg.style.width = maxWidth + 'px';
+            treeSvg.style.height = maxHeight + 'px';
+            treeContainer.style.minWidth = maxWidth + 'px';
+            treeContainer.style.minHeight = maxHeight + 'px';
+            
+            // エッジの描画
+            searchTree.forEach((level, levelIndex) => {
+                if (levelIndex === 0) return;
+                
+                level.forEach(node => {
+                    if (node.parent) {
+                        const startX = node.parent.x + nodeWidth;
+                        const startY = node.parent.y + 50;
+                        const endX = node.x;
+                        const endY = node.y + 50;
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const midX = (startX + endX) / 2;
+                        
+                        const d = `M ${startX},${startY} C ${midX},${startY} ${midX},${endY} ${endX},${endY}`;
+                        
+                        path.setAttribute('d', d);
+                        path.setAttribute('stroke', node.selected ? '#3b82f6' : '#d1d5db');
+                        path.setAttribute('stroke-width', node.selected ? '2' : '1');
+                        path.setAttribute('fill', 'none');
+                        path.classList.add('tree-edge');
+                        
+                        if (node.selected) {
+                            path.classList.add('active');
+                        }
+                        
+                        treeSvg.appendChild(path);
+                    }
+                });
+            });
+        }
+        
+        // 探索木をクリア
+        function clearSearchTree() {
+            treeNodes.innerHTML = '';
+            treeSvg.innerHTML = '';
+            searchStatus.textContent = '待機中...';
+        }
+        
+        // スリープ関数
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+        
+        // イベントリスナー
+        aiMoveBtn.addEventListener('click', () => performBeamSearch(false));
+        resetBtn.addEventListener('click', initBoard);
+        
+        gameModeSelect.addEventListener('change', (e) => {
+            gameMode = e.target.value;
+            if (gameMode === 'ai-vs-ai') {
+                aiMoveBtn.style.display = 'none';
+                autoPlayBtn.style.display = 'block';
+                autoPlayBtn.classList.remove('hidden');
+            } else {
+                aiMoveBtn.style.display = 'block';
+                autoPlayBtn.style.display = 'none';
+                stopAutoBtn.style.display = 'none';
+                autoPlayBtn.classList.add('hidden');
+                stopAutoBtn.classList.add('hidden');
+                if (autoPlayInterval) {
+                    clearInterval(autoPlayInterval);
+                    autoPlayInterval = null;
+                }
+            }
+            initBoard();
+        });
+        
+        autoPlayBtn.addEventListener('click', async () => {
+            autoPlayBtn.style.display = 'none';
+            stopAutoBtn.style.display = 'block';
+            stopAutoBtn.classList.remove('hidden');
+            
+            // 自動対戦開始
+            autoPlayInterval = setInterval(async () => {
+                const moves = getAllValidMoves(board, currentPlayer);
+                
+                if (moves.length === 0) {
+                    // パスチェック
+                    currentPlayer = currentPlayer === BLACK ? WHITE : BLACK;
+                    const nextMoves = getAllValidMoves(board, currentPlayer);
+                    if (nextMoves.length === 0) {
+                        // ゲーム終了
+                        clearInterval(autoPlayInterval);
+                        autoPlayInterval = null;
+                        searchStatus.textContent = 'ゲーム終了！';
+                        stopAutoBtn.style.display = 'none';
+                        autoPlayBtn.style.display = 'block';
+                        return;
+                    }
+                    updateTurnDisplay();
+                    return;
+                }
+                
+                if (currentPlayer === BLACK) {
+                    await performBeamSearch(true);
+                } else {
+                    await makeRuleBasedMove();
+                }
+            }, 2000);
+            
+            // 最初の手を即座に実行
+            if (currentPlayer === BLACK) {
+                await performBeamSearch(true);
+            } else {
+                await makeRuleBasedMove();
+            }
+        });
+        
+        stopAutoBtn.addEventListener('click', () => {
+            if (autoPlayInterval) {
+                clearInterval(autoPlayInterval);
+                autoPlayInterval = null;
+            }
+            stopAutoBtn.style.display = 'none';
+            autoPlayBtn.style.display = 'block';
+        });
+        
+        // 初期化
+        initBoard();
+    </script>
+</body>
+</html>

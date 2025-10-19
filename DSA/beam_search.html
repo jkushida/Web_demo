@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビーム探索の可視化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .node {
+            transition: all 0.5s ease;
+            z-index: 10;
+        }
+        .node.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+        }
+        .node.eliminated {
+            opacity: 0.3;
+            transform: scale(0.95);
+        }
+        .edge {
+            transition: all 0.5s ease;
+        }
+        .edge.active {
+            stroke-width: 3;
+            stroke: #3b82f6;
+        }
+        #canvas {
+            position: relative;
+        }
+        #svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        #nodes {
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-2 text-gray-800">ビーム探索の可視化</h1>
+        <p class="text-center text-gray-600 mb-8">テキスト生成におけるビーム探索の動作を見てみましょう</p>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">🔍 探索シナリオ</h2>
+            <p class="text-gray-700 mb-4">
+                このデモでは、<strong>「I」</strong>で始まる文を生成します。各ステップで次の単語の候補から選択していきます。
+            </p>
+            
+            <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <h3 class="font-bold text-blue-800 mb-2">🔹 ステップ1の候補</h3>
+                    <div class="text-sm space-y-1">
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">love</span> <span class="text-gray-600">(スコア: -0.5)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">like</span> <span class="text-gray-600">(スコア: -1.2)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">want</span> <span class="text-gray-600">(スコア: -1.5)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">need</span> <span class="text-gray-600">(スコア: -1.8)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">have</span> <span class="text-gray-600">(スコア: -2.0)</span></div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h3 class="font-bold text-green-800 mb-2">🔹 ステップ2の候補</h3>
+                    <div class="text-sm space-y-1">
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">you</span> <span class="text-gray-600">(スコア: -0.3)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">it</span> <span class="text-gray-600">(スコア: -0.8)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">cats</span> <span class="text-gray-600">(スコア: -1.0)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">dogs</span> <span class="text-gray-600">(スコア: -1.2)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">music</span> <span class="text-gray-600">(スコア: -1.5)</span></div>
+                    </div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <h3 class="font-bold text-purple-800 mb-2">🔹 ステップ3の候補</h3>
+                    <div class="text-sm space-y-1">
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">very</span> <span class="text-gray-600">(スコア: -0.4)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">so</span> <span class="text-gray-600">(スコア: -0.6)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">too</span> <span class="text-gray-600">(スコア: -0.9)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">a</span> <span class="text-gray-600">(スコア: -1.1)</span></div>
+                        <div><span class="font-mono bg-white px-2 py-1 rounded">the</span> <span class="text-gray-600">(スコア: -1.3)</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+                <p class="text-sm text-gray-700">
+                    <strong>💡 重要：</strong> スコアは<strong>対数確率</strong>を表しており、0に近いほど高確率です（例：-0.5 > -1.5）。
+                    実際の言語モデルでは、これらのスコアは単語の出現確率から計算されます。
+                    累積スコアは親ノードのスコア + 新しい単語のスコアで計算されます。
+                </p>
+            </div>
+            
+            <div class="bg-gradient-to-r from-blue-100 to-purple-100 p-4 rounded-lg">
+                <h3 class="font-bold text-gray-800 mb-2">🎯 ビーム探索の動作</h3>
+                <ol class="list-decimal list-inside space-y-2 text-sm text-gray-700">
+                    <li>各ステップで、<strong>選択されたすべてのノード</strong>から5個の候補を生成</li>
+                    <li>ビーム幅が$k=2$の場合、最大$2 \times 5 = 10$個の候補が生成される</li>
+                    <li>すべての候補を<strong>累積スコア</strong>でランク付け</li>
+                    <li><strong>上位$k$個のみ</strong>を次のステップに進める（それ以外は灰色で除外）</li>
+                    <li>これを繰り返して最終的な文を生成</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <div class="flex flex-wrap gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ビーム幅 (k)</label>
+                    <select id="beamWidth" class="border border-gray-300 rounded px-4 py-2">
+                        <option value="1">1 (貪欲探索)</option>
+                        <option value="2" selected>2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">探索の深さ</label>
+                    <select id="depth" class="border border-gray-300 rounded px-4 py-2">
+                        <option value="2">2</option>
+                        <option value="3" selected>3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="startBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded">
+                        探索開始
+                    </button>
+                </div>
+                <div class="flex items-end">
+                    <button id="resetBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded">
+                        リセット
+                    </button>
+                </div>
+            </div>
+            
+            <div id="status" class="text-center text-lg font-semibold mb-4 text-blue-600"></div>
+            
+            <div id="canvas" class="bg-gray-50 rounded-lg p-8 min-h-[500px] overflow-x-auto">
+                <svg id="svg"></svg>
+                <div id="nodes"></div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">📚 詳細説明</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <h3 class="text-lg font-bold mb-3 text-gray-800">🎨 色の意味</h3>
+                    <ul class="space-y-2 text-gray-700">
+                        <li class="flex items-start">
+                            <span class="inline-block w-4 h-4 bg-blue-500 rounded mr-2 mt-1"></span>
+                            <div><strong>青色のノード</strong>: 選択された候補（ビーム内に残る）</div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="inline-block w-4 h-4 bg-gray-400 rounded mr-2 mt-1"></span>
+                            <div><strong>灰色のノード</strong>: 除外された候補（スコアが低い）</div>
+                        </li>
+                        <li class="flex items-start">
+                            <span class="inline-block w-4 h-4 bg-blue-500 rounded mr-2 mt-1"></span>
+                            <div><strong>太い青線</strong>: 選択されたパス</div>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-3 text-gray-800">⚙️ パラメータ</h3>
+                    <ul class="space-y-2 text-gray-700">
+                        <li><strong>ビーム幅 $k$</strong>: 各ステップで保持する候補の数</li>
+                        <li><strong>$k=1$</strong>: 貪欲探索（常に1つの最良パスのみ）</li>
+                        <li><strong>$k$が大きい</strong>: より多くの可能性を探索、計算コスト増</li>
+                        <li><strong>探索の深さ</strong>: 生成する単語の数</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <h3 class="text-lg font-bold mb-3 text-gray-800">🔍 具体例で理解する</h3>
+                <p class="text-gray-700 mb-2">
+                    <strong>ビーム幅 $k=2$ の場合：</strong>
+                </p>
+                <ul class="list-decimal list-inside space-y-2 text-gray-700 ml-4">
+                    <li>ステップ1: 「I love」(スコア: -0.5)と「I like」(スコア: -1.2)を選択</li>
+                    <li>ステップ2: 2つの候補 × 5つの次単語 = 10個の組み合わせを生成
+                        <ul class="list-disc list-inside ml-6 text-sm mt-1">
+                            <li>「I love you」(累積: -0.8)、「I love it」(スコア: -1.3)、...</li>
+                            <li>「I like you」(スコア: -1.5)、「I like it」(スコア: -2.0)、...</li>
+                        </ul>
+                    </li>
+                    <li>この10個から累積スコアが最も高い上位2個のみを選択</li>
+                    <li>選ばれなかった8個は灰色で表示され、探索から除外される</li>
+                </ul>
+            </div>
+            
+            <div class="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p class="text-sm text-gray-700">
+                    <strong>💡 ポイント：</strong> ビーム探索は、全探索（計算量が指数的に増える）と貪欲探索（局所最適解に陥りやすい）の
+                    バランスを取った手法です。機械翻訳や文章生成などで、品質と速度のトレードオフを調整するのに使われます。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const beamWidthSelect = document.getElementById('beamWidth');
+        const depthSelect = document.getElementById('depth');
+        const statusDiv = document.getElementById('status');
+        const nodesDiv = document.getElementById('nodes');
+        const svg = document.getElementById('svg');
+        const canvas = document.getElementById('canvas');
+
+        // サンプルの単語候補とスコア
+        const vocabulary = [
+            { word: "love", score: -0.5 },
+            { word: "like", score: -1.2 },
+            { word: "want", score: -1.5 },
+            { word: "need", score: -1.8 },
+            { word: "have", score: -2.0 }
+        ];
+
+        const vocabulary2 = [
+            { word: "you", score: -0.3 },
+            { word: "it", score: -0.8 },
+            { word: "cats", score: -1.0 },
+            { word: "dogs", score: -1.2 },
+            { word: "music", score: -1.5 }
+        ];
+
+        const vocabulary3 = [
+            { word: "very", score: -0.4 },
+            { word: "so", score: -0.6 },
+            { word: "too", score: -0.9 },
+            { word: "a", score: -1.1 },
+            { word: "the", score: -1.3 }
+        ];
+
+        const vocabulary4 = [
+            { word: "much", score: -0.5 },
+            { word: "well", score: -0.7 },
+            { word: "good", score: -0.8 },
+            { word: "nice", score: -1.0 },
+            { word: "happy", score: -1.2 }
+        ];
+
+        const vocabByLevel = [vocabulary, vocabulary2, vocabulary3, vocabulary4];
+
+        let searchTree = [];
+        let currentStep = 0;
+        const NODE_HEIGHT = 48; // Actual visible height of node with padding
+
+        class Node {
+            constructor(text, score, level, parent = null) {
+                this.text = text;
+                this.score = score;
+                this.level = level;
+                this.parent = parent;
+                this.children = [];
+                this.selected = false;
+                this.eliminated = false;
+                this.element = null;
+                this.x = 0;
+                this.y = 0;
+            }
+        }
+
+        function resetSearch() {
+            searchTree = [];
+            currentStep = 0;
+            nodesDiv.innerHTML = '';
+            svg.innerHTML = '';
+            statusDiv.textContent = '';
+            
+            // 初期ノード
+            const root = new Node("I", 0, 0);
+            root.selected = true;
+            searchTree.push([root]);
+            
+            renderTree();
+        }
+
+        function renderTree() {
+            nodesDiv.innerHTML = '';
+            svg.innerHTML = '';
+            
+            const levelWidth = 250;
+            const nodeHeight = 80;
+            const startX = 50;
+            const startY = 50;
+            const nodeWidth = 140;
+            // Actual node height including padding and text (measured from actual rendered element)
+            const nodeVerticalCenter = 24; // Half of actual node height (approximately 48px total)
+            
+            let maxWidth = 0;
+            let maxHeight = 0;
+            
+            // First, determine positions and create nodes
+            const nodePositions = [];
+            
+            searchTree.forEach((level, levelIndex) => {
+                const x = startX + levelIndex * levelWidth;
+                
+                level.forEach((node, nodeIndex) => {
+                    const y = startY + nodeIndex * nodeHeight;
+                    
+                    node.x = x;
+                    node.y = y;
+                    
+                    maxWidth = Math.max(maxWidth, x + nodeWidth + 50);
+                    maxHeight = Math.max(maxHeight, y + 50 + 50);
+                    
+                    nodePositions.push({
+                        node: node,
+                        x: x,
+                        y: y
+                    });
+                    
+                    // Create node element
+                    const nodeDiv = document.createElement('div');
+                    nodeDiv.className = `node absolute rounded-lg p-3 border-2 ${
+                        node.selected ? 'bg-blue-100 border-blue-500' : 
+                        node.eliminated ? 'bg-gray-200 border-gray-400' : 
+                        'bg-white border-gray-300'
+                    }`;
+                    nodeDiv.style.left = x + 'px';
+                    nodeDiv.style.top = y + 'px';
+                    nodeDiv.style.width = nodeWidth + 'px';
+                    
+                    nodeDiv.innerHTML = `
+                        <div class="font-bold text-sm">${node.text}</div>
+                        <div class="text-xs text-gray-600">スコア: ${node.score.toFixed(2)}</div>
+                    `;
+                    
+                    if (node.selected) {
+                        nodeDiv.classList.add('selected');
+                    }
+                    if (node.eliminated) {
+                        nodeDiv.classList.add('eliminated');
+                    }
+                    
+                    nodesDiv.appendChild(nodeDiv);
+                    node.element = nodeDiv;
+                });
+            });
+            
+            // Set canvas and SVG dimensions
+            canvas.style.minWidth = maxWidth + 'px';
+            canvas.style.minHeight = maxHeight + 'px';
+            svg.setAttribute('width', maxWidth);
+            svg.setAttribute('height', maxHeight);
+            svg.style.width = maxWidth + 'px';
+            svg.style.height = maxHeight + 'px';
+            
+            // Draw lines between connected nodes after a small delay to ensure elements are rendered
+            setTimeout(() => {
+                nodePositions.forEach(pos => {
+                    if (pos.node.parent) {
+                        const parent = pos.node.parent;
+                        
+                        // Line from parent's right edge center to child's left edge center
+                        const startX = parent.x + nodeWidth;
+                        const startY = parent.y + nodeVerticalCenter;
+                        const endX = pos.x;
+                        const endY = pos.y + nodeVerticalCenter;
+                        
+                        // Create a curved path
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const midX = (startX + endX) / 2;
+                        
+                        // Use a cubic bezier curve for smooth connection
+                        const d = `M ${startX},${startY} C ${midX},${startY} ${midX},${endY} ${endX},${endY}`;
+                        
+                        path.setAttribute('d', d);
+                        path.setAttribute('stroke', pos.node.selected ? '#3b82f6' : '#d1d5db');
+                        path.setAttribute('stroke-width', pos.node.selected ? '2' : '1');
+                        path.setAttribute('fill', 'none');
+                        path.classList.add('edge');
+                        
+                        if (pos.node.selected) {
+                            path.classList.add('active');
+                        }
+                        
+                        svg.appendChild(path);
+                    }
+                });
+            }, 10);
+        }
+
+        async function performBeamSearch() {
+            const beamWidth = parseInt(beamWidthSelect.value);
+            const maxDepth = parseInt(depthSelect.value);
+            
+            startBtn.disabled = true;
+            resetBtn.disabled = true;
+            
+            for (let depth = 1; depth <= maxDepth; depth++) {
+                statusDiv.textContent = `ステップ ${depth}: 候補を生成中...`;
+                await sleep(1000);
+                
+                const previousLevel = searchTree[searchTree.length - 1];
+                const selectedNodes = previousLevel.filter(n => n.selected);
+                
+                const newLevel = [];
+                
+                // Generate children from selected nodes
+                for (const parent of selectedNodes) {
+                    const vocab = vocabByLevel[depth - 1] || vocabulary4;
+                    vocab.forEach(item => {
+                        const newText = parent.text + " " + item.word;
+                        const newScore = parent.score + item.score + (Math.random() * 0.3 - 0.15);
+                        const newNode = new Node(newText, newScore, depth, parent);
+                        parent.children.push(newNode);
+                        newLevel.push(newNode);
+                    });
+                }
+                
+                searchTree.push(newLevel);
+                renderTree();
+                
+                await sleep(1000);
+                
+                statusDiv.textContent = `ステップ ${depth}: 上位${beamWidth}個を選択中...`;
+                
+                // Select top k nodes
+                newLevel.sort((a, b) => b.score - a.score);
+                
+                for (let i = 0; i < newLevel.length; i++) {
+                    if (i < beamWidth) {
+                        newLevel[i].selected = true;
+                    } else {
+                        newLevel[i].eliminated = true;
+                    }
+                }
+                
+                renderTree();
+                await sleep(1500);
+            }
+            
+            const bestNode = searchTree[searchTree.length - 1].filter(n => n.selected)[0];
+            statusDiv.textContent = `探索完了！最良の結果: "${bestNode.text}"`;
+            startBtn.disabled = false;
+            resetBtn.disabled = false;
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        startBtn.addEventListener('click', () => {
+            resetSearch();
+            performBeamSearch();
+        });
+
+        resetBtn.addEventListener('click', resetSearch);
+
+        // 初期表示
+        resetSearch();
+    </script>
+</body>
+</html>

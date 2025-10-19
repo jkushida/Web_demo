@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全探索 vs ビーム探索 - 計算量の可視化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .node {
+            transition: all 0.3s ease;
+        }
+        .node.explored {
+            animation: pulse 0.5s;
+        }
+        .node.pruned {
+            opacity: 0.3;
+        }
+        .node.best {
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.8);
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .tree-line {
+            stroke: #cbd5e1;
+            stroke-width: 1;
+            fill: none;
+        }
+        .tree-line.active {
+            stroke: #3b82f6;
+            stroke-width: 2;
+        }
+        .tree-line.best-path {
+            stroke: #22c55e;
+            stroke-width: 3;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-4xl font-bold text-center mb-2 text-gray-800">全探索 vs ビーム探索</h1>
+        <p class="text-center text-gray-600 mb-8">なぜビーム探索が必要なのか、計算量の爆発的増加を観察してみましょう</p>
+        
+        <div class="grid lg:grid-cols-2 gap-6 mb-6">
+            <!-- 左側: 全探索 -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">🌳 全探索（完全探索）</h2>
+                
+                <div class="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+                    <h3 class="font-bold text-red-800 mb-2">⚠️ 計算量の爆発</h3>
+                    <div class="text-sm text-gray-700">
+                        <p class="mb-2">分岐係数 b = <span id="branchingFactor">10</span>、深さ d = <span id="fullDepth">3</span> の場合：</p>
+                        <ul class="space-y-1">
+                            <li>• 深さ1: <strong>10</strong> ノード</li>
+                            <li>• 深さ2: <strong>100</strong> ノード</li>
+                            <li>• 深さ3: <strong>1,000</strong> ノード</li>
+                            <li id="fullNodes" class="text-red-600 font-bold">合計: 1,111 ノード探索</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                    <h3 class="font-bold text-blue-800 mb-2">✅ 利点</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>最適解を保証</strong>: 全ての可能性を探索</li>
+                        <li>• <strong>完全な情報</strong>: 見逃しがない</li>
+                        <li>• <strong>理論的に完璧</strong>: 数学的に最良の手</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-gray-400 p-4">
+                    <h3 class="font-bold text-gray-800 mb-2">❌ 欠点</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>計算時間</strong>: O(b^d) の指数関数的増加</li>
+                        <li>• <strong>メモリ使用量</strong>: 全ノードを保持</li>
+                        <li>• <strong>実用性</strong>: 深さ5以上は現実的に不可能</li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <div id="fullSearchTree" class="relative bg-gray-50 rounded-lg p-4 h-64 overflow-auto">
+                        <svg id="fullTreeSvg" class="absolute top-0 left-0"></svg>
+                        <div id="fullTreeNodes" class="relative"></div>
+                    </div>
+                    <div class="mt-2 text-center text-sm text-gray-600">
+                        探索ノード数: <span id="fullSearchCount" class="font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右側: ビーム探索 -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">🎯 ビーム探索</h2>
+                
+                <div class="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+                    <h3 class="font-bold text-green-800 mb-2">💡 効率的な探索</h3>
+                    <div class="text-sm text-gray-700">
+                        <p class="mb-2">ビーム幅 k = <span id="beamWidth">3</span>、深さ d = <span id="beamDepth">3</span> の場合：</p>
+                        <ul class="space-y-1">
+                            <li>• 深さ1: <strong>10</strong> → 上位3を選択</li>
+                            <li>• 深さ2: <strong>30</strong> → 上位3を選択</li>
+                            <li>• 深さ3: <strong>30</strong> → 上位3を選択</li>
+                            <li id="beamNodes" class="text-green-600 font-bold">合計: 70 ノード探索（93.7% 削減）</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+                    <h3 class="font-bold text-blue-800 mb-2">✅ 利点</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>高速</strong>: O(k×b×d) の線形的増加</li>
+                        <li>• <strong>実用的</strong>: 深い探索が可能</li>
+                        <li>• <strong>メモリ効率</strong>: k個のノードのみ保持</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gray-50 border-l-4 border-gray-400 p-4">
+                    <h3 class="font-bold text-gray-800 mb-2">⚠️ 欠点</h3>
+                    <ul class="text-sm text-gray-700 space-y-1">
+                        <li>• <strong>局所最適</strong>: 最適解を見逃す可能性</li>
+                        <li>• <strong>ビーム幅依存</strong>: kが小さいと精度低下</li>
+                        <li>• <strong>貪欲的</strong>: 早期の枝刈りリスク</li>
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <div id="beamSearchTree" class="relative bg-gray-50 rounded-lg p-4 h-64 overflow-auto">
+                        <svg id="beamTreeSvg" class="absolute top-0 left-0"></svg>
+                        <div id="beamTreeNodes" class="relative"></div>
+                    </div>
+                    <div class="mt-2 text-center text-sm text-gray-600">
+                        探索ノード数: <span id="beamSearchCount" class="font-bold">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- パラメータ調整 -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">⚙️ パラメータ設定</h2>
+            
+            <div class="grid md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">分岐係数 (各ノードの子数)</label>
+                    <input type="range" id="branchingSlider" min="2" max="15" value="10" class="w-full">
+                    <div class="text-center text-sm text-gray-600">値: <span id="branchingValue">10</span></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">探索の深さ</label>
+                    <input type="range" id="depthSlider" min="1" max="5" value="3" class="w-full">
+                    <div class="text-center text-sm text-gray-600">値: <span id="depthValue">3</span></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ビーム幅</label>
+                    <input type="range" id="beamSlider" min="1" max="10" value="3" class="w-full">
+                    <div class="text-center text-sm text-gray-600">値: <span id="beamValue">3</span></div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <button id="simulateBtn" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    探索シミュレーション実行
+                </button>
+                <button id="resetBtn" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                    リセット
+                </button>
+            </div>
+        </div>
+        
+        <!-- 比較グラフ -->
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">📊 計算量の比較</h2>
+            
+            <div class="grid lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-700">探索ノード数の増加</h3>
+                    <canvas id="complexityChart"></canvas>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-700">実際のゲーム（オセロ）での比較</h3>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                        <h4 class="font-bold text-yellow-800 mb-2">🎮 オセロの場合</h4>
+                        <ul class="text-sm text-gray-700 space-y-1">
+                            <li>• 平均分岐係数: <strong>約10手</strong></li>
+                            <li>• 深さ6手先まで読む場合:</li>
+                            <li class="ml-4">- 全探索: <strong>1,111,111</strong> ノード</li>
+                            <li class="ml-4">- ビーム探索(k=5): <strong>300</strong> ノード</li>
+                            <li class="ml-4 text-green-600 font-bold">→ 99.97% の削減！</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-4 bg-blue-50 border-l-4 border-blue-400 p-4">
+                        <h4 class="font-bold text-blue-800 mb-2">♟️ チェスの場合</h4>
+                        <ul class="text-sm text-gray-700 space-y-1">
+                            <li>• 平均分岐係数: <strong>約35手</strong></li>
+                            <li>• 深さ4手先まで読む場合:</li>
+                            <li class="ml-4">- 全探索: <strong>1,500,625</strong> ノード</li>
+                            <li class="ml-4">- ビーム探索(k=10): <strong>1,400</strong> ノード</li>
+                            <li class="ml-4 text-green-600 font-bold">→ 99.91% の削減！</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg">
+                <h3 class="font-bold text-gray-800 mb-2">💡 結論</h3>
+                <p class="text-sm text-gray-700">
+                    <strong>全探索は理論的には最適</strong>ですが、現実的な時間内で計算できません。
+                    <strong>ビーム探索は準最適解</strong>を高速に見つけることができ、実用的です。
+                    深さ10以上を探索する場合、全探索は宇宙の年齢よりも長い時間がかかることもありますが、
+                    ビーム探索なら数秒で完了します。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // パラメータ
+        let branchingFactor = 10;
+        let searchDepth = 3;
+        let beamWidth = 3;
+        let isSimulating = false;
+        
+        // DOM要素
+        const branchingSlider = document.getElementById('branchingSlider');
+        const depthSlider = document.getElementById('depthSlider');
+        const beamSlider = document.getElementById('beamSlider');
+        const branchingValue = document.getElementById('branchingValue');
+        const depthValue = document.getElementById('depthValue');
+        const beamValue = document.getElementById('beamValue');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        
+        // スライダーイベント
+        branchingSlider.addEventListener('input', (e) => {
+            branchingFactor = parseInt(e.target.value);
+            branchingValue.textContent = branchingFactor;
+            updateCalculations();
+        });
+        
+        depthSlider.addEventListener('input', (e) => {
+            searchDepth = parseInt(e.target.value);
+            depthValue.textContent = searchDepth;
+            updateCalculations();
+        });
+        
+        beamSlider.addEventListener('input', (e) => {
+            beamWidth = parseInt(e.target.value);
+            beamValue.textContent = beamWidth;
+            updateCalculations();
+        });
+        
+        // 計算量の更新
+        function updateCalculations() {
+            // 全探索のノード数計算
+            let fullNodes = 0;
+            let fullBreakdown = [];
+            for (let d = 1; d <= searchDepth; d++) {
+                const nodesAtDepth = Math.pow(branchingFactor, d);
+                fullNodes += nodesAtDepth;
+                fullBreakdown.push(`深さ${d}: <strong>${nodesAtDepth.toLocaleString()}</strong> ノード`);
+            }
+            
+            // ビーム探索のノード数計算
+            let beamNodes = 0;
+            let beamBreakdown = [];
+            for (let d = 1; d <= searchDepth; d++) {
+                const nodesAtDepth = d === 1 ? branchingFactor : beamWidth * branchingFactor;
+                beamNodes += nodesAtDepth;
+                if (d === 1) {
+                    beamBreakdown.push(`深さ${d}: <strong>${nodesAtDepth}</strong> → 上位${beamWidth}を選択`);
+                } else {
+                    beamBreakdown.push(`深さ${d}: <strong>${nodesAtDepth}</strong> → 上位${beamWidth}を選択`);
+                }
+            }
+            
+            const reduction = ((1 - beamNodes / fullNodes) * 100).toFixed(1);
+            
+            // UI更新
+            document.getElementById('branchingFactor').textContent = branchingFactor;
+            document.getElementById('fullDepth').textContent = searchDepth;
+            document.getElementById('beamWidth').textContent = beamWidth;
+            document.getElementById('beamDepth').textContent = searchDepth;
+            
+            // ノード数の詳細更新
+            const fullList = document.querySelector('.bg-red-50 ul');
+            fullList.innerHTML = fullBreakdown.join('</li><li>• ') + '</li><li id="fullNodes" class="text-red-600 font-bold">合計: ' + fullNodes.toLocaleString() + ' ノード探索</li>';
+            
+            const beamList = document.querySelector('.bg-green-50 ul');
+            beamList.innerHTML = beamBreakdown.join('</li><li>• ') + '</li><li id="beamNodes" class="text-green-600 font-bold">合計: ' + beamNodes.toLocaleString() + ' ノード探索（' + reduction + '% 削減）</li>';
+            
+            updateChart();
+        }
+        
+        // グラフの更新
+        let complexityChart = null;
+        
+        function updateChart() {
+            const ctx = document.getElementById('complexityChart').getContext('2d');
+            
+            const depths = Array.from({length: 10}, (_, i) => i + 1);
+            const fullSearchData = depths.map(d => {
+                let nodes = 0;
+                for (let i = 1; i <= d; i++) {
+                    nodes += Math.pow(branchingFactor, i);
+                }
+                return nodes;
+            });
+            
+            const beamSearchData = depths.map(d => {
+                let nodes = 0;
+                for (let i = 1; i <= d; i++) {
+                    nodes += i === 1 ? branchingFactor : beamWidth * branchingFactor;
+                }
+                return nodes;
+            });
+            
+            if (complexityChart) {
+                complexityChart.destroy();
+            }
+            
+            complexityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: depths,
+                    datasets: [{
+                        label: '全探索',
+                        data: fullSearchData,
+                        borderColor: 'rgb(239, 68, 68)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.1
+                    }, {
+                        label: 'ビーム探索',
+                        data: beamSearchData,
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '深さに対する探索ノード数'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '探索の深さ'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '探索ノード数'
+                            },
+                            type: 'logarithmic'
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 木構造の描画
+        function drawTree(containerId, svgId, nodesId, isBeamSearch) {
+            const container = document.getElementById(containerId);
+            const svg = document.getElementById(svgId);
+            const nodesDiv = document.getElementById(nodesId);
+            
+            // クリア
+            svg.innerHTML = '';
+            nodesDiv.innerHTML = '';
+            
+            const nodeSize = 20;
+            const levelGap = 50;
+            const nodeGap = 25;
+            
+            // ノードの作成
+            let nodeCount = 0;
+            const nodes = [];
+            
+            for (let depth = 0; depth <= Math.min(searchDepth, 4); depth++) {
+                const nodesAtDepth = depth === 0 ? 1 : 
+                    (isBeamSearch && depth > 1 ? Math.min(beamWidth, Math.pow(branchingFactor, depth)) : 
+                     Math.min(Math.pow(branchingFactor, depth), 100));
+                
+                const y = 20 + depth * levelGap;
+                const totalWidth = nodesAtDepth * nodeGap;
+                const startX = Math.max(10, (300 - totalWidth) / 2);
+                
+                for (let i = 0; i < nodesAtDepth; i++) {
+                    const x = startX + i * nodeGap;
+                    
+                    const nodeDiv = document.createElement('div');
+                    nodeDiv.className = 'node absolute rounded-full bg-blue-500';
+                    nodeDiv.style.width = nodeSize + 'px';
+                    nodeDiv.style.height = nodeSize + 'px';
+                    nodeDiv.style.left = x + 'px';
+                    nodeDiv.style.top = y + 'px';
+                    
+                    // ビーム探索で枝刈りされるノード
+                    if (isBeamSearch && depth > 0 && i >= beamWidth) {
+                        nodeDiv.classList.add('pruned');
+                        nodeDiv.classList.remove('bg-blue-500');
+                        nodeDiv.classList.add('bg-gray-300');
+                    } else {
+                        nodeCount++;
+                    }
+                    
+                    nodesDiv.appendChild(nodeDiv);
+                    nodes.push({x: x + nodeSize/2, y: y + nodeSize/2, depth: depth, pruned: isBeamSearch && depth > 0 && i >= beamWidth});
+                }
+            }
+            
+            // エッジの描画
+            nodes.forEach((node, idx) => {
+                if (node.depth > 0) {
+                    const parentIdx = Math.floor(idx / branchingFactor);
+                    if (parentIdx < nodes.length) {
+                        const parent = nodes[parentIdx];
+                        
+                        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                        line.setAttribute('x1', parent.x);
+                        line.setAttribute('y1', parent.y);
+                        line.setAttribute('x2', node.x);
+                        line.setAttribute('y2', node.y);
+                        line.classList.add('tree-line');
+                        
+                        if (node.pruned) {
+                            line.style.opacity = '0.3';
+                        }
+                        
+                        svg.appendChild(line);
+                    }
+                }
+            });
+            
+            // サイズ設定
+            svg.setAttribute('width', 320);
+            svg.setAttribute('height', 20 + (searchDepth + 1) * levelGap);
+            
+            // カウント更新
+            if (isBeamSearch) {
+                document.getElementById('beamSearchCount').textContent = nodeCount;
+            } else {
+                document.getElementById('fullSearchCount').textContent = nodeCount;
+            }
+        }
+        
+        // シミュレーション
+        async function simulate() {
+            if (isSimulating) return;
+            isSimulating = true;
+            simulateBtn.disabled = true;
+            
+            // 全探索の描画
+            drawTree('fullSearchTree', 'fullTreeSvg', 'fullTreeNodes', false);
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // ビーム探索の描画
+            drawTree('beamSearchTree', 'beamTreeSvg', 'beamTreeNodes', true);
+            
+            isSimulating = false;
+            simulateBtn.disabled = false;
+        }
+        
+        // イベントリスナー
+        simulateBtn.addEventListener('click', simulate);
+        resetBtn.addEventListener('click', () => {
+            branchingSlider.value = 10;
+            depthSlider.value = 3;
+            beamSlider.value = 3;
+            branchingFactor = 10;
+            searchDepth = 3;
+            beamWidth = 3;
+            branchingValue.textContent = 10;
+            depthValue.textContent = 3;
+            beamValue.textContent = 3;
+            updateCalculations();
+            simulate();
+        });
+        
+        // 初期化
+        updateCalculations();
+        simulate();
+    </script>
+</body>
+</html>

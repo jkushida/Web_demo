@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>感情の鏡 - Emotion Recognition Enhanced</title>
+    
+    <!-- MediaPipe CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    
+    <!-- Face-api.js for AI Emotion Recognition -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1400px;
+            width: 100%;
+        }
+
+        .video-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4/3;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: #000;
+        }
+
+        #inputVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            display: none;
+        }
+
+        #outputCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+
+        .video-controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .toggle-button {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .toggle-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .toggle-button.active {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: #fff;
+        }
+
+        .controls-section {
+            flex: 0 0 400px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status-message {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+
+        .status-message.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+        }
+
+        .status-message.loading {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        .emotion-display {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .current-emotion {
+            font-size: 72px;
+            margin-bottom: 10px;
+        }
+
+        .emotion-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .confidence {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .emotion-meters {
+            margin-bottom: 20px;
+        }
+
+        .emotion-meter {
+            margin-bottom: 15px;
+        }
+
+        .emotion-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .emotion-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .emotion-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+
+        .emotion-fill.happy {
+            background: linear-gradient(90deg, #FFD700, #FFA500);
+        }
+
+        .emotion-fill.sad {
+            background: linear-gradient(90deg, #4169E1, #1E90FF);
+        }
+
+        .emotion-fill.angry {
+            background: linear-gradient(90deg, #DC143C, #FF6347);
+        }
+
+        .emotion-fill.surprised {
+            background: linear-gradient(90deg, #FF69B4, #FFB6C1);
+        }
+
+        .emotion-fill.neutral {
+            background: linear-gradient(90deg, #708090, #A9A9A9);
+        }
+
+        .settings {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .debug-info {
+            margin-top: 20px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .debug-item {
+            margin: 5px 0;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="video-section">
+            <div class="video-container">
+                <video id="inputVideo" autoplay playsinline></video>
+                <canvas id="outputCanvas"></canvas>
+            </div>
+            <div class="video-controls">
+                <button class="toggle-button active" id="landmarksToggle" onclick="toggleLandmarks()">
+                    👁️ ランドマーク表示
+                </button>
+                <button class="toggle-button active" id="meshToggle" onclick="toggleMesh()">
+                    🔗 メッシュ表示
+                </button>
+                <button class="toggle-button" id="videoToggle" onclick="toggleVideo()">
+                    📹 ビデオ表示
+                </button>
+                <button class="toggle-button" id="pauseToggle" onclick="togglePause()">
+                    ⏸️ 一時停止
+                </button>
+            </div>
+        </div>
+
+        <div class="controls-section">
+            <h1>🎭 感情の鏡</h1>
+            <p class="subtitle">Face-api.js AI感情認識 + MediaPipe Face Mesh v2.0</p>
+
+            <div class="status-message" id="statusMessage">
+                🚀 システム初期化中... AI感情認識モデルを準備しています
+            </div>
+
+            <div class="emotion-display">
+                <div class="current-emotion pulse" id="currentEmoji">🎭</div>
+                <div class="emotion-name" id="currentEmotion">待機中</div>
+                <div class="confidence">信頼度: <span id="confidence">0</span>%</div>
+            </div>
+
+            <div class="emotion-meters">
+                <div class="emotion-meter">
+                    <div class="emotion-label">
+                        <span>😊 喜び</span>
+                        <span id="happy-value">0%</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill happy" id="happy-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="emotion-meter">
+                    <div class="emotion-label">
+                        <span>😢 悲しみ</span>
+                        <span id="sad-value">0%</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill sad" id="sad-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="emotion-meter">
+                    <div class="emotion-label">
+                        <span>😠 怒り</span>
+                        <span id="angry-value">0%</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill angry" id="angry-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="emotion-meter">
+                    <div class="emotion-label">
+                        <span>😲 驚き</span>
+                        <span id="surprised-value">0%</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill surprised" id="surprised-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="emotion-meter">
+                    <div class="emotion-label">
+                        <span>😐 中立</span>
+                        <span id="neutral-value">0%</span>
+                    </div>
+                    <div class="emotion-bar">
+                        <div class="emotion-fill neutral" id="neutral-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings">
+                <h3>⚙️ 設定</h3>
+                <div class="setting-group">
+                    <label class="setting-label">
+                        感度 (喜び): <span id="happySensitivity-value">50</span>%
+                    </label>
+                    <input type="range" class="slider" id="happySensitivity" 
+                           min="10" max="100" value="50" oninput="updateSensitivity('happy')">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">
+                        感度 (全体): <span id="overallSensitivity-value">50</span>%
+                    </label>
+                    <input type="range" class="slider" id="overallSensitivity" 
+                           min="10" max="100" value="50" oninput="updateSensitivity('overall')">
+                </div>
+            </div>
+
+            <div class="debug-info" id="debugInfo">
+                <div class="debug-item">📊 FPS: <span id="fps">0</span></div>
+                <div class="debug-item">👤 顔検出: <span id="faceDetected">なし</span></div>
+                <div class="debug-item">📍 ランドマーク: <span id="landmarkCount">0</span></div>
+                <div class="debug-item">😊 口角上昇値: <span id="smileValue">0.00</span></div>
+                <div class="debug-item">👄 口の開き: <span id="mouthOpen">0.00</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // グローバル変数
+        let videoElement = document.getElementById('inputVideo');
+        let canvasElement = document.getElementById('outputCanvas');
+        let canvasCtx = canvasElement.getContext('2d');
+        let camera = null;
+        let faceMesh = null;
+        let isRunning = false;
+        let isPaused = false;
+        let lastFrameTime = Date.now();
+        let frameCount = 0;
+        
+        // 表示設定
+        let showLandmarks = true;
+        let showMesh = true;
+        let showVideo = false;
+        
+        // 感度設定
+        let happySensitivity = 50;
+        let overallSensitivity = 50;
+        
+        // Face-api.js 変数（AI感情認識用）
+        let faceApiModelsLoaded = false;
+        let lastEmotionDetection = null;
+        let isDetectingEmotion = false;
+        
+        // 感情の絵文字と名前
+        const emotionEmojis = {
+            happy: '😊',
+            sad: '😢',
+            angry: '😠',
+            surprised: '😲',
+            neutral: '😐'
+        };
+        
+        const emotionNames = {
+            happy: '喜び',
+            sad: '悲しみ',
+            angry: '怒り',
+            surprised: '驚き',
+            neutral: '中立'
+        };
+        
+        // ランドマークインデックス（MediaPipe Face Mesh）
+        const LANDMARKS = {
+            // 口の周り
+            MOUTH_LEFT: 61,
+            MOUTH_RIGHT: 291,
+            MOUTH_TOP: 13,
+            MOUTH_BOTTOM: 14,
+            UPPER_LIP_TOP: 12,
+            LOWER_LIP_BOTTOM: 15,
+            MOUTH_CENTER: 13,
+            
+            // 口角
+            LEFT_MOUTH_CORNER: 61,
+            RIGHT_MOUTH_CORNER: 291,
+            
+            // 目
+            LEFT_EYE_TOP: 159,
+            LEFT_EYE_BOTTOM: 145,
+            RIGHT_EYE_TOP: 386,
+            RIGHT_EYE_BOTTOM: 374,
+            
+            // 眉
+            LEFT_EYEBROW_INNER: 70,
+            LEFT_EYEBROW_OUTER: 63,
+            RIGHT_EYEBROW_INNER: 107,
+            RIGHT_EYEBROW_OUTER: 55,
+            
+            // 頬
+            LEFT_CHEEK: 116,
+            RIGHT_CHEEK: 345
+        };
+        
+        // 自動起動
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM Content Loaded - 自動起動開始');
+            loadFaceApiModels(); // Face-api.jsモデルを読み込み
+            setTimeout(startDetection, 1000); // 1秒後に自動起動
+        });
+        
+        // Face-api.jsのモデルを読み込む
+        async function loadFaceApiModels() {
+            try {
+                updateStatus('🤖 AI感情認識モデル準備中... (初回は数秒かかります)', 'loading');
+                console.log('Face-api.js モデルの読み込みを開始...');
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model';
+                
+                // 感情認識に必要なモデルのみを読み込む
+                await Promise.all([
+                    faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                    faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+                ]);
+                
+                faceApiModelsLoaded = true;
+                console.log('Face-api.js モデルの読み込み完了！');
+                updateStatus('✅ AI感情認識モデル準備完了！', 'success');
+            } catch (error) {
+                console.error('Face-api.js モデルの読み込みエラー:', error);
+                faceApiModelsLoaded = false;
+                updateStatus('⚠️ AIモデル読み込み失敗 - ルールベース推定で動作します', 'error');
+            }
+        }
+        
+        function setupCanvas() {
+            canvasElement.width = 640;
+            canvasElement.height = 480;
+        }
+        
+        async function startDetection() {
+            try {
+                // AIモデルの準備を待つ
+                if (!faceApiModelsLoaded) {
+                    updateStatus('⏳ AI感情認識モデルの準備を待っています...', 'loading');
+                    // モデルが読み込まれるまで待機（最大10秒）
+                    let waitCount = 0;
+                    while (!faceApiModelsLoaded && waitCount < 50) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        waitCount++;
+                    }
+                    
+                    if (!faceApiModelsLoaded) {
+                        updateStatus('⚠️ AIモデル準備タイムアウト - ルールベースで起動します', 'error');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                
+                updateStatus('📹 カメラを起動中...', 'loading');
+                await setupCamera();
+                
+                updateStatus('🔄 MediaPipeを初期化中...', 'loading');
+                await setupFaceMesh();
+                
+                const modelStatus = faceApiModelsLoaded ? '🤖 AI感情認識' : '📊 ルールベース推定';
+                updateStatus(`✅ 感情認識を開始しました (${modelStatus})`, 'success');
+                isRunning = true;
+                
+            } catch (error) {
+                console.error('エラー:', error);
+                updateStatus('❌ エラー: ' + error.message, 'error');
+            }
+        }
+        
+        async function setupCamera() {
+            console.log('カメラセットアップ開始');
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 640,
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+                
+                videoElement.srcObject = stream;
+                videoElement.style.display = 'block';
+                
+                await new Promise((resolve) => {
+                    videoElement.onloadedmetadata = () => {
+                        console.log('カメラ準備完了');
+                        setupCanvas();
+                        resolve();
+                    };
+                });
+                
+            } catch (error) {
+                console.error('カメラエラー:', error);
+                throw new Error('カメラにアクセスできません');
+            }
+        }
+        
+        async function setupFaceMesh() {
+            console.log('MediaPipe FaceMesh初期化開始');
+            
+            faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+            
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            
+            faceMesh.onResults(onResults);
+            
+            camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    if (faceMesh && isRunning && !isPaused) {
+                        await faceMesh.send({image: videoElement});
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            
+            camera.start();
+            console.log('カメラストリーミング開始');
+        }
+        
+        async function onResults(results) {
+            // FPS計算
+            frameCount++;
+            const now = Date.now();
+            if (now - lastFrameTime > 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastFrameTime = now;
+            }
+            
+            // キャンバスクリア
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // ビデオフレーム描画
+            if (showVideo) {
+                canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            }
+            
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+                document.getElementById('faceDetected').textContent = 'あり';
+                document.getElementById('landmarkCount').textContent = landmarks.length;
+                
+                // メッシュ描画
+                if (showMesh) {
+                    drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, 
+                        {color: '#C0C0C070', lineWidth: 1});
+                    drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, 
+                        {color: '#E0E0E0', lineWidth: 2});
+                }
+                
+                // ランドマーク描画
+                if (showLandmarks) {
+                    // 重要なランドマークを強調表示
+                    drawImportantLandmarks(landmarks);
+                    
+                    // 口のランドマークを特別に表示
+                    drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, 
+                        {color: '#FF3030', lineWidth: 2});
+                }
+                
+                // AI感情推定
+                const emotions = await estimateEmotions(landmarks);
+                updateEmotionDisplay(emotions);
+                
+            } else {
+                document.getElementById('faceDetected').textContent = 'なし';
+                document.getElementById('landmarkCount').textContent = '0';
+            }
+            
+            canvasCtx.restore();
+        }
+        
+        function drawImportantLandmarks(landmarks) {
+            // 口角を赤で表示
+            canvasCtx.fillStyle = '#FF0000';
+            drawLandmark(landmarks[LANDMARKS.LEFT_MOUTH_CORNER], 5);
+            drawLandmark(landmarks[LANDMARKS.RIGHT_MOUTH_CORNER], 5);
+            
+            // 口の中心を青で表示
+            canvasCtx.fillStyle = '#0000FF';
+            drawLandmark(landmarks[LANDMARKS.MOUTH_TOP], 4);
+            drawLandmark(landmarks[LANDMARKS.MOUTH_BOTTOM], 4);
+            
+            // 目を緑で表示
+            canvasCtx.fillStyle = '#00FF00';
+            drawLandmark(landmarks[LANDMARKS.LEFT_EYE_TOP], 3);
+            drawLandmark(landmarks[LANDMARKS.LEFT_EYE_BOTTOM], 3);
+            drawLandmark(landmarks[LANDMARKS.RIGHT_EYE_TOP], 3);
+            drawLandmark(landmarks[LANDMARKS.RIGHT_EYE_BOTTOM], 3);
+            
+            // 眉を黄色で表示
+            canvasCtx.fillStyle = '#FFFF00';
+            drawLandmark(landmarks[LANDMARKS.LEFT_EYEBROW_INNER], 3);
+            drawLandmark(landmarks[LANDMARKS.RIGHT_EYEBROW_INNER], 3);
+        }
+        
+        function drawLandmark(landmark, size = 3) {
+            if (!landmark) return;
+            canvasCtx.beginPath();
+            canvasCtx.arc(
+                landmark.x * canvasElement.width,
+                landmark.y * canvasElement.height,
+                size, 0, 2 * Math.PI
+            );
+            canvasCtx.fill();
+        }
+        
+        function getDefaultEmotions() {
+            return {
+                happy: 0,
+                sad: 0,
+                angry: 0,
+                surprised: 0,
+                neutral: 100
+            };
+        }
+        
+        async function estimateEmotions(landmarks) {
+            // Face-api.jsモデルが読み込まれていない場合は、従来のルールベース推定を使用
+            if (!faceApiModelsLoaded) {
+                return estimateEmotionsRuleBased(landmarks);
+            }
+            
+            // 既に検出中の場合はスキップ（パフォーマンス向上）
+            if (isDetectingEmotion) {
+                return lastEmotionDetection || getDefaultEmotions();
+            }
+            
+            try {
+                isDetectingEmotion = true;
+                
+                // Face-api.jsで感情を検出
+                const detections = await faceapi
+                    .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+                    .withFaceExpressions();
+                
+                if (detections && detections.expressions) {
+                    const expressions = detections.expressions;
+                    
+                    // Face-api.jsの7つの感情を5つにマッピング
+                    const emotions = {
+                        happy: (expressions.happy || 0) * 100,
+                        sad: (expressions.sad || 0) * 100,
+                        angry: (expressions.angry || 0) * 100,
+                        surprised: (expressions.surprised || 0) * 100,
+                        neutral: ((expressions.neutral || 0) + (expressions.disgusted || 0) * 0.3 + (expressions.fearful || 0) * 0.3) * 100
+                    };
+                    
+                    // デバッグ値を更新（AI検出を示す）
+                    const mouthSmile = (expressions.happy - expressions.sad) * 0.01;
+                    const mouthOpen = expressions.surprised * 0.01;
+                    document.getElementById('smileValue').textContent = mouthSmile.toFixed(4) + ' (AI)';
+                    document.getElementById('mouthOpen').textContent = mouthOpen.toFixed(4) + ' (AI)';
+                    
+                    // 感度調整を適用
+                    const happyMultiplier = happySensitivity / 50;
+                    const overallMultiplier = overallSensitivity / 50;
+                    
+                    emotions.happy *= happyMultiplier;
+                    emotions.sad *= overallMultiplier;
+                    emotions.angry *= overallMultiplier;
+                    emotions.surprised *= overallMultiplier;
+                    
+                    // 正規化
+                    const total = Object.values(emotions).reduce((a, b) => a + b, 0);
+                    if (total > 0) {
+                        for (let emotion in emotions) {
+                            emotions[emotion] = Math.round((emotions[emotion] / total) * 100);
+                        }
+                    }
+                    
+                    lastEmotionDetection = emotions;
+                    isDetectingEmotion = false;
+                    return emotions;
+                }
+            } catch (error) {
+                console.error('AI感情検出エラー:', error);
+            }
+            
+            isDetectingEmotion = false;
+            
+            // 検出失敗時は最後の結果を返すか、ルールベースにフォールバック
+            if (lastEmotionDetection) {
+                return lastEmotionDetection;
+            }
+            
+            return estimateEmotionsRuleBased(landmarks);
+        }
+        
+        // 従来のルールベース感情推定（フォールバック用）
+        function estimateEmotionsRuleBased(landmarks) {
+            const emotions = {
+                happy: 0,
+                sad: 0,
+                angry: 0,
+                surprised: 0,
+                neutral: 30
+            };
+            
+            try {
+                // 口角の上昇を計算（喜び）
+                const leftMouth = landmarks[LANDMARKS.LEFT_MOUTH_CORNER];
+                const rightMouth = landmarks[LANDMARKS.RIGHT_MOUTH_CORNER];
+                const mouthTop = landmarks[LANDMARKS.MOUTH_TOP];
+                const mouthBottom = landmarks[LANDMARKS.MOUTH_BOTTOM];
+                
+                // 口角の平均Y座標
+                const mouthCornersY = (leftMouth.y + rightMouth.y) / 2;
+                // 口の中心Y座標
+                const mouthCenterY = (mouthTop.y + mouthBottom.y) / 2;
+                
+                // 口角が上がっている度合い（値が小さいほど上がっている）
+                const mouthSmile = mouthCenterY - mouthCornersY;
+                
+                // 口の開き具合
+                const mouthOpenness = Math.abs(mouthBottom.y - mouthTop.y);
+                
+                // デバッグ値表示
+                document.getElementById('smileValue').textContent = mouthSmile.toFixed(4);
+                document.getElementById('mouthOpen').textContent = mouthOpenness.toFixed(4);
+                
+                // 喜びの判定（調整版）
+                const happyMultiplier = happySensitivity / 50;
+                if (mouthSmile > 0.005) { // 閾値を下げた
+                    emotions.happy = Math.min(100, mouthSmile * 3000 * happyMultiplier);
+                    
+                    // 口が開いている場合は笑顔の可能性が高い
+                    if (mouthOpenness > 0.02) {
+                        emotions.happy = Math.min(100, emotions.happy * 1.5);
+                    }
+                }
+                
+                // 悲しみの判定
+                if (mouthSmile < -0.005) {
+                    emotions.sad = Math.min(100, Math.abs(mouthSmile) * 2000 * (overallSensitivity / 50));
+                }
+                
+                // 眉間の距離から怒りを推定
+                const leftBrow = landmarks[LANDMARKS.LEFT_EYEBROW_INNER];
+                const rightBrow = landmarks[LANDMARKS.RIGHT_EYEBROW_INNER];
+                const browDistance = Math.abs(leftBrow.x - rightBrow.x);
+                
+                if (browDistance < 0.08) {
+                    emotions.angry = Math.min(100, (0.08 - browDistance) * 1000 * (overallSensitivity / 50));
+                }
+                
+                // 目の開き具合から驚きを推定
+                const leftEyeOpen = Math.abs(landmarks[LANDMARKS.LEFT_EYE_BOTTOM].y - landmarks[LANDMARKS.LEFT_EYE_TOP].y);
+                const rightEyeOpen = Math.abs(landmarks[LANDMARKS.RIGHT_EYE_BOTTOM].y - landmarks[LANDMARKS.RIGHT_EYE_TOP].y);
+                const eyeOpenness = (leftEyeOpen + rightEyeOpen) / 2;
+                
+                if (eyeOpenness > 0.03) {
+                    emotions.surprised = Math.min(100, eyeOpenness * 2000 * (overallSensitivity / 50));
+                }
+                
+                // 中立の調整
+                const totalEmotions = emotions.happy + emotions.sad + emotions.angry + emotions.surprised;
+                if (totalEmotions < 50) {
+                    emotions.neutral = 100 - totalEmotions;
+                } else {
+                    emotions.neutral = Math.max(0, 30 - totalEmotions / 3);
+                }
+                
+                // 正規化
+                const total = Object.values(emotions).reduce((a, b) => a + b, 0);
+                if (total > 0) {
+                    for (let emotion in emotions) {
+                        emotions[emotion] = Math.round((emotions[emotion] / total) * 100);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('感情推定エラー:', error);
+            }
+            
+            return emotions;
+        }
+        
+        function updateEmotionDisplay(emotions) {
+            // 最も強い感情を特定
+            let maxEmotion = 'neutral';
+            let maxValue = 0;
+            
+            for (let emotion in emotions) {
+                const value = emotions[emotion];
+                
+                // バーを更新
+                document.getElementById(`${emotion}-bar`).style.width = value + '%';
+                document.getElementById(`${emotion}-value`).textContent = value + '%';
+                
+                if (value > maxValue) {
+                    maxValue = value;
+                    maxEmotion = emotion;
+                }
+            }
+            
+            // 現在の感情を表示
+            const emojiElement = document.getElementById('currentEmoji');
+            const currentEmoji = emotionEmojis[maxEmotion];
+            if (emojiElement.textContent !== currentEmoji) {
+                emojiElement.textContent = currentEmoji;
+                emojiElement.classList.add('pulse');
+                setTimeout(() => emojiElement.classList.remove('pulse'), 2000);
+            }
+            
+            document.getElementById('currentEmotion').textContent = emotionNames[maxEmotion];
+            document.getElementById('confidence').textContent = maxValue;
+        }
+        
+        function updateStatus(message, type = '') {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = 'status-message';
+            
+            if (type === 'error') {
+                statusElement.classList.add('error');
+            } else if (type === 'success') {
+                statusElement.classList.add('success');
+            } else if (type === 'loading') {
+                statusElement.classList.add('loading');
+            }
+        }
+        
+        // コントロール関数
+        function toggleLandmarks() {
+            showLandmarks = !showLandmarks;
+            document.getElementById('landmarksToggle').classList.toggle('active');
+        }
+        
+        function toggleMesh() {
+            showMesh = !showMesh;
+            document.getElementById('meshToggle').classList.toggle('active');
+        }
+        
+        function toggleVideo() {
+            showVideo = !showVideo;
+            document.getElementById('videoToggle').classList.toggle('active');
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const button = document.getElementById('pauseToggle');
+            button.classList.toggle('active');
+            button.textContent = isPaused ? '▶️ 再開' : '⏸️ 一時停止';
+        }
+        
+        function updateSensitivity(type) {
+            if (type === 'happy') {
+                happySensitivity = parseInt(document.getElementById('happySensitivity').value);
+                document.getElementById('happySensitivity-value').textContent = happySensitivity;
+            } else {
+                overallSensitivity = parseInt(document.getElementById('overallSensitivity').value);
+                document.getElementById('overallSensitivity-value').textContent = overallSensitivity;
+            }
+        }
+    </script>
+</body>
+</html>
