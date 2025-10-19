@@ -178,7 +178,8 @@
       const lms = results.multiFaceLandmarks[0];
       // 参照オーバーレイ（軽量ワイヤー）
       drawConnectors(octx, lms, FACEMESH_TESSELATION, { color:'#33ffaa22', lineWidth:1 });
-      drawLandmarks(octx, lms, { color:'#66ccff', radius:1.2 });
+      // 左側の参照用キーポイントは小さめに表示
+      drawLandmarks(octx, lms, { color:'#66ccff', radius:0.8 });
 
       // 右：生成
       const mode = modeSel.value;
