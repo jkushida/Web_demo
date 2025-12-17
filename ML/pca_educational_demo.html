@@ -708,12 +708,22 @@
             covHtml += '</table>';
             covHtml += '</div>';
             
-            // 右側：各成分の求め方
+            // 右側：各成分の求め方 + n-1で割る理由
             covHtml += '<div style="flex: 1; padding: 15px; background: #fff9c4; border-radius: 5px; font-size: 14px;">';
             covHtml += '<strong>共分散行列の各成分：</strong><br><br>';
             covHtml += '$$C_{00} = \\text{Var}(X) = \\frac{1}{n-1}\\sum_{i=1}^{n}(x_i - \\bar{x})^2$$';
             covHtml += '$$C_{11} = \\text{Var}(Y) = \\frac{1}{n-1}\\sum_{i=1}^{n}(y_i - \\bar{y})^2$$';
             covHtml += '$$C_{01} = C_{10} = \\text{Cov}(X,Y) = \\frac{1}{n-1}\\sum_{i=1}^{n}(x_i - \\bar{x})(y_i - \\bar{y})$$';
+            
+            // n-1で割る理由（不偏推定）
+            covHtml += '<div style="margin-top: 12px; padding: 12px; background: #fffde7; border-left: 4px solid #ffc107; border-radius: 4px;">';
+            covHtml += '<strong>なぜ n-1 で割るの？（不偏推定）</strong><br>';
+            covHtml += '標本データから<strong>平均も同時に推定</strong>しているため、自由度が1つ失われ、\\(n\\)で割ると母分散/母共分散を系統的に<strong>過小評価</strong>します。<br>';
+            covHtml += 'そこで Bessel（ベッセル）の補正として \\((n-1)\\) で割ると、期待値が母分散/母共分散に一致する<strong>不偏推定量</strong>になります。<br><br>';
+            covHtml += '$$\\bar{x}=\\frac{1}{n}\\sum_{i=1}^n x_i,\\quad s_X^2=\\frac{1}{n-1}\\sum_{i=1}^n (x_i-\\bar{x})^2,\\quad \\mathbb{E}[s_X^2]=\\sigma_X^2$$';
+            covHtml += '<span style="font-size: 12px; color: #555;">※ 母平均 \\((\\mu)\\) が既知でそれを用いる場合は自由度は減らず、\\(\\tfrac{1}{n}\\sum (x_i-\\mu)^2\\) となります。</span>';
+            covHtml += '</div>';
+
             covHtml += '</div>';
             
             covHtml += '</div>';
