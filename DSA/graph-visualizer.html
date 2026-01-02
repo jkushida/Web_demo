@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSA: グラフ可視化（BFS/最短経路）</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --text: #222;
+      --muted: #666;
+      --primary: #2563eb;
+      --accent: #10b981;
+      --warn: #f59e0b;
+      --edge: #94a3b8;
+      --edge-strong: #334155;
+      --node: #1f2937;
+      --node-fill: #e5e7eb;
+      --highlight: #ef4444;
+    }
+    html, body {
+      height: 100%;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+    }
+    header, footer {
+      padding: 1rem 1.25rem;
+      background: var(--panel);
+      border-bottom: 1px solid #e5e7eb;
+    }
+    header h1 {
+      margin: 0 0 .25rem;
+      font-size: 1.4rem;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 12px;
+      padding: 12px;
+    }
+    aside, section.viewer {
+      background: var(--panel);
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+    }
+    aside {
+      padding: 12px;
+    }
+    aside h2 {
+      margin: 0 0 8px;
+      font-size: 1.1rem;
+    }
+    .control-group { margin-bottom: 10px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    textarea, input[type="text"], select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: .5rem .6rem;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    textarea { resize: vertical; min-height: 120px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > * { flex: 1; }
+    .row .shrink { flex: 0 0 auto; }
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    button {
+      padding: .45rem .7rem;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button.primary { background: var(--primary); color: #fff; border-color: transparent; }
+    button.accent { background: var(--accent); color: #fff; border-color: transparent; }
+    button.warn { background: var(--warn); color: #111; border-color: transparent; }
+    .help { color: var(--muted); font-size: .9rem; }
+    .viewer-header { display:flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; }
+    .legend { display:flex; gap: 10px; font-size: .9rem; color: var(--muted); }
+    .legend span::before { content: ""; display:inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+    .legend .normal::before { background: var(--node-fill); border:1px solid var(--node); }
+    .legend .bfs::before { background: var(--accent); }
+    .legend .path::before { background: var(--highlight); }
+    .canvas-wrap { position: relative; }
+    svg { width: 100%; height: 72vh; display:block; background: #fff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+    .error { color: #b91c1c; font-size: .9rem; }
+  </style>
+  <meta name="description" content="ノード（頂点）とエッジ（辺）からなるグラフを、テキスト入力からSVGで可視化。BFS（幅優先探索）とダイクストラ法による最短経路のハイライトに対応。外部依存なし。">
+</head>
+<body>
+  <header>
+    <h1>グラフ可視化（BFS/最短経路）</h1>
+    <p>ノード（頂点）とエッジ（辺）をテキストで入力して、グラフをSVGで表示。BFSとダイクストラで探索の様子をハイライトします。</p>
+  </header>
+
+  <main>
+    <aside>
+      <h2>入力・設定</h2>
+      <div class="control-group">
+        <label for="preset">プリセット</label>
+        <div class="row">
+          <select id="preset" title="代表的なグラフを読み込み">
+            <option value="custom">（カスタム）</option>
+            <option value="simple">シンプル（無向・重み1）</option>
+            <option value="weighted">重み付き（無向）</option>
+            <option value="directed">有向グラフ</option>
+            <option value="grid">グリッド 3x3</option>
+          </select>
+          <button id="loadPreset">読み込み</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label for="edgeList">エッジ一覧（1行＝1本）：<span class="help">形式: u v [w]。例: A B 2</span></label>
+        <textarea id="edgeList" spellcheck="false" placeholder="例\nA B\nB C\nA D\nC D 2"></textarea>
+      </div>
+
+      <div class="control-group row">
+        <label class="shrink"><input type="checkbox" id="directed"> 有向として扱う</label>
+        <label class="shrink"><input type="checkbox" id="showWeights" checked> 重み表示</label>
+        <label class="shrink"><input type="checkbox" id="bidirectional"> （有向時）逆向きも追加</label>
+      </div>
+
+      <div class="control-group row">
+        <div>
+          <label for="startNode">開始ノード</label>
+          <input id="startNode" type="text" placeholder="例: A">
+        </div>
+        <div>
+          <label for="targetNode">目標ノード（最短経路）</label>
+          <input id="targetNode" type="text" placeholder="例: D">
+        </div>
+      </div>
+
+      <div class="btns">
+        <button id="render" class="primary">描画/更新</button>
+        <button id="runBFS" class="accent">BFS を実行</button>
+        <button id="runDijkstra" class="warn">最短経路（ダイクストラ）</button>
+        <button id="clearHighlight">強調をクリア</button>
+      </div>
+
+      <details style="margin-top:10px;">
+        <summary>入力の約束・注意</summary>
+        <ul>
+          <li>1行に「<code>u v</code>」または「<code>u v w</code>」（重み）を記述。</li>
+          <li>空行・先頭<code>#</code>は無視。</li>
+          <li>有向チェックONなら<code>u→v</code>。OFFなら無向（<code>u—v</code>）。</li>
+          <li>重み未指定は既定で1。</li>
+        </ul>
+      </details>
+      <p id="error" class="error" aria-live="polite"></p>
+    </aside>
+
+    <section class="viewer">
+      <div class="viewer-header">
+        <div class="legend">
+          <span class="normal">通常ノード</span>
+          <span class="bfs">BFS到達</span>
+          <span class="path">最短経路</span>
+        </div>
+        <div class="help">ノードはドラッグで移動できます。</div>
+      </div>
+      <div class="canvas-wrap">
+        <svg id="svg" viewBox="0 0 1000 700" role="img" aria-label="グラフ可視化キャンバス">
+          <defs>
+            <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L10,3 L0,6 Z" fill="var(--edge-strong)"></path>
+            </marker>
+          </defs>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>実装: 純粋JavaScript + SVG（外部依存なし）。BFS=幅優先探索、ダイクストラ=非負重みの最短経路。</small>
+  </footer>
+
+  <script>
+    // ユーティリティ
+    const $ = (sel) => document.querySelector(sel);
+    const svg = $("#svg");
+    const state = {
+      directed: false,
+      edges: [], // {u, v, w}
+      nodes: [], // [id]
+      pos: new Map(), // id -> {x, y}
+      el: { nodes: new Map(), edges: [], labels: [] },
+    };
+
+    function setError(msg) { $("#error").textContent = msg || ""; }
+
+    // 入力のパース
+    function parseInput(text, directed, addReverse) {
+      const edges = [];
+      const nodes = new Set();
+      const lines = text.split(/\r?\n/);
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const parts = line.split(/\s+/);
+        if (parts.length < 2) throw new Error(`不正な行: "${line}"`);
+        const [u, v, wstr] = parts;
+        const w = wstr != null ? Number(wstr) : 1;
+        if (Number.isNaN(w)) throw new Error(`重みが数値ではありません: "${line}"`);
+        nodes.add(u); nodes.add(v);
+        edges.push({ u, v, w });
+        if (directed && addReverse) edges.push({ u: v, v: u, w });
+      }
+      return { edges, nodes: [...nodes] };
+    }
+
+    // 円配置の初期レイアウト
+    function initialLayout(nodes, width, height) {
+      const cx = width / 2, cy = height / 2;
+      const r = Math.min(width, height) * 0.35;
+      const pos = new Map();
+      const n = nodes.length;
+      nodes.forEach((id, i) => {
+        const theta = (2 * Math.PI * i) / n;
+        pos.set(id, { x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) });
+      });
+      return pos;
+    }
+
+    // SVG要素生成
+    function make(tag, attrs = {}) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        el.setAttribute(k, String(v));
+      }
+      return el;
+    }
+
+    function clearSVG() {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+      // defs（矢印）を再作成
+      const defs = make('defs');
+      const marker = make('marker', { id: 'arrow', markerWidth: 10, markerHeight: 10, refX: 10, refY: 3, orient: 'auto', markerUnits: 'strokeWidth' });
+      const path = make('path', { d: 'M0,0 L10,3 L0,6 Z', fill: 'var(--edge-strong)' });
+      marker.appendChild(path); defs.appendChild(marker); svg.appendChild(defs);
+    }
+
+    function renderGraph() {
+      clearSVG();
+      const width = svg.viewBox.baseVal.width || svg.clientWidth;
+      const height = svg.viewBox.baseVal.height || svg.clientHeight;
+      // レイヤ: edges -> weights -> nodes -> labels
+      const gEdges = make('g', { 'stroke': 'var(--edge)', 'stroke-width': 2, 'fill': 'none' });
+      const gWeights = make('g', { 'fill': '#475569', 'font-size': 12, 'font-family': 'ui-monospace, monospace' });
+      const gNodes = make('g');
+      const gLabels = make('g', { 'font-size': 13, 'font-weight': '600', 'font-family': 'system-ui, -apple-system, Segoe UI, Roboto' });
+      svg.appendChild(gEdges); svg.appendChild(gWeights); svg.appendChild(gNodes); svg.appendChild(gLabels);
+
+      state.el.edges = [];
+      state.el.labels = [];
+      state.el.nodes = new Map();
+
+      // 位置
+      if (state.pos.size === 0) state.pos = initialLayout(state.nodes, width, height);
+
+      // エッジ描画
+      for (const e of state.edges) {
+        const pu = state.pos.get(e.u); const pv = state.pos.get(e.v);
+        if (!pu || !pv) continue;
+        const attrs = { x1: pu.x, y1: pu.y, x2: pv.x, y2: pv.y, stroke: 'var(--edge)' };
+        if (state.directed) attrs['marker-end'] = 'url(#arrow)';
+        const line = make('line', attrs);
+        gEdges.appendChild(line);
+        state.el.edges.push({ e, line });
+
+        if ($('#showWeights').checked && e.w !== 1) {
+          const mx = (pu.x + pv.x) / 2, my = (pu.y + pv.y) / 2;
+          const t = make('text', { x: mx + 6, y: my - 6 });
+          t.textContent = String(e.w);
+          gWeights.appendChild(t);
+        }
+      }
+
+      // ノード描画
+      const R = 18;
+      for (const id of state.nodes) {
+        const p = state.pos.get(id);
+        const group = make('g', { 'data-id': id });
+        const circle = make('circle', { cx: p.x, cy: p.y, r: R, fill: 'var(--node-fill)', stroke: 'var(--node)', 'stroke-width': 2 });
+        const label = make('text', { x: p.x, y: p.y + 4, 'text-anchor': 'middle' });
+        label.textContent = id;
+        group.appendChild(circle);
+        group.appendChild(label);
+        gNodes.appendChild(group);
+        state.el.nodes.set(id, { group, circle, label });
+
+        enableDrag(group, id, R);
+      }
+    }
+
+    // ドラッグ移動
+    function enableDrag(group, id, R) {
+      let dragging = false; let ox = 0; let oy = 0;
+      function onPointerDown(e) {
+        dragging = true; ox = e.clientX; oy = e.clientY; group.setPointerCapture(e.pointerId);
+      }
+      function onPointerMove(e) {
+        if (!dragging) return;
+        const dx = e.clientX - ox; const dy = e.clientY - oy; ox = e.clientX; oy = e.clientY;
+        const p = state.pos.get(id); p.x += dx; p.y += dy; updateNode(id);
+      }
+      function onPointerUp(e) { dragging = false; group.releasePointerCapture(e.pointerId); }
+      group.style.cursor = 'grab';
+      group.addEventListener('pointerdown', onPointerDown);
+      group.addEventListener('pointermove', onPointerMove);
+      group.addEventListener('pointerup', onPointerUp);
+      group.addEventListener('pointercancel', onPointerUp);
+    }
+
+    function updateNode(id) {
+      const n = state.el.nodes.get(id);
+      const p = state.pos.get(id);
+      if (!n || !p) return;
+      n.circle.setAttribute('cx', p.x); n.circle.setAttribute('cy', p.y);
+      n.label.setAttribute('x', p.x); n.label.setAttribute('y', p.y + 4);
+      // 接続エッジ更新
+      for (const { e, line } of state.el.edges) {
+        if (e.u === id) { line.setAttribute('x1', p.x); line.setAttribute('y1', p.y); }
+        if (e.v === id) { line.setAttribute('x2', p.x); line.setAttribute('y2', p.y); }
+      }
+    }
+
+    // グラフ隣接表の構築
+    function buildAdj(edges, directed) {
+      const adj = new Map();
+      const add = (a, b, w) => { if (!adj.has(a)) adj.set(a, []); adj.get(a).push({ to: b, w }); };
+      for (const { u, v, w } of edges) {
+        add(u, v, w);
+        if (!directed) add(v, u, w);
+      }
+      return adj;
+    }
+
+    // BFS
+    function bfs(start) {
+      const adj = buildAdj(state.edges, state.directed);
+      const dist = new Map();
+      const parent = new Map();
+      const q = [];
+      if (!adj.has(start)) return { dist, parent };
+      dist.set(start, 0); q.push(start);
+      while (q.length) {
+        const u = q.shift();
+        for (const { to } of adj.get(u) || []) {
+          if (!dist.has(to)) { dist.set(to, dist.get(u) + 1); parent.set(to, u); q.push(to); }
+        }
+      }
+      return { dist, parent };
+    }
+
+    // ダイクストラ
+    function dijkstra(start) {
+      const adj = buildAdj(state.edges, state.directed);
+      const dist = new Map(); const parent = new Map();
+      const all = new Set(state.nodes);
+      for (const v of all) dist.set(v, Infinity);
+      if (!all.has(start)) return { dist, parent };
+      dist.set(start, 0);
+      // 単純実装（優先度付きキューなし）
+      const used = new Set();
+      while (used.size < all.size) {
+        let u = null; let best = Infinity;
+        for (const v of all) { if (!used.has(v) && dist.get(v) < best) { best = dist.get(v); u = v; } }
+        if (u == null || best === Infinity) break;
+        used.add(u);
+        for (const { to, w } of adj.get(u) || []) {
+          const nd = dist.get(u) + w;
+          if (nd < dist.get(to)) { dist.set(to, nd); parent.set(to, u); }
+        }
+      }
+      return { dist, parent };
+    }
+
+    // 強調描画
+    function clearHighlight() {
+      for (const { group, circle, label } of state.el.nodes.values()) {
+        circle.setAttribute('fill', 'var(--node-fill)');
+        circle.setAttribute('stroke', 'var(--node)');
+        label.setAttribute('fill', 'var(--node)');
+      }
+      for (const { line } of state.el.edges) {
+        line.setAttribute('stroke', 'var(--edge)');
+        line.setAttribute('stroke-width', 2);
+        if (state.directed) line.setAttribute('marker-end', 'url(#arrow)');
+      }
+    }
+
+    function highlightBFS(start) {
+      clearHighlight();
+      const { dist, parent } = bfs(start);
+      if (!dist.has(start)) { setError('開始ノードが見つかりません'); return; }
+      // ノード着色（層でグラデーション）
+      const maxd = Math.max(...[...dist.values()]);
+      for (const [id, { circle }] of state.el.nodes) {
+        if (!dist.has(id)) continue;
+        const d = dist.get(id);
+        const t = maxd === 0 ? 1 : 1 - d / maxd;
+        const hue = 160 * t; // 緑→薄緑
+        circle.setAttribute('fill', `hsl(${hue},70%,75%)`);
+      }
+      // 木エッジ強調
+      for (const { e, line } of state.el.edges) {
+        if (parent.get(e.v) === e.u || (!state.directed && parent.get(e.u) === e.v)) {
+          line.setAttribute('stroke', 'var(--accent)');
+          line.setAttribute('stroke-width', 3.5);
+        }
+      }
+    }
+
+    function highlightShortestPath(start, target) {
+      clearHighlight();
+      const { dist, parent } = dijkstra(start);
+      if (!dist.has(target) || dist.get(target) === Infinity) { setError('パスが見つかりません'); return; }
+      // 経路復元
+      const path = [];
+      let cur = target;
+      while (cur !== undefined && cur !== start) { path.push(cur); cur = parent.get(cur); }
+      if (cur === start) path.push(start);
+      path.reverse();
+      // ノード強調
+      for (const id of path) {
+        const n = state.el.nodes.get(id);
+        if (n) { n.circle.setAttribute('fill', 'hsl(5,85%,72%)'); n.circle.setAttribute('stroke', 'var(--edge-strong)'); }
+      }
+      // エッジ強調
+      for (let i = 0; i + 1 < path.length; i++) {
+        const a = path[i], b = path[i + 1];
+        for (const { e, line } of state.el.edges) {
+          const match = (e.u === a && e.v === b) || (!state.directed && e.u === b && e.v === a);
+          if (match) { line.setAttribute('stroke', 'var(--highlight)'); line.setAttribute('stroke-width', 4); }
+        }
+      }
+      setError(`距離: ${dist.get(target)}`);
+    }
+
+    // イベントとプリセット
+    function loadPreset(kind) {
+      const dir = $('#directed');
+      const rev = $('#bidirectional');
+      const weights = $('#showWeights');
+      if (kind === 'simple') {
+        dir.checked = false; rev.checked = false; weights.checked = false;
+        $('#edgeList').value = [
+          'A B', 'B C', 'C D', 'A D', 'B D'
+        ].join('\n');
+        $('#startNode').value = 'A'; $('#targetNode').value = 'C';
+      } else if (kind === 'weighted') {
+        dir.checked = false; rev.checked = false; weights.checked = true;
+        $('#edgeList').value = [
+          'A B 2', 'B C 1', 'C D 3', 'A D 4', 'B D 2'
+        ].join('\n');
+        $('#startNode').value = 'A'; $('#targetNode').value = 'D';
+      } else if (kind === 'directed') {
+        dir.checked = true; rev.checked = false; weights.checked = false;
+        $('#edgeList').value = [
+          'A B', 'B C', 'A C', 'C D', 'B D'
+        ].join('\n');
+        $('#startNode').value = 'A'; $('#targetNode').value = 'D';
+      } else if (kind === 'grid') {
+        dir.checked = false; rev.checked = false; weights.checked = false;
+        const lines = [];
+        const idx = (x, y) => `${x},${y}`;
+        for (let y = 0; y < 3; y++) {
+          for (let x = 0; x < 3; x++) {
+            if (x + 1 < 3) lines.push(`${idx(x,y)} ${idx(x+1,y)}`);
+            if (y + 1 < 3) lines.push(`${idx(x,y)} ${idx(x,y+1)}`);
+          }
+        }
+        $('#edgeList').value = lines.join('\n');
+        $('#startNode').value = '0,0'; $('#targetNode').value = '2,2';
+      }
+    }
+
+    function applyFromUI() {
+      setError('');
+      try {
+        const directed = $('#directed').checked;
+        const addReverse = $('#bidirectional').checked;
+        const { edges, nodes } = parseInput($('#edgeList').value, directed, addReverse);
+        state.directed = directed;
+        state.edges = edges;
+        state.nodes = nodes.sort();
+        // 初回またはノード構成が大きく変わったら再レイアウト
+        if (state.pos.size === 0 || state.pos.size !== state.nodes.length) {
+          state.pos.clear();
+        }
+        renderGraph();
+      } catch (err) {
+        console.error(err);
+        setError(err.message || String(err));
+      }
+    }
+
+    // 初期化
+    $('#loadPreset').addEventListener('click', () => {
+      const kind = $('#preset').value; if (kind !== 'custom') loadPreset(kind);
+    });
+    $('#render').addEventListener('click', applyFromUI);
+    $('#runBFS').addEventListener('click', () => {
+      applyFromUI();
+      const s = $('#startNode').value.trim();
+      if (!s) { setError('開始ノードを入力してください'); return; }
+      highlightBFS(s);
+    });
+    $('#runDijkstra').addEventListener('click', () => {
+      applyFromUI();
+      const s = $('#startNode').value.trim();
+      const t = $('#targetNode').value.trim();
+      if (!s || !t) { setError('開始/目標ノードを入力してください'); return; }
+      highlightShortestPath(s, t);
+    });
+    $('#clearHighlight').addEventListener('click', () => { setError(''); clearHighlight(); });
+
+    // ページ初回：シンプルを読み込み＆描画
+    loadPreset('simple');
+    applyFromUI();
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DSA: ハフマン符号化法 可視化</title>
+  <meta name="description" content="ハフマン符号化法の仕組みを、頻度表から符号木の構築、符号表、エンコードまで可視化・体験できます。外部依存なし。" />
+  <style>
+    :root {
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --accent: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --line: #cbd5e1;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      line-height: 1.6;
+    }
+    header, footer { background: var(--panel); border-bottom: 1px solid var(--line); }
+    header { padding: 16px 20px; }
+    header h1 { margin: 0 0 6px; font-size: 1.4rem; }
+    header p { margin: 0; color: var(--muted); }
+    main { display: grid; grid-template-columns: 400px 1fr; gap: 16px; padding: 12px; }
+    aside, section.viewer { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+    aside { padding: 12px; position: sticky; top: 12px; align-self: start; }
+    aside h2 { margin: 0 0 8px; font-size: 1.1rem; }
+    .control { margin-bottom: 10px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; }
+    textarea, input[type="text"], select { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    textarea { resize: vertical; min-height: 120px; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row > * { flex: 1; }
+    .row .shrink { flex: 0 0 auto; }
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    button { padding: 8px 10px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; cursor: pointer; }
+    button.primary { background: var(--primary); color: #fff; border-color: transparent; }
+    button.accent { background: var(--accent); color: #fff; border-color: transparent; }
+    button.warn { background: var(--warn); color: #111; border-color: transparent; }
+    .help { color: var(--muted); font-size: .9rem; }
+    .error { color: #b91c1c; font-size: .9rem; min-height: 1.2em; }
+    .viewer-header { display:flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    .canvas-wrap { padding: 8px 12px; }
+    svg { width: 100%; height: 68vh; display:block; background: #fff; border-radius: 6px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+    th { background: #f1f5f9; }
+    code { background: #f8fafc; padding: 2px 4px; border: 1px solid #e5e7eb; border-radius: 4px; }
+    .explain { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 16px; }
+    details { margin-top: 6px; }
+    details > summary { cursor: pointer; }
+    @media (max-width: 1024px) {
+      main { grid-template-columns: 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      svg { height: 56vh; }
+      aside { position: static; }
+    }
+    .explain h2 { margin: 6px 0 8px; font-size: 1.15rem; }
+    .explain ul { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ハフマン符号化法（Huffman Coding）可視化</h1>
+    <p>出現頻度の高い記号に短いビット列、低い記号に長いビット列を割り当て、全体の平均符号長を最小化する可変長接頭語コード（prefix-free code）。</p>
+  </header>
+
+  <details class="explain">
+    <summary><strong>ハフマン符号化法とは</strong>（概要を開く）</summary>
+    <p>出現頻度（確率）の高い記号ほど短いビット列、低い記号ほど長いビット列を機械的に割り当て、平均符号長を最小化する可変長の接頭語（prefix-free）符号です。</p>
+    <ol>
+      <li>Step1: 記号と出現頻度（確率）を集計し、多い順に並べる</li>
+      <li>Step2: 最小2つを親に結合（左=0, 右=1）し、1つになるまで反復</li>
+      <li>Step3: 根→葉の0/1列が各記号の符号（接頭語条件を満たす）</li>
+    </ol>
+    <ul>
+      <li><strong>瞬時復号可能</strong>: 接頭語条件により逐次に後戻りなく復号できます。</li>
+      <li><strong>最適性</strong>: 非負の確率で H ≤ L < H+1（H: エントロピー, L: 平均符号長）。</li>
+    </ul>
+  </details>
+
+  <main>
+    <aside>
+      <h2>入力・設定</h2>
+      <div class="control">
+        <label for="preset">プリセット</label>
+        <div class="row">
+          <select id="preset">
+            <option value="classic">例1（A:45, B:13, C:12, D:16, E:9, F:5）</option>
+            <option value="exampleA14" selected>例2（A:14, B:56, C:4, D:20, E:8）</option>
+            <option value="exampleAE">例3（A:12, B:56, C:4, D:20, E:8）</option>
+            <option value="practiceAF">例4（A:5, B:1, C:6, D:4, E:3, F:1）</option>
+          </select>
+        </div>
+
+        
+      </div>
+
+      <div class="control" id="freqBlock">
+        <label for="freqText">頻度表（1行: 記号 頻度）<span class="help">例: A 45</span></label>
+        <textarea id="freqText" spellcheck="false" placeholder="A 45
+B 13
+C 12
+D 16
+E 9
+F 5"></textarea>
+      </div>
+
+      <!-- リセットボタンはUI簡素化のため削除 -->
+
+      <details style="margin-top:6px;" open>
+        <summary><strong>ステップ実行</strong>（学習用）</summary>
+        <div class="btns" style="margin-top:6px;">
+          <button id="prevStep">戻る</button>
+          <button id="nextStep" class="accent">進む</button>
+        </div>
+        <div class="help">「進む」「戻る」で1手ずつ進めます（開始操作は不要）。</div>
+      </details>
+
+      <!-- 高度な設定（テキストから頻度抽出）は簡素化のため削除 -->
+
+      <!-- エンコードUIは簡素化のため削除 -->
+
+      <p id="error" class="error" aria-live="polite"></p>
+
+      <details>
+        <summary>アルゴリズムの要旨</summary>
+        <ul>
+          <li>最小頻度の2ノードを取り出し、親にマージ（左:0, 右:1。実装では小さい重みを左に配置〈同重みは記号ID昇順〉）。</li>
+          <li>親の頻度は子の合計。これを1ノードになるまで反復。</li>
+          <li>根から葉までの0/1列が各記号の符号。接頭語条件を満たし一意復号。</li>
+        </ul>
+      </details>
+    </aside>
+
+    <section class="viewer">
+      <div class="viewer-header">
+        <div>符号木の可視化（左枝=0, 右枝=1）</div>
+        <div class="help">ノードは頻度（重み）を表示。葉は記号:頻度。</div>
+      </div>
+      <div class="canvas-wrap">
+        <svg id="svg" viewBox="0 0 1200 750" role="img" aria-label="ハフマン木の可視化"></svg>
+      </div>
+
+      <div style="padding: 10px 12px; border-top: 1px solid var(--line);">
+        <div class="two-col">
+          <div>
+            <h3 style="margin:6px 0;">符号表</h3>
+            <table>
+              <thead><tr><th>記号</th><th>頻度</th><th>確率</th><th>符号</th><th>長さ</th><th>p×長さ</th></tr></thead>
+              <tbody id="codeTable"></tbody>
+            </table>
+            <div class="help" id="metrics"></div>
+            <div class="help" id="sampleEnc"></div>
+          </div>
+          <div>
+            <details open>
+              <summary><strong>学習モード</strong>（構築手順の可視化）</summary>
+              <h3 style="margin:8px 0 6px;">構築ステップ</h3>
+              <ol id="steps" style="margin:0; padding-left: 20px; max-height: 180px; overflow: auto;"></ol>
+              <h3 style="margin:10px 0 6px;">現在のグループ（多い順/進捗反映）</h3>
+              <table>
+                <thead><tr><th>順位</th><th>記号</th><th>頻度</th><th>確率</th></tr></thead>
+                <tbody id="sortedTable"></tbody>
+              </table>
+            </details>
+          </div>
+        </div>
+        <!-- エンコード出力欄は簡素化のため削除 -->
+      </div>
+    </section>
+  </main>
+
+  <section class="explain" style="margin:12px; border-radius:8px;">
+    <details open>
+      <summary><strong>解説</strong> — 手順・計算・よくある出題</summary>
+      <div style="margin-top:6px;">
+        <h3 style="margin:6px 0; font-size:1rem;">1. 手順の要点（最短ルート）</h3>
+        <ul>
+          <li><strong>並べ替え</strong>: 出現頻度（確率）の<em>小さい順</em>に注目（このツールの学習モードは多い順表も併記）。</li>
+          <li><strong>結合</strong>: 最小2つを取り出して親に結合。親の重み=子の合計。</li>
+          <li><strong>符号割当</strong>: 左枝=0、右枝=1（左右は自由だが一貫性を保つ）。</li>
+          <li><strong>平均符号長</strong>: L = Σ p(i) × length(code(i))。本ツールの表「p×長さ」の総和が L。</li>
+        </ul>
+
+        <h3 style="margin:10px 0 6px; font-size:1rem;">2. 例題の見方</h3>
+        <ul>
+          <li>プリセットを読み込んだら「進む」で1手ずつ結合して確認します（完成時に符号表と L を表示）。</li>
+          <li>左右（0/1）を入れ替えても<em>平均符号長 L は同じ</em>（最適性は変わらない）。符号の形が多少違ってもOK。</li>
+          <li>平均符号長 L とエントロピー H の関係は <code>H ≤ L &lt; H+1</code>（非負の確率）。表示を目安に妥当性を確認。</li>
+        </ul>
+
+        <h3 style="margin:10px 0 6px; font-size:1rem;">2.5 平均ビット長の求め方（例つき）</h3>
+        <p>各文字の「ビット長 × 出現確率」を足し合わせれば、平均ビット長（平均符号長）が求まります。</p>
+        <div style="padding:8px 10px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px;">
+          <div><strong>例</strong>（符号長と確率）</div>
+          <ul style="margin:4px 0 8px;">
+            <li>A: 1ビット（符号 1）、確率 0.5</li>
+            <li>B: 2ビット（符号 10）、確率 0.3</li>
+            <li>C: 3ビット（符号 110）、確率 0.1</li>
+            <li>D: 3ビット（符号 111）、確率 0.1</li>
+          </ul>
+          <div><strong>計算</strong></div>
+          <pre style="margin:4px 0 0; padding:6px 8px; background:#fff; border:1px solid #e5e7eb; border-radius:6px;">L = 1×0.5 + 2×0.3 + 3×0.1 + 3×0.1
+= 0.5 + 0.6 + 0.3 + 0.3 = 1.7 ビット</pre>
+        </div>
+
+        <h3 style="margin:10px 0 6px; font-size:1rem;">3. よくある出題とコツ</h3>
+        <ul>
+          <li><strong>符号表の空欄穴埋め</strong>: 既存の符号が互いに接頭語でないかを確認して候補を消去。二分木に置いて「すべて葉ノード」になれば瞬時復号可能。</li>
+          <li><strong>平均符号長の計算</strong>: 表の p と 長さ を掛けて足すだけ。小数第2位四捨五入などの規則に注意。</li>
+          <li><strong>結合順の同点</strong>: 同じ重みが複数あるときの選び方は自由。最終 L は同じなので焦らない。</li>
+        </ul>
+
+        <h3 style="margin:10px 0 6px; font-size:1rem;">4. チェックリスト</h3>
+        <ul>
+          <li>確率の合計が 1（または 100%）付近か。</li>
+          <li>符号語が<em>接頭語を持たない</em>（どれも他の先頭に一致しない）。</li>
+          <li>L が H と H+1 の間に入っているか。</li>
+        </ul>
+        
+        <h3 style="margin:10px 0 6px; font-size:1rem;">2.6 エントロピーの求め方（式）</h3>
+        <ul>
+          <li><strong>確率の定義</strong>: p(i) = f(i) / T（f: 記号 i の頻度, T = Σ f）。</li>
+          <li><strong>平均符号長</strong>: L = Σ p(i) × ℓ(i)（ℓ: 符号語の長さ）。</li>
+          <li><strong>エントロピー</strong>: H = − Σ p(i) × log₂ p(i)（p(i) > 0 のみ）。</li>
+        </ul>
+        <div class="help">性質: H ≤ L < H + 1。単一記号の場合は H=0、実装では接頭語制約の便宜上 ℓ=1 を割り当て L=1。</div>
+
+        <h3 style="margin:10px 0 6px; font-size:1rem;">2.7 接頭語条件とは</h3>
+        <p>接頭語条件（prefix-free）とは、任意の2つの符号語について「一方が他方の先頭（接頭語）になっていない」ことを指します。簡単に言うと、どの符号語も他の符号語で始まらない、という条件です。</p>
+      </div>
+    </details>
+  </section>
+
+  <footer style="padding: 10px 12px;">
+    <small>実装: 純粋JavaScript + SVG（外部依存なし）。ハフマン符号は非負頻度（確率）で最適接頭語コードを与え、平均符号長が凸最適化に一致します。</small>
+  </footer>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const svg = $("#svg");
+    const state = { root: null, codes: new Map(), freq: new Map(), steps: [], stepper: { groups: [], history: [], timer: null } };
+
+    function setError(msg) { $("#error").textContent = msg || ""; }
+
+    // 入力パース
+    function parseFreqText(text) {
+      const freq = new Map();
+      for (const raw of text.split(/\r?\n/)) {
+        const line = raw.trim();
+        if (!line || line.startsWith('#')) continue;
+        const m = line.match(/^(.+)\s+(\d+(?:\.\d+)?)$/);
+        if (!m) throw new Error(`頻度行の形式エラー: "${line}"`);
+        const sym = m[1];
+        const w = Number(m[2]);
+        if (!(w >= 0)) throw new Error(`頻度が非負数ではありません: "${line}"`);
+        freq.set(sym, (freq.get(sym) || 0) + w);
+      }
+      if (freq.size === 0) throw new Error('頻度が空です');
+      return freq;
+    }
+
+    // テキストから頻度抽出は簡素化のため削除（頻度表入力に統一）
+
+    // ハフマン木構築
+    function buildHuffman(freq) {
+      // ノード: {id, w, ch?, left?, right?}
+      const nodes = [];
+      for (const [ch, w] of freq) nodes.push({ id: ch, w, ch });
+      const steps = [];
+      if (nodes.length === 1) {
+        // 単一記号の場合、0を割り当てるためのダミー処理
+        const only = nodes[0];
+        const root = { id: only.id+"'", w: only.w, left: only, right: null };
+        steps.push(`単一記号のためダミー根を作成（${only.id}）`);
+        return { root, steps };
+      }
+      while (nodes.length > 1) {
+        nodes.sort((a, b) => a.w - b.w);
+        const a = nodes.shift();
+        const b = nodes.shift();
+        const parent = { id: `(${a.id}+${b.id})`, w: a.w + b.w, left: a, right: b };
+        nodes.push(parent);
+        steps.push(`最小2つを結合: [${labelNode(a)}] + [${labelNode(b)}] → 重み ${parent.w}`);
+      }
+      return { root: nodes[0], steps };
+    }
+
+    function labelNode(n) { return n.ch != null ? `${escapeShow(n.ch)}:${n.w}` : `${n.id}:${n.w}`; }
+    function escapeShow(ch) {
+      if (ch === ' ') return '␣';
+      if (ch === '\\n') return '↵';
+      return ch;
+    }
+
+    // 符号生成
+    function buildCodes(root) {
+      const codes = new Map();
+      const stack = [{ n: root, code: '' }];
+      while (stack.length) {
+        const { n, code } = stack.pop();
+        if (!n) continue;
+        if (!n.left && !n.right && n.ch != null) {
+          codes.set(n.ch, code.length ? code : '0'); // 単一記号対策
+        } else {
+          if (n.right) stack.push({ n: n.right, code: code + '1' });
+          if (n.left)  stack.push({ n: n.left,  code: code + '0' });
+        }
+      }
+      return codes;
+    }
+
+    // SVG描画（ツリー）
+    function clearSVG() { while (svg.firstChild) svg.removeChild(svg.firstChild); }
+
+    function layoutTree(root) {
+      // ノードをさらに拡大 + 右側へシフト
+      const levelGap = 156; const nodeGap = 124; const R = 46; const shiftX = 120;
+      function measure(n) { if (!n) return 0; if (!n.left && !n.right) return 1; return measure(n.left) + measure(n.right); }
+      function assign(n, depth, xStart) {
+        if (!n) return xStart;
+        if (!n.left && !n.right) {
+          n.x = xStart * nodeGap + shiftX; n.y = depth * levelGap + 60; return xStart + 1;
+        }
+        let x = xStart;
+        x = assign(n.left, depth + 1, x);
+        const leftWidth = n.left ? measure(n.left) : 0;
+        n.x = (xStart + leftWidth - 0.5) * nodeGap + shiftX; n.y = depth * levelGap + 60;
+        x = assign(n.right, depth + 1, x);
+        return x;
+      }
+      assign(root, 0, 0);
+      // 返り値でRとスタイルにアクセス可能に
+      return { R };
+    }
+
+    // 複数の根（フォレスト）を横並びで描画
+    function drawForest(roots) {
+      clearSVG();
+      // 右側に寄せるため padX を拡大
+      const nodeGap = 124; const padX = 140; const R = 46;
+      // 各木の幅（葉の数）を算出
+      function measure(n) { if (!n) return 0; if (!n.left && !n.right) return 1; return measure(n.left) + measure(n.right); }
+      const widths = roots.map(r => Math.max(1, measure(r)));
+      let xOffset = 0;
+      const gEdges = make('g', { stroke: '#94a3b8', 'stroke-width': 2, fill: 'none' });
+      const gEdgeLabels = make('g', { 'font-size': 24, fill: '#475569' });
+      const gNodes = make('g');
+      svg.appendChild(gEdges); svg.appendChild(gEdgeLabels); svg.appendChild(gNodes);
+      function assign(n, depth, start) {
+        if (!n) return start;
+        const measureLocal = (m) => (m ? measure(m) : 0);
+        if (!n.left && !n.right) { n.x = (start + 0) * nodeGap + padX; n.y = depth * 156 + 60; return start + 1; }
+        let x = start;
+        x = assign(n.left, depth + 1, x);
+        const leftW = measureLocal(n.left);
+        n.x = (start + leftW - 0.5) * nodeGap + padX; n.y = depth * 156 + 60;
+        x = assign(n.right, depth + 1, x);
+        return x;
+      }
+      function drawTreeLocal(n) {
+        if (!n) return;
+        if (n.left) { lineWithLabel(n.x, n.y, n.left.x, n.left.y, '0'); drawTreeLocal(n.left); }
+        if (n.right) { lineWithLabel(n.x, n.y, n.right.x, n.right.y, '1'); drawTreeLocal(n.right); }
+        const isLeaf = !n.left && !n.right && n.ch != null;
+        const g = make('g');
+        const leavesRaw = isLeaf ? escapeShow(n.ch) : collectLeaves(n).map(escapeShow).join('');
+        const leavesStr = leavesRaw; // 文字列長に応じて横幅を動的拡張（省略しない）
+        const label = make('text', { x: n.x + xOffset, y: n.y, 'text-anchor': 'middle', 'font-size': 20 });
+        const t1 = document.createElementNS('http://www.w3.org/2000/svg','tspan'); t1.setAttribute('x', String(n.x + xOffset)); t1.setAttribute('dy','-0.25em'); t1.textContent = `${leavesStr}:`;
+        const t2 = document.createElementNS('http://www.w3.org/2000/svg','tspan'); t2.setAttribute('x', String(n.x + xOffset)); t2.setAttribute('dy','1.3em'); t2.textContent = String(n.w);
+        label.appendChild(t1); label.appendChild(t2);
+        // まずラベルを追加して幅高さを計測
+        g.appendChild(label); gNodes.appendChild(g);
+        const bb = label.getBBox();
+        // 初期は細めに見せるため最小幅/左右余白を小さめに
+        const padX = 20, padY = 18; const minW = 100, minH = 70;
+        const w = Math.max(minW, bb.width + padX);
+        const h = Math.max(minH, bb.height + padY);
+        const rect = make('rect', { x: n.x + xOffset - w/2, y: n.y - h/2, width: w, height: h, rx: 10, ry: 10,
+          fill: isLeaf ? '#dcfce7' : '#e5e7eb', stroke: '#1f2937', 'stroke-width': 2 });
+        g.insertBefore(rect, label);
+      }
+      function lineWithLabel(x1, y1, x2, y2, text) {
+        const line = make('line', { x1: x1 + xOffset, y1, x2: x2 + xOffset, y2 }); gEdges.appendChild(line);
+        const mx = (x1 + x2) / 2 + xOffset; const my = (y1 + y2) / 2;
+        const t = make('text', { x: mx + 8, y: my - 4 }); t.textContent = text; gEdgeLabels.appendChild(t);
+      }
+      for (let i = 0; i < roots.length; i++) {
+        const r = roots[i];
+        assign(r, 0, 0);
+        drawTreeLocal(r);
+        xOffset += widths[i] * nodeGap + 80; // 木間余白
+      }
+    }
+
+    function drawTree(root) {
+      if (!root) return;
+      clearSVG();
+      const { R } = layoutTree(root);
+      const gEdges = make('g', { stroke: '#94a3b8', 'stroke-width': 2, fill: 'none' });
+      const gEdgeLabels = make('g', { 'font-size': 24, fill: '#475569' });
+      const gNodes = make('g');
+      svg.appendChild(gEdges); svg.appendChild(gEdgeLabels); svg.appendChild(gNodes);
+
+      function traverse(n) {
+        if (!n) return;
+        if (n.left) {
+          lineWithLabel(n.x, n.y, n.left.x, n.left.y, '0');
+          traverse(n.left);
+        }
+        if (n.right) {
+          lineWithLabel(n.x, n.y, n.right.x, n.right.y, '1');
+          traverse(n.right);
+        }
+        const isLeaf = !n.left && !n.right && n.ch != null;
+        const g = make('g');
+        const leavesRaw = isLeaf ? escapeShow(n.ch) : collectLeaves(n).map(escapeShow).join('');
+        const leavesStr = leavesRaw; // 文字列長に応じて横幅を動的拡張（省略しない）
+        const label = make('text', { x: n.x, y: n.y, 'text-anchor': 'middle', 'font-size': 22 });
+        const t1 = document.createElementNS('http://www.w3.org/2000/svg','tspan'); t1.setAttribute('x', String(n.x)); t1.setAttribute('dy','-0.3em'); t1.textContent = `${leavesStr}:`;
+        const t2 = document.createElementNS('http://www.w3.org/2000/svg','tspan'); t2.setAttribute('x', String(n.x)); t2.setAttribute('dy','1.4em'); t2.textContent = String(n.w);
+        label.appendChild(t1); label.appendChild(t2);
+        // 先に追加してサイズを計測
+        g.appendChild(label); gNodes.appendChild(g);
+        const bb = label.getBBox();
+        // 初期は細めに見せるため最小幅/左右余白を小さめに
+        const padX = 24, padY = 20; const minW = 120, minH = 80;
+        const w = Math.max(minW, bb.width + padX);
+        const h = Math.max(minH, bb.height + padY);
+        const rect = make('rect', { x: n.x - w/2, y: n.y - h/2, width: w, height: h, rx: 12, ry: 12,
+          fill: isLeaf ? '#dcfce7' : '#e5e7eb', stroke: '#1f2937', 'stroke-width': 2 });
+        g.insertBefore(rect, label);
+        // 葉（緑ノード）の下に確定ビット列を表示（完成時）
+        if (isLeaf && state && state.codes && state.codes.size) {
+          const bits = state.codes.get(n.ch);
+          if (bits != null) {
+            const codeText = make('text', { x: n.x, y: n.y + h/2 + 24, 'text-anchor': 'middle', 'font-size': 22, fill: '#047857' });
+            codeText.textContent = bits;
+            g.appendChild(codeText);
+          }
+        }
+      }
+      function lineWithLabel(x1, y1, x2, y2, text) {
+        const line = make('line', { x1, y1, x2, y2 }); gEdges.appendChild(line);
+        const mx = (x1 + x2) / 2; const my = (y1 + y2) / 2;
+        const t = make('text', { x: mx + 8, y: my - 4 }); t.textContent = text; gEdgeLabels.appendChild(t);
+      }
+      traverse(root);
+    }
+
+    function make(tag, attrs = {}) {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+      return el;
+    }
+
+    // 長い内部ノード名を省略（例: DCEAB → DCEA…）
+    function shortenName(s, max = 4) { return s.length > max ? s.slice(0, max) + '…' : s; }
+
+    // 符号表とメトリクス
+    function renderCodeTable(codes, freq) {
+      const tbody = $("#codeTable");
+      tbody.innerHTML = '';
+      const total = [...freq.values()].reduce((a, b) => a + b, 0);
+      let avg = 0; let H = 0;
+      const entries = [...codes.entries()].sort((a, b) => (freq.get(b[0]) - freq.get(a[0])) || a[0].localeCompare(b[0]));
+      for (const [ch, code] of entries) {
+        const f = freq.get(ch) || 0; const p = f / total; const pl = p * code.length; avg += pl; if (p > 0) H += -p * (Math.log(p) / Math.log(2));
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><code>${escapeShow(ch)}</code></td><td>${f}</td><td>${(p*100).toFixed(1)}%</td><td><code>${code}</code></td><td>${code.length}</td><td>${pl.toFixed(3)}</td>`;
+        tbody.appendChild(tr);
+      }
+      const metrics = $("#metrics");
+      metrics.textContent = `平均符号長 L ≈ ${avg.toFixed(3)} bit/記号（≈ ${avg.toFixed(2)}） / エントロピー H ≈ ${H.toFixed(3)}。関係: H ≤ L < H+1`;
+    }
+
+    // サンプルエンコード（内部用）
+    function encodeTextInternal(text, codes) {
+      let out = '';
+      for (const ch of [...text]) {
+        const code = codes.get(ch);
+        if (code == null) throw new Error(`符号が存在しない記号: ${JSON.stringify(ch)}`);
+        out += code;
+      }
+      return out;
+    }
+
+    function getSampleForPreset() {
+      const kind = $("#preset").value;
+      // 必要に応じてプリセットごとに変更。既定は ABBABC。
+      const map = {
+        classic: 'ABBABC',
+        exampleAE: 'ABBABC',
+        exampleA14: 'ABBABC',
+        practiceAF: 'ABBABC',
+      };
+      return map[kind] || 'ABBABC';
+    }
+
+    function renderSampleEncoded(codes) {
+      const el = $("#sampleEnc");
+      try {
+        const sample = getSampleForPreset();
+        const bits = encodeTextInternal(sample, codes);
+        el.innerHTML = `サンプル: <code>${sample}</code> → <code>${bits}</code>`;
+      } catch (_) {
+        el.textContent = '';
+      }
+    }
+
+    // UIイベント
+    function applyPreset(kind) {
+      if (kind === 'classic') {
+        $("#freqText").value = ['A 45','B 13','C 12','D 16','E 9','F 5'].join('\n');
+      } else if (kind === 'exampleAE') {
+        $("#freqText").value = ['A 12','B 56','C 4','D 20','E 8'].join('\n');
+      } else if (kind === 'exampleA14') {
+        $("#freqText").value = ['A 14','B 56','C 4','D 20','E 8'].join('\n');
+      } else if (kind === 'practiceAF') {
+        $("#freqText").value = ['A 5','B 1','C 6','D 4','E 3','F 1'].join('\n');
+      }
+    }
+
+    function buildFromUI() {
+      setError('');
+      try {
+        const freq = parseFreqText($("#freqText").value);
+        const { root, steps } = buildHuffman(freq);
+        const codes = buildCodes(root);
+        state.root = root; state.codes = codes; state.freq = freq; state.steps = steps;
+        drawTree(root);
+        renderCodeTable(codes, freq);
+        renderSampleEncoded(codes);
+        renderSteps(steps);
+        renderSorted(freq);
+      } catch (err) {
+        console.error(err); setError(err.message || String(err));
+      }
+    }
+
+    function renderSteps(steps) {
+      const ol = $("#steps"); ol.innerHTML = '';
+      for (const s of steps) { const li = document.createElement('li'); li.textContent = s; ol.appendChild(li); }
+    }
+
+    function renderSorted(freq) {
+      const tbody = $("#sortedTable"); tbody.innerHTML = '';
+      const total = [...freq.values()].reduce((a,b)=>a+b,0);
+      const arr = [...freq.entries()].sort((a,b)=> b[1]-a[1] || String(a[0]).localeCompare(String(b[0])));
+      arr.forEach(([ch, f], i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${i+1}</td><td><code>${escapeShow(ch)}</code></td><td>${f}</td><td>${(f/total*100).toFixed(1)}%</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ステップ実行用
+    function initStepper(freq) {
+      state.freq = freq;
+      state.stepper.groups = [...freq.entries()].map(([ch, w]) => ({ id: ch, w, ch, left: null, right: null }));
+      state.stepper.history = [];
+      if (state.stepper.timer) { clearInterval(state.stepper.timer); state.stepper.timer = null; }
+      $("#steps").innerHTML = '';
+      $("#codeTable").innerHTML = '';
+      $("#metrics").textContent = '';
+      $("#sampleEnc").textContent = '';
+      renderSorted(freq);
+      drawForest(state.stepper.groups);
+    }
+
+    function stepOnce() {
+      const g = state.stepper.groups;
+      if (!g || g.length <= 1) return false;
+      g.sort((a,b)=> a.w - b.w || String(a.id).localeCompare(String(b.id)));
+      const a = g.shift();
+      const b = g.shift();
+      const parent = { id: `(${a.id}+${b.id})`, w: a.w + b.w, left: a, right: b };
+      g.push(parent);
+      // 履歴記録（戻る用）
+      state.stepper.history.push({ a, b, parent });
+      // ログ
+      const ol = $("#steps"); const li = document.createElement('li');
+      li.textContent = `結合: [${labelNode(a)}] + [${labelNode(b)}] → ${parent.w}`;
+      ol.appendChild(li); ol.scrollTop = ol.scrollHeight;
+      // 表と描画更新
+      const freqNow = new Map();
+      for (const t of g) {
+        // 葉セットの重み合計（t.w）を表示するため、代表記号名を連結
+        const leaves = collectLeaves(t).join('');
+        freqNow.set(leaves, t.w);
+      }
+      renderSorted(freqNow);
+      drawForest(g);
+      return true;
+    }
+
+    function stepBack() {
+      const g = state.stepper.groups;
+      const hist = state.stepper.history;
+      if (!g || !hist || hist.length === 0) return false;
+      const { a, b, parent } = hist.pop();
+      // 親を削除し、子を復元
+      const idx = g.indexOf(parent);
+      if (idx !== -1) g.splice(idx, 1);
+      g.push(a); g.push(b);
+      // ステップログの最後を削除
+      const ol = $("#steps"); if (ol.lastChild) ol.removeChild(ol.lastChild);
+      // 表と描画更新、確定表示はクリア
+      const freqNow = new Map();
+      for (const t of g) { const leaves = collectLeaves(t).join(''); freqNow.set(leaves, t.w); }
+      renderSorted(freqNow);
+      drawForest(g);
+      // 完了表示の解除
+      $("#codeTable").innerHTML = '';
+      $("#metrics").textContent = '';
+      state.root = null; state.codes.clear();
+      return true;
+    }
+
+    function collectLeaves(n) { if (!n) return []; if (!n.left && !n.right && n.ch != null) return [String(n.ch)]; return [...collectLeaves(n.left), ...collectLeaves(n.right)]; }
+
+    // プリセット選択時に自動適用＋可視化更新
+    $("#preset").addEventListener('change', () => {
+      const kind = $("#preset").value;
+      applyPreset(kind);
+      try { const freq = parseFreqText($("#freqText").value); initStepper(freq); setError(''); } catch (e) { setError(e.message || String(e)); }
+    });
+    // モード切替は削除（頻度表入力に統一）
+    // リセットボタンは削除（必要ならページリロードで初期状態に戻ります）
+    // デコード/エンコード機能はUI簡素化のため削除
+
+    // ステップ実行イベント（開始ボタン不要化: 初回操作時に自動初期化）
+    function ensureStepperInitialized() {
+      if (state.stepper.groups && state.stepper.groups.length) return true;
+      setError('');
+      try {
+        if (!$("#freqText").value.trim()) {
+          const sel = $("#preset").value || 'exampleA14';
+          applyPreset(sel);
+        }
+        const freq = parseFreqText($("#freqText").value);
+        initStepper(freq);
+        return true;
+      } catch (e) { setError(e.message || String(e)); return false; }
+    }
+
+    $("#nextStep").addEventListener('click', () => {
+      if (!ensureStepperInitialized()) return;
+      const ok = stepOnce();
+      if (state.stepper.groups.length === 1) finalizeStepBuild();
+    });
+    $("#prevStep").addEventListener('click', () => {
+      if (!ensureStepperInitialized()) return;
+      stepBack();
+    });
+    // 重複していた旧イベントハンドラを削除（初回のみ二重実行となる不具合の原因）
+    function finalizeStepBuild() {
+      // 完了時にコード表を生成
+      const root = state.stepper.groups[0];
+      state.root = root; const codes = buildCodes(root); state.codes = codes;
+      renderCodeTable(codes, state.freq);
+      renderSampleEncoded(codes);
+      // 完成木を再描画して葉の下にビット列を表示
+      drawTree(root);
+    }
+    // 一気に構築は削除（シンプル運用）
+    // 自動再生は削除（UI簡素化）
+
+    // 初期表示：自動構築なし。例題の頻度だけは事前セット（操作を簡単に）
+    try {
+      $("#preset").value = 'exampleA14';
+      applyPreset('exampleA14');
+      // 初期状態からステップ実行を示す（フォレストを表示）
+      const freq0 = parseFreqText($("#freqText").value);
+      initStepper(freq0);
+    } catch (_) {}
+  </script>
+</body>
+</html>
