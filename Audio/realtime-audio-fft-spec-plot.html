@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>リアルタイムFFT+スペクトログラム（波形/スペクトラム/スペクトログラム）</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; color: #222; }
+      header, main { padding: 16px; }
+      h1 { font-size: 18px; margin: 12px 0; }
+      .panel { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 14px 0; background: #fff; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+      button { padding: 6px 12px; border: 1px solid #bbb; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
+      canvas { width: 100%; height: 220px; background: #000; border-radius: 6px; display: block; border: 1px solid #222; }
+      .caption { margin-top: 6px; color: #666; font-size: 12px; }
+      label { color: #444; font-size: 14px; }
+      small { color: #666; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>リアルタイムFFT+スペクトログラム（波形/スペクトラム/スペクトログラム）</h1>
+      <p><small>Python版（realtime_audio_fft_spec_plot.py）相当。マイクの波形・FFTスペクトラム・スペクトログラムを同時表示します。</small></p>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="row" style="margin-bottom:8px;">
+          <button id="btn">▶ Start</button>
+          <label>FFTサイズ
+            <select id="fft">
+              <option selected>512</option>
+              <option>1024</option>
+              <option>2048</option>
+            </select>
+          </label>
+          <label>スムージング<input id="smooth" type="range" min="0" max="0.9" step="0.05" value="0" /></label>
+          <label>スペクトログラム範囲（上限Hz）
+            <select id="specMax">
+              <option value="2000" selected>2000</option>
+              <option value="4000">4000</option>
+              <option value="8000">8000</option>
+              <option value="full">fs/2</option>
+            </select>
+          </label>
+          <span id="info" style="color:#555; font-size:13px;">状態: idle</span>
+        </div>
+
+        <canvas id="cWave" width="1024" height="220"></canvas>
+        <div class="caption"><small>y–tグラフ（y: 正規化振幅 −1..1, t: サンプル番号 0..N-1）。</small></div>
+        <div style="height: 10px"></div>
+        <canvas id="cSpec" width="1024" height="220"></canvas>
+        <div class="caption"><small>|Y(f)|–f（横軸: 周波数[Hz], 縦軸: 相対振幅、オートスケール）。</small></div>
+        <div style="height: 10px"></div>
+        <canvas id="cGram" width="1024" height="220"></canvas>
+        <div class="caption"><small>スペクトログラム（縦: 周波数[Hz], 横: 時間、色: 相対振幅）。既定は 0–2000Hz を表示。</small></div>
+        <div class="caption"><small>更新方式: 毎フレームのスペクトラムを右端1列として描き足し、既存画像を左へ1pxスクロールして時間変化を表現しています。</small></div>
+        <div class="caption">
+          <small>
+            ・ウィンドウサイズ N: <code>fftSize</code> サンプル（時間幅 <code>Tw = N / fs</code> 秒）／・フレームシフト H: おおよそ <code>H ≈ fs / frameRate</code>（1コマで1列追加）／・オーバーラップ率: <code>overlap ≈ 1 − H / N</code>
+          </small>
+        </div>
+        <div class="caption"><small id="paramInfo">現在の設定: fs=— Hz, N=—, Tw=— ms, 推定fps=—, H≈— サンプル, overlap≈—%</small></div>
+      </section>
+    </main>
+
+    <script type="module">
+      const btn = document.getElementById('btn');
+      const info = document.getElementById('info');
+      const fftSel = document.getElementById('fft');
+      const smooth = document.getElementById('smooth');
+      const specMaxSel = document.getElementById('specMax');
+      const cWave = document.getElementById('cWave');
+      const cSpec = document.getElementById('cSpec');
+      const cGram = document.getElementById('cGram');
+      const gWave = cWave.getContext('2d');
+      const gSpec = cSpec.getContext('2d');
+      const gGram = cGram.getContext('2d');
+
+      let ac, analyser, src, stream;
+      let timeBuf, freqBuf; // Uint8Array
+      let rafId = 0, running = false;
+      let lastNow = 0, emaFps = 0; // 推定fps（指数移動平均）
+
+      function drawWaveAxes() {
+        const w = cWave.width, h = cWave.height;
+        const left = 46, right = 10, top = 12, bottom = 22;
+        const plotW = w - left - right; const plotH = h - top - bottom;
+        const y0 = top + plotH * 0.5;
+        gWave.clearRect(0,0,w,h);
+        gWave.strokeStyle = 'rgba(255,255,255,.35)'; gWave.strokeRect(left, top, plotW, plotH);
+        gWave.setLineDash([6,6]);
+        gWave.beginPath(); gWave.moveTo(left, top + plotH*0.05); gWave.lineTo(w - right, top + plotH*0.05); gWave.stroke();
+        gWave.beginPath(); gWave.moveTo(left, y0); gWave.lineTo(w - right, y0); gWave.stroke();
+        gWave.beginPath(); gWave.moveTo(left, top + plotH*0.95); gWave.lineTo(w - right, top + plotH*0.95); gWave.stroke();
+        gWave.setLineDash([]);
+        gWave.fillStyle = 'rgba(255,255,255,.95)'; gWave.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        gWave.fillText('+1', 6, top + plotH*0.05 + 10);
+        gWave.fillText('0', 6, y0 - 2);
+        gWave.fillText('-1', 6, top + plotH*0.95);
+      }
+
+      function drawSpecAxes() {
+        const w = cSpec.width, h = cSpec.height;
+        const left = 46, right = 10, top = 12, bottom = 24;
+        const plotW = w - left - right; const plotH = h - top - bottom;
+        gSpec.clearRect(0,0,w,h);
+        gSpec.strokeStyle = 'rgba(255,255,255,.35)'; gSpec.strokeRect(left, top, plotW, plotH);
+        const fs = ac ? ac.sampleRate : 48000; const nyq = fs / 2;
+        const ticks = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
+        gSpec.textAlign = 'center'; gSpec.fillStyle = 'rgba(255,255,255,.95)'; gSpec.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        let lastX = -1e9; const minGap = 46;
+        for (const f of ticks) {
+          if (f > nyq) break; const x = left + (f / nyq) * plotW;
+          gSpec.save(); gSpec.setLineDash([4,8]); gSpec.strokeStyle = 'rgba(255,255,255,.22)';
+          gSpec.beginPath(); gSpec.moveTo(x, top); gSpec.lineTo(x, top + plotH); gSpec.stroke(); gSpec.restore();
+          gSpec.beginPath(); gSpec.moveTo(x, top + plotH); gSpec.lineTo(x, top + plotH + 6); gSpec.strokeStyle = 'rgba(255,255,255,.5)'; gSpec.stroke();
+          if (x - lastX >= minGap) { gSpec.fillText(f >= 1000 ? `${Math.round(f/1000)}k` : String(f), x, h - 6); lastX = x; }
+        }
+        gSpec.textAlign = 'right'; gSpec.fillText(`fs≈${ac?Math.round(ac.sampleRate):'—'} Hz, fft=${analyser?analyser.fftSize:'—'}`, w - 6, top + 14);
+        gSpec.textAlign = 'start';
+      }
+
+      function drawGramAxes() {
+        const w = cGram.width, h = cGram.height;
+        const left = 46, right = 10, top = 12, bottom = 22;
+        const plotW = w - left - right; const plotH = h - top - bottom;
+        gGram.clearRect(0,0,w,h);
+        gGram.strokeStyle = 'rgba(255,255,255,.35)'; gGram.strokeRect(left, top, plotW, plotH);
+        // y軸: 周波数目盛
+        const fs = ac ? ac.sampleRate : 48000; const nyq = fs / 2;
+        const maxHzSel = specMaxSel.value === 'full' ? nyq : parseFloat(specMaxSel.value);
+        const yTicks = [200, 500, 1000, 1500, 2000, 4000, 8000];
+        gGram.fillStyle = 'rgba(255,255,255,.95)'; gGram.font = '12px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        for (const f of yTicks) {
+          if (f > maxHzSel) break;
+          const y = top + (1 - f / maxHzSel) * plotH;
+          gGram.save(); gGram.setLineDash([4,8]); gGram.strokeStyle = 'rgba(255,255,255,.22)';
+          gGram.beginPath(); gGram.moveTo(left, y); gGram.lineTo(w - right, y); gGram.stroke(); gGram.restore();
+          gGram.fillText(f >= 1000 ? `${Math.round(f/1000)}k` : String(f), 6, y - 2);
+        }
+        // 注記
+        gGram.textAlign = 'right'; gGram.fillText(`max ${maxHzSel===nyq?'fs/2':maxHzSel+' Hz'}`, w - 6, top + 14); gGram.textAlign = 'start';
+      }
+
+      function colorMap(v) { // 0..1 -> rgba
+        const h = (240 - 240 * v); // blue->red
+        return `hsl(${h}, 95%, ${30 + 40 * v}%)`;
+      }
+
+      function draw(now) {
+        if (!running) return;
+        try {
+          if (analyser && timeBuf && freqBuf) {
+            analyser.getByteTimeDomainData(timeBuf);
+            analyser.getByteFrequencyData(freqBuf);
+          } else {
+            requestAnimationFrame(draw); return;
+          }
+        } catch (e) {
+          // まれに初期化直後で失敗することがあるため次フレームで再試行
+          requestAnimationFrame(draw); return;
+        }
+
+        // fps推定
+        if (typeof now === 'number') {
+          if (lastNow) {
+            const dt = (now - lastNow) / 1000; if (dt > 0) {
+              const inst = 1 / dt; emaFps = emaFps ? (emaFps * 0.9 + inst * 0.1) : inst;
+            }
+          }
+          lastNow = now;
+        }
+
+        // Waveform
+        drawWaveAxes();
+        const w = cWave.width, h = cWave.height; const left = 46, right = 10, top = 12, bottom = 22;
+        const plotW = w - left - right; const plotH = h - top - bottom; const y0 = top + plotH * 0.5; const amp = plotH * 0.45;
+        gWave.strokeStyle = '#00e676'; gWave.lineWidth = 2.0; gWave.beginPath();
+        const Nt = timeBuf.length;
+        for (let i = 0; i < Nt; i++) {
+          const x = left + (i / (Nt - 1)) * plotW;
+          const v = (timeBuf[i] - 128) / 128; // -1..1
+          const y = y0 - v * amp;
+          if (i === 0) gWave.moveTo(x, y); else gWave.lineTo(x, y);
+        }
+        gWave.stroke();
+
+        // Spectrum
+        drawSpecAxes();
+        const ws = cSpec.width, hs = cSpec.height; const l2 = 46, r2 = 10, t2 = 12, b2 = 24;
+        const plotWs = ws - l2 - r2; const plotHs = hs - t2 - b2; const y0s = t2 + plotHs;
+        const Nf = freqBuf.length;
+        let maxMag = 0; for (let i = 0; i < Nf; i++) { if (freqBuf[i] > maxMag) maxMag = freqBuf[i]; }
+        const scale = maxMag > 0 ? plotHs / maxMag : 1;
+        gSpec.strokeStyle = '#4fc3f7'; gSpec.lineWidth = 1.6; gSpec.beginPath();
+        for (let i = 0; i < Nf; i++) {
+          const x = l2 + (i / (Nf - 1)) * plotWs;
+          const y = y0s - freqBuf[i] * scale;
+          if (i === 0) gSpec.moveTo(x, y); else gSpec.lineTo(x, y);
+        }
+        gSpec.stroke();
+
+        // パラメータ表示を更新
+        const fs = ac ? ac.sampleRate : 0;
+        const N = analyser ? analyser.fftSize : 0;
+        const Tw = fs ? (N / fs) * 1000 : 0; // ms
+        const fps = emaFps || 0;
+        const H = (fs && fps) ? fs / fps : 0;
+        const overlap = (N && H) ? Math.max(-1, Math.min(1, 1 - H / N)) * 100 : 0;
+        const el = document.getElementById('paramInfo');
+        if (el && fs) {
+          el.textContent = `現在の設定: fs≈${Math.round(fs)} Hz, N=${N}, Tw≈${Tw.toFixed(1)} ms, 推定fps≈${fps.toFixed(1)}, H≈${H.toFixed(0)} サンプル, overlap≈${overlap.toFixed(0)}%`;
+        }
+
+        // Spectrogram: 右端に1列追加（縦=周波数）
+        const gw = cGram.width, gh = cGram.height; const gl = 46, gr = 10, gt = 12, gb = 22;
+        const gplotW = gw - gl - gr; const gplotH = gh - gt - gb;
+        // まず既存画像を左に1pxスクロール（失敗時は軸を引き直し）
+        try {
+          if (gplotW > 1 && gplotH > 0) {
+            const img = gGram.getImageData(gl + 1, gt, gplotW - 1, gplotH);
+            gGram.putImageData(img, gl, gt);
+          }
+        } catch (e) {
+          // サイズ変化などで失敗した場合は再描画して継続
+          drawGramAxes();
+        }
+        // 右端列を描画
+        const fs2 = ac ? ac.sampleRate : 48000; const nyq2 = fs2 / 2; const maxHzSel2 = specMaxSel.value === 'full' ? nyq2 : parseFloat(specMaxSel.value);
+        const bins = Math.max(1, Math.floor((maxHzSel2 / nyq2) * Nf));
+        const colW = 1; const xRight = gl + gplotW - 1;
+        for (let j = 0; j < gplotH; j++) {
+          // j=0 を上、周波数は0..maxHzSelを下から上へ（origin: lower）に合わせる
+          const frac = 1 - j / (gplotH - 1); // 1..0
+          const k = Math.min(bins - 1, Math.max(0, Math.floor(frac * bins)));
+          const mag = freqBuf[k] / 255; // 0..1
+          gGram.fillStyle = colorMap(mag);
+          gGram.fillRect(xRight, gt + j, colW, 1);
+        }
+
+        if (running) rafId = requestAnimationFrame(draw);
+      }
+
+      async function start() {
+        if (running) return;
+        try {
+          if (!navigator.mediaDevices?.getUserMedia) throw new Error('getUserMedia unsupported');
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          const AC = window.AudioContext || window.webkitAudioContext; if (!AC) throw new Error('WebAudio unsupported');
+          ac = new AC();
+          src = ac.createMediaStreamSource(stream);
+          analyser = ac.createAnalyser();
+          analyser.fftSize = parseInt(fftSel.value, 10);
+          analyser.smoothingTimeConstant = parseFloat(smooth.value);
+          src.connect(analyser);
+          try { await ac.resume(); } catch {}
+          timeBuf = new Uint8Array(analyser.fftSize);
+          freqBuf = new Uint8Array(analyser.frequencyBinCount);
+          running = true; btn.textContent = '⏸ Stop';
+          info.textContent = `状態: running | fs≈${Math.round(ac.sampleRate)}Hz, fft=${analyser.fftSize}`;
+          drawGramAxes();
+          requestAnimationFrame(draw);
+        } catch (e) {
+          console.error(e);
+          info.textContent = `状態: error - ${e?.name || ''} ${e?.message || 'マイク権限やブラウザ対応を確認してください'}`.trim();
+        }
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        cancelAnimationFrame(rafId);
+        lastNow = 0; emaFps = 0;
+        if (ac?.state !== 'closed') ac.close().catch(() => {});
+        stream?.getTracks?.().forEach(t => t.stop());
+        btn.textContent = '▶ Start'; info.textContent = '状態: stopped';
+      }
+
+      // UI handlers
+      btn.addEventListener('click', () => { running ? stop() : start(); });
+      fftSel.addEventListener('change', () => { if (analyser) { analyser.fftSize = parseInt(fftSel.value, 10); timeBuf = new Uint8Array(analyser.fftSize); freqBuf = new Uint8Array(analyser.frequencyBinCount); }});
+      smooth.addEventListener('input', () => { if (analyser) analyser.smoothingTimeConstant = parseFloat(smooth.value); });
+      specMaxSel.addEventListener('change', () => { drawGramAxes(); });
+      window.addEventListener('pagehide', stop);
+      window.addEventListener('beforeunload', stop);
+    </script>
+  </body>
+  </html>

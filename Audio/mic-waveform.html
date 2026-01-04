@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>マイク波形（リアルタイム）</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; color: #222; }
+      header, main { padding: 16px; }
+      h1 { font-size: 18px; margin: 12px 0; }
+      .panel { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 14px 0; background: #fff; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+      label { color: #444; font-size: 14px; }
+      canvas { width: 100%; height: 260px; background: #000; border-radius: 6px; display: block; border: 1px solid #222; }
+      button { padding: 6px 12px; border: 1px solid #bbb; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
+      small { color: #666; }
+      code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>マイク波形（リアルタイム）</h1>
+      <p><small>Python版（sounddevice + matplotlib）のHTML/ブラウザ版。マイク権限が必要です。</small></p>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="row">
+          <button id="btn">▶ Start</button>
+          <label>縦スケール
+            <input type="range" id="gain" min="0.2" max="4" step="0.1" value="1" />
+          </label>
+          <span id="info" style="color:#555; font-size:13px;">状態: idle</span>
+        </div>
+        <canvas id="cvs" width="1024" height="260"></canvas>
+        <div class="caption"><small>y–tグラフ（y: 正規化振幅, t: 時間[ms]）。直近512サンプルを表示。</small></div>
+        <p><small>設定: <code>AnalyserNode.fftSize = 512</code>（= 512サンプルを描画）。X軸は時間[ms]、Y軸は正規化振幅（−1..1）。</small></p>
+      </section>
+    </main>
+
+    <script type="module">
+      const btn = document.getElementById('btn');
+      const info = document.getElementById('info');
+      const gain = document.getElementById('gain');
+      const cvs = document.getElementById('cvs');
+      const ctx = cvs.getContext('2d');
+
+      let ac, analyser, src, stream; // AudioContext, AnalyserNode, MediaStreamSource, MediaStream
+      let buf; // Uint8Array for time-domain samples
+      let rafId = 0;
+      let running = false;
+      const MARGIN = { left: 48, right: 8, top: 12, bottom: 26 };
+
+      async function start() {
+        if (running) return;
+        try {
+          info.textContent = '状態: requesting microphone…';
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          ac = new (window.AudioContext || window.webkitAudioContext)();
+          src = ac.createMediaStreamSource(stream);
+          analyser = ac.createAnalyser();
+          analyser.fftSize = 512; // Python版のバッファ長(512)に合わせる
+          analyser.smoothingTimeConstant = 0; // 生波形表示
+          src.connect(analyser);
+          buf = new Uint8Array(analyser.fftSize);
+          running = true;
+          btn.textContent = '⏸ Stop';
+          info.textContent = `状態: running | sampleRate=${Math.round(ac.sampleRate)}Hz, fftSize=${analyser.fftSize}`;
+          draw();
+        } catch (e) {
+          console.error(e);
+          info.textContent = '状態: error - マイク権限を確認してください';
+        }
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        cancelAnimationFrame(rafId);
+        if (ac?.state !== 'closed') ac.close().catch(() => {});
+        stream?.getTracks?.().forEach(t => t.stop());
+        btn.textContent = '▶ Start';
+        info.textContent = '状態: stopped';
+      }
+
+      function niceStep(totalMs) {
+        const base = [1, 2, 5];
+        const target = totalMs / 6; // 目安: 6分割程度
+        let step = 1;
+        for (let p = -3; p <= 4; p++) {
+          const scale = Math.pow(10, p);
+          for (const b of base) {
+            const s = b * scale;
+            if (s >= target) return s;
+            step = s;
+          }
+        }
+        return step;
+      }
+
+      function drawAxes(sampleRate, N) {
+        const w = cvs.width, h = cvs.height;
+        const { left, right, top, bottom } = MARGIN;
+        const plotW = w - left - right;
+        const plotH = h - top - bottom;
+        const yTop = top, yBot = h - bottom;
+        const y0 = yTop + plotH * 0.5;
+
+        // 背景枠
+        ctx.strokeStyle = 'rgba(255,255,255,.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(left, top, plotW, plotH);
+
+        // ガイド線（±1 と 0）
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath(); ctx.moveTo(left, yTop + plotH * 0.05); ctx.lineTo(w - right, yTop + plotH * 0.05); ctx.stroke(); // +1
+        ctx.beginPath(); ctx.moveTo(left, y0); ctx.lineTo(w - right, y0); ctx.stroke(); // 0
+        ctx.beginPath(); ctx.moveTo(left, yBot - plotH * 0.05); ctx.lineTo(w - right, yBot - plotH * 0.05); ctx.stroke(); // -1
+        ctx.setLineDash([]);
+
+        // ラベル
+        ctx.fillStyle = 'rgba(255,255,255,.95)';
+        ctx.font = '13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif';
+        ctx.fillText('+1', 6, yTop + plotH * 0.05 + 12);
+        ctx.fillText('0', 6, y0 - 4);
+        ctx.fillText('-1', 6, yBot - plotH * 0.05 - 4);
+
+        // X軸時間目盛（ms）
+        if (sampleRate && N) {
+          const totalMs = (N / sampleRate) * 1000;
+          const stepMs = niceStep(totalMs);
+          const tickH = 6;
+          ctx.strokeStyle = 'rgba(255,255,255,.5)';
+          ctx.fillStyle = 'rgba(255,255,255,.95)';
+          ctx.textAlign = 'center';
+          for (let t = 0; t <= totalMs + 1e-6; t += stepMs) {
+            const x = left + (t / totalMs) * plotW;
+            // 下端目盛
+            ctx.beginPath(); ctx.moveTo(x, yBot); ctx.lineTo(x, yBot + tickH); ctx.stroke();
+            // グリッド（縦）
+            ctx.save(); ctx.setLineDash([4, 8]); ctx.strokeStyle = 'rgba(255,255,255,.22)';
+            ctx.beginPath(); ctx.moveTo(x, yTop); ctx.lineTo(x, yBot); ctx.stroke(); ctx.restore();
+            // ラベル（下）
+            const label = `${Math.round(t)}ms`;
+            ctx.fillText(label, x, yBot + tickH + 12);
+          }
+          // 右上に概要
+          const summary = `${Math.round(totalMs)} ms @ ${Math.round(sampleRate)} Hz`;
+          ctx.textAlign = 'right';
+          ctx.fillText(summary, w - 6, top + 14);
+          ctx.textAlign = 'start';
+        }
+      }
+
+      function draw() {
+        analyser.getByteTimeDomainData(buf);
+        const w = cvs.width, h = cvs.height;
+        ctx.clearRect(0, 0, w, h);
+        drawAxes(ac?.sampleRate, buf.length);
+
+        // 波形の描画エリア（余白を考慮）
+        const { left, right, top, bottom } = MARGIN;
+        const plotW = w - left - right;
+        const plotH = h - top - bottom;
+        const y0 = top + plotH * 0.5;
+        const amp = plotH * 0.45 * parseFloat(gain.value);
+
+        ctx.strokeStyle = '#00e676'; // 見やすい黄緑
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        const N = buf.length;
+        for (let i = 0; i < N; i++) {
+          const x = left + (i / (N - 1)) * plotW;
+          const v = (buf[i] - 128) / 128; // -1..1
+          const y = y0 - v * amp;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        if (running) rafId = requestAnimationFrame(draw);
+      }
+
+      btn.addEventListener('click', () => {
+        if (!running) start(); else stop();
+      });
+
+      // 後片付け（ページ離脱時に停止）
+      window.addEventListener('pagehide', stop);
+      window.addEventListener('beforeunload', stop);
+    </script>
+  </body>
+  </html>
