@@ -34,3 +34,4 @@
 *   [マイク波形（リアルタイム）](https://jkushida.github.io/Web_demo/Audio/mic-waveform.html) - マイク入力の時間波形をリアルタイム描画
 *   [リアルタイムFFT（波形+スペクトラム）](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-plot.html) - 波形と周波数スペクトラムを同時表示
 *   [リアルタイムFFT+スペクトログラム](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-spec-plot.html) - 波形・スペクトラム・スペクトログラムを同時表示
+*   [音声コマンド認識（TF.js + Chart）](https://jkushida.github.io/Web_demo/Audio/speech-commands-chart.html) - 認識結果（最尤単語）と各単語確率を横棒グラフで可視化
