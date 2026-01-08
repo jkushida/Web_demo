@@ -35,3 +35,4 @@
 *   [リアルタイムFFT（波形+スペクトラム）](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-plot.html) - 波形と周波数スペクトラムを同時表示
 *   [リアルタイムFFT+スペクトログラム](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-spec-plot.html) - 波形・スペクトラム・スペクトログラムを同時表示
 *   [音声コマンド認識（TF.js + Chart）](https://jkushida.github.io/Web_demo/Audio/speech-commands-chart.html) - 認識結果（最尤単語）と各単語確率を横棒グラフで可視化
+*   [リアルタイム日本語スピーチ→テキスト（Web Speech API）](https://jkushida.github.io/Web_demo/Audio/ja-speech-to-text.html) - 日本語音声をブラウザで逐次認識し、暫定・確定テキストを表示

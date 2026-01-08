@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>リアルタイム日本語スピーチ → テキスト</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; color: #222; }
+      header, main { padding: 16px; }
+      h1 { font-size: 18px; margin: 12px 0; }
+      .panel { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 14px 0; background: #fff; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+      button { padding: 6px 12px; border: 1px solid #bbb; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
+      .status { color: #555; font-size: 13px; }
+      .box { border: 1px solid #ccc; border-radius: 6px; padding: 8px; background: #fafafa; }
+      .live { color: #0b57d0; min-height: 1.5em; white-space: pre-wrap; }
+      .final { white-space: pre-wrap; min-height: 6em; }
+      .muted { color: #888; }
+      small { color: #666; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>リアルタイム日本語スピーチ → テキスト（Web Speech API）</h1>
+      <p class="muted"><small>Chrome系ブラウザ推奨。ページ表示後に「▶ Start」をクリックしてマイク権限を許可してください。</small></p>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="row">
+          <button id="btn">▶ Start</button>
+          <span id="info" class="status">状態: idle</span>
+          <button id="copy">コピー</button>
+        </div>
+        <div class="row">
+          <label class="muted">言語: <code>ja-JP</code> 固定（必要なら拡張可能）</label>
+        </div>
+        <div class="row">
+          <div class="box" style="flex:1;">
+            <div class="muted">いま聞き取り中（暫定）</div>
+            <div id="live" class="live"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="box" style="flex:1;">
+            <div class="muted">確定テキスト（時系列で追記）</div>
+            <div id="final" class="final"></div>
+          </div>
+        </div>
+        <p class="muted"><small>注意: Web Speech APIはブラウザ依存です。Chromeでは <code>webkitSpeechRecognition</code> として提供されます。長時間の無音や区切りで自動停止する場合は自動再開します。</small></p>
+      </section>
+    </main>
+
+    <script>
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('btn');
+      const info = document.getElementById('info');
+      const live = document.getElementById('live');
+      const finalBox = document.getElementById('final');
+      const copyBtn = document.getElementById('copy');
+
+      if (!SpeechRecognition) {
+        info.textContent = '状態: unsupported - このブラウザはWeb Speech APIに未対応です';
+        btn.disabled = true;
+      }
+
+      let recog = null;
+      let running = false;
+
+      function createRecognizer() {
+        const r = new SpeechRecognition();
+        r.lang = 'ja-JP';
+        r.continuous = true;        // 連続認識
+        r.interimResults = true;    // 暫定結果を有効
+        r.maxAlternatives = 1;
+
+        r.onstart = () => { info.textContent = '状態: listening…'; };
+        r.onaudiostart = () => { /* optional */ };
+        r.onsoundstart = () => { /* optional */ };
+        r.onspeechstart = () => { /* optional */ };
+
+        r.onresult = (ev) => {
+          let interim = '';
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const res = ev.results[i];
+            if (res.isFinal) {
+              const text = res[0].transcript.trim();
+              if (text) {
+                finalBox.textContent += (finalBox.textContent ? '\n' : '') + text;
+              }
+            } else {
+              interim += res[0].transcript;
+            }
+          }
+          live.textContent = interim.trim();
+        };
+
+        r.onerror = (e) => {
+          console.warn('recognition error:', e.error, e.message || '');
+          info.textContent = '状態: error - ' + e.error;
+          // 一部エラーは自動再開
+          if (running && (e.error === 'no-speech' || e.error === 'audio-capture' || e.error === 'network')) {
+            try { r.stop(); } catch (_) {}
+          }
+        };
+
+        r.onend = () => {
+          // 無音や区切りでendが来る。runningなら自動再開
+          if (running) {
+            try { r.start(); } catch (_) {}
+          } else {
+            info.textContent = '状態: stopped';
+          }
+        };
+
+        return r;
+      }
+
+      function start() {
+        if (running || !SpeechRecognition) return;
+        running = true;
+        live.textContent = '';
+        info.textContent = '状態: initializing…';
+        btn.textContent = '⏸ Stop';
+        if (!recog) recog = createRecognizer();
+        try { recog.start(); } catch (e) { console.error(e); }
+      }
+
+      function stop() {
+        if (!running) return;
+        running = false;
+        try { recog?.stop(); } catch (_) {}
+        btn.textContent = '▶ Start';
+      }
+
+      btn.addEventListener('click', () => {
+        if (!running) start(); else stop();
+      });
+
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(finalBox.textContent || '');
+          copyBtn.textContent = 'コピーしました';
+          setTimeout(() => { copyBtn.textContent = 'コピー'; }, 1000);
+        } catch {
+          copyBtn.textContent = 'コピー失敗';
+          setTimeout(() => { copyBtn.textContent = 'コピー'; }, 1000);
+        }
+      });
+
+      window.addEventListener('pagehide', stop);
+      window.addEventListener('beforeunload', stop);
+    </script>
+  </body>
+  </html>
+
