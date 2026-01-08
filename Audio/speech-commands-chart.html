@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>音声コマンド認識（TF.js + Chart）</title>
+    <style>
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans JP", sans-serif; color: #222; }
+      header, main { padding: 16px; }
+      h1 { font-size: 18px; margin: 12px 0; }
+      .panel { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 14px 0; background: #fff; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+      label { color: #444; font-size: 14px; }
+      canvas { background: #fff; border: 1px solid #ccc; border-radius: 6px; }
+      small { color: #666; }
+      code { background: #f5f5f5; padding: 2px 4px; border-radius: 4px; }
+    </style>
+    <!-- 依存ライブラリ（既存プロジェクトでもCDN使用例あり）。ローカル配布に切替可能です。 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands"></script>
+  </head>
+  <body>
+    <header>
+      <h1>音声コマンド認識（TensorFlow.js + Chart.js）</h1>
+      <p><small>マイク権限が必要です。最も確率の高い単語と全単語のスコアを表示します。</small></p>
+    </header>
+    <main>
+      <section class="panel">
+        <div class="row">
+          <strong>認識結果:</strong>
+          <span id="console" style="font-weight:600; color:#1a73e8;">(waiting)</span>
+        </div>
+        <canvas id="scoreChart" width="640" height="420"></canvas>
+        <p><small>しきい値: <code>probabilityThreshold = 0.75</code>。横棒グラフのX軸は確率（0..1）。</small></p>
+      </section>
+    </main>
+
+    <!-- ページ固有ロジック（Audio/index.js） -->
+    <script src="./index.js"></script>
+  </body>
+  </html>
+
