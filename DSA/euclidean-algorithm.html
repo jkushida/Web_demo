@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ユークリッドの互除法ビジュアライザー</title>
+    <style>
+        :root {
+            --primary: #48bb78;
+            --primary-hover: #38a169;
+            --bg-gradient: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+            --text-dark: #2d3748;
+            --text-muted: #718096;
+            --white: #ffffff;
+            --shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-dark);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--white);
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--text-dark);
+            font-size: 28px;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        input {
+            padding: 12px 16px;
+            font-size: 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            width: 100px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #edf2f7;
+            color: var(--text-dark);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e2e8f0;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .visualization-area {
+            position: relative;
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 400px;
+        }
+
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            /* box-shadow: 0 4px 6px rgba(0,0,0,0.05); */
+        }
+
+        .step-info {
+            margin-top: 20px;
+            padding: 15px 25px;
+            background: #ebf8ff;
+            border-left: 5px solid #4299e1;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #2b6cb0;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+
+        .step-desc {
+            color: #2c5282;
+            font-size: 16px;
+        }
+
+        .history {
+            margin-top: 30px;
+            border-top: 2px solid #f7fafc;
+            padding-top: 20px;
+        }
+
+        .history h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+        }
+
+        .history-list {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-item {
+            padding: 10px 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 16px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .instructions {
+            margin-top: 40px;
+            padding: 20px;
+            background: #fffaf0;
+            border-radius: 16px;
+            border: 1px solid #feebc8;
+        }
+
+        .instructions h3 {
+            color: #9c4221;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+
+        .instructions p {
+            color: #7b341e;
+            line-height: 1.6;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .highlight-gcd {
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📐 ユークリッドの互除法ビジュアライザー 📐</h1>
+
+        <div class="input-group">
+            <div class="input-field">
+                <label for="numA">長辺 (a)</label>
+                <input type="number" id="numA" value="50" min="1" max="500">
+            </div>
+            <div class="input-field">
+                <label for="numB">短辺 (b)</label>
+                <input type="number" id="numB" value="30" min="1" max="500">
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="startBtn" class="btn-primary">
+                <span>▶</span> 開始
+            </button>
+            <button id="nextBtn" class="btn-primary" disabled>
+                <span>⏭</span> 次の手順
+            </button>
+            <button id="resetBtn" class="btn-secondary">
+                <span>🔄</span> リセット
+            </button>
+        </div>
+
+        <div class="visualization-area">
+            <canvas id="canvas"></canvas>
+            <div class="step-info" id="stepInfo">
+                <div class="step-title" id="stepTitle">準備完了</div>
+                <div class="step-desc" id="stepDesc">数値を入力して「開始」を押してください。</div>
+            </div>
+        </div>
+
+        <div class="history" id="historySection" style="display: none;">
+            <h3>計算プロセス</h3>
+            <ul class="history-list" id="historyList"></ul>
+        </div>
+
+        <div class="instructions">
+            <h3>仕組みのイメージ</h3>
+            <p>
+                ユークリッドの互除法は、長方形から正方形を切り出していくプロセスとして視覚化できます。
+                長い方の辺から、短い方の辺を一辺とする正方形を可能な限り切り取ります。
+                残った長方形に対して同じ操作を繰り返し、最後にぴったり正方形だけで埋まったとき、その正方形の辺の長さが最大公約数（GCD）となります。
+            </p>
+        </div>
+    </div>
+
+    <script>
+        class EuclideanVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.startBtn = document.getElementById('startBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.numAInput = document.getElementById('numA');
+                this.numBInput = document.getElementById('numB');
+                this.stepTitle = document.getElementById('stepTitle');
+                this.stepDesc = document.getElementById('stepDesc');
+                this.historySection = document.getElementById('historySection');
+                this.historyList = document.getElementById('historyList');
+
+                this.a = 0;
+                this.b = 0;
+                this.originalA = 0;
+                this.originalB = 0;
+                this.steps = [];
+                this.currentStepIdx = -1;
+                this.isFinished = false;
+                
+                this.scale = 1;
+                this.padding = 40;
+
+                this.init();
+            }
+
+            init() {
+                this.startBtn.addEventListener('click', () => this.start());
+                this.nextBtn.addEventListener('click', () => this.next());
+                this.resetBtn.addEventListener('click', () => this.reset());
+                this.updateCanvasSize();
+                window.addEventListener('resize', () => this.draw());
+            }
+
+            updateCanvasSize() {
+                const containerWidth = this.canvas.parentElement.clientWidth - 40;
+                this.canvas.width = containerWidth;
+                this.canvas.height = 400;
+            }
+
+            start() {
+                let valA = parseInt(this.numAInput.value);
+                let valB = parseInt(this.numBInput.value);
+
+                if (isNaN(valA) || isNaN(valB) || valA <= 0 || valB <= 0) {
+                    alert('正の整数を入力してください。');
+                    return;
+                }
+
+                // aを大きい方にする
+                if (valA < valB) {
+                    [valA, valB] = [valB, valA];
+                    this.numAInput.value = valA;
+                    this.numBInput.value = valB;
+                }
+
+                this.originalA = valA;
+                this.originalB = valB;
+                this.a = valA;
+                this.b = valB;
+                
+                this.steps = this.calculateSteps(valA, valB);
+                this.currentStepIdx = 0;
+                this.isFinished = false;
+
+                this.startBtn.disabled = true;
+                this.nextBtn.disabled = false;
+                this.numAInput.disabled = true;
+                this.numBInput.disabled = true;
+                this.historySection.style.display = 'block';
+                this.historyList.innerHTML = '';
+
+                this.updateStepInfo();
+                this.draw();
+            }
+
+            calculateSteps(a, b) {
+                const steps = [];
+                let currA = a;
+                let currB = b;
+
+                while (currB > 0) {
+                    const quotient = Math.floor(currA / currB);
+                    const remainder = currA % currB;
+                    steps.push({
+                        a: currA,
+                        b: currB,
+                        q: quotient,
+                        r: remainder
+                    });
+                    currA = currB;
+                    currB = remainder;
+                }
+                return steps;
+            }
+
+            next() {
+                if (this.currentStepIdx < this.steps.length) {
+                    const step = this.steps[this.currentStepIdx];
+                    this.addHistoryItem(step);
+                    
+                    this.currentStepIdx++;
+                    
+                    if (this.currentStepIdx >= this.steps.length) {
+                        this.isFinished = true;
+                        this.nextBtn.disabled = true;
+                    }
+                    
+                    this.updateStepInfo();
+                    this.draw();
+                }
+            }
+
+            reset() {
+                this.startBtn.disabled = false;
+                this.nextBtn.disabled = true;
+                this.numAInput.disabled = false;
+                this.numBInput.disabled = false;
+                this.historySection.style.display = 'none';
+                this.historyList.innerHTML = '';
+                this.currentStepIdx = -1;
+                this.isFinished = false;
+                this.stepTitle.textContent = '準備完了';
+                this.stepDesc.textContent = '数値を入力して「開始」を押してください。';
+                
+                this.updateCanvasSize();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            updateStepInfo() {
+                if (this.currentStepIdx === -1) return;
+
+                if (this.isFinished) {
+                    const gcd = this.steps[this.steps.length - 1].b;
+                    this.stepTitle.textContent = '完了！';
+                    this.stepDesc.innerHTML = `最大公約数 (GCD) は <span class="highlight-gcd">${gcd}</span> です。${gcd}×${gcd}の正方形で埋め尽くされました。`;
+                } else {
+                    const step = this.steps[this.currentStepIdx];
+                    this.stepTitle.textContent = `手順 ${this.currentStepIdx + 1}`;
+                    this.stepDesc.textContent = `${step.a} から ${step.b} を切り落とします（${step.q}回分）。`;
+                }
+            }
+
+            addHistoryItem(step) {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.textContent = `${step.a} = ${step.b} × ${step.q} + ${step.r}`;
+                this.historyList.appendChild(li);
+            }
+
+            draw() {
+                if (this.currentStepIdx === -1) return;
+
+                this.updateCanvasSize();
+                const ctx = this.ctx;
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+                ctx.clearRect(0, 0, w, h);
+
+                // スケール計算
+                const availableW = w - this.padding * 2;
+                const availableH = h - this.padding * 2;
+                const scaleX = availableW / this.originalA;
+                const scaleY = availableH / this.originalB;
+                this.scale = Math.min(scaleX, scaleY);
+
+                const startX = (w - this.originalA * this.scale) / 2;
+                const startY = (h - this.originalB * this.scale) / 2;
+
+                // 全体の枠
+                ctx.strokeStyle = '#cbd5e0';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(startX, startY, this.originalA * this.scale, this.originalB * this.scale);
+
+                // ラベル（最初だけ）
+                ctx.fillStyle = '#718096';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.originalA, startX + (this.originalA * this.scale) / 2, startY - 10);
+                ctx.textAlign = 'right';
+                ctx.fillText(this.originalB, startX - 10, startY + (this.originalB * this.scale) / 2);
+
+                // 描画の状態管理
+                let curX = startX;
+                let curY = startY;
+                let curA = this.originalA;
+                let curB = this.originalB;
+                let horizontal = true;
+
+                // 完了したステップを描画
+                for (let i = 0; i < this.currentStepIdx; i++) {
+                    const step = this.steps[i];
+                    ctx.fillStyle = this.getStepColor(i);
+                    ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                    ctx.lineWidth = 1;
+
+                    for (let j = 0; j < step.q; j++) {
+                        const size = step.b * this.scale;
+                        if (horizontal) {
+                            ctx.fillRect(curX, curY, size, size);
+                            ctx.strokeRect(curX, curY, size, size);
+                            curX += size;
+                        } else {
+                            ctx.fillRect(curX, curY, size, size);
+                            ctx.strokeRect(curX, curY, size, size);
+                            curY += size;
+                        }
+                    }
+
+                    if (horizontal) {
+                        curA = step.r;
+                    } else {
+                        curB = step.r;
+                    }
+                    horizontal = !horizontal;
+                }
+
+                // 現在進行中の長方形をハイライト
+                if (!this.isFinished && this.currentStepIdx < this.steps.length) {
+                    ctx.strokeStyle = '#4299e1';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(curX, curY, curA * this.scale, curB * this.scale);
+                    ctx.setLineDash([]);
+                    
+                    // 次に切り取る正方形のガイド（うっすら）
+                    const nextStep = this.steps[this.currentStepIdx];
+                    ctx.fillStyle = 'rgba(66, 153, 225, 0.1)';
+                    const size = nextStep.b * this.scale;
+                    if (horizontal) {
+                        ctx.fillRect(curX, curY, size, size);
+                    } else {
+                        ctx.fillRect(curX, curY, size, size);
+                    }
+                }
+            }
+
+            getStepColor(idx) {
+                const colors = [
+                    '#c6f6d5', // green 100
+                    '#bee3f8', // blue 100
+                    '#fed7e2', // pink 100
+                    '#feebc8', // orange 100
+                    '#e9d8fd', // purple 100
+                    '#fff5f5', // red 100
+                ];
+                return colors[idx % colors.length];
+            }
+        }
+
+        window.onload = () => {
+            new EuclideanVisualizer();
+        };
+    </script>
+</body>
+</html>
