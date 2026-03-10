@@ -13,9 +13,6 @@
 - [Huffman Coding](https://jkushida.github.io/Web_demo/DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
 - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
 - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
-- [ビーム探索の可視化](https://jkushida.github.io/Web_demo/DSA/beam_search.html) - テキスト生成におけるビーム探索の動作をステップごとに可視化
-- [全探索 vs ビーム探索](https://jkushida.github.io/Web_demo/DSA/search_comparison.html) - 計算量の爆発的増加と、ビーム探索による効率的な探索の比較
-- [オセロAI - ビーム探索](https://jkushida.github.io/Web_demo/DSA/othello_beam_search.html) - オセロAIがビーム探索を用いて次の一手を決定する過程を可視化
 
 ### 進化計算
 - [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ
