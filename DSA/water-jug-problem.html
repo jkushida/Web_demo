@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>水差し問題アプリ（4L・3L）</title>
+  <style>
+    :root {
+      --bg: #f4f6f5;
+      --paper: #ffffff;
+      --ink: #202124;
+      --line: #0b8c61;
+      --line-soft: #9cd7c2;
+      --water: #3c8fe6;
+      --ok: #0b7c56;
+      --muted: #6f7472;
+      --c4: #0b67c2;
+      --c3: #0a9a4a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 20% 0%, #fff, var(--bg) 45%);
+      font-size: 18px;
+    }
+    .wrap { max-width: 1100px; margin: 20px auto; padding: 16px; }
+    .card {
+      background: var(--paper);
+      border: 2px solid var(--line-soft);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+    }
+    .head {
+      background: linear-gradient(90deg, #0f8d63, #11a977);
+      color: #fff;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .tag {
+      border: 1px solid rgba(255,255,255,0.7);
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    h1 { margin: 0; font-size: clamp(22px, 2.5vw, 36px); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.15fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+    .panel {
+      border: 1px dashed #9fd1be;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfffd;
+      display: flex;
+      flex-direction: column;
+    }
+    .legend {
+      margin-top: 6px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      font-weight: 700;
+      color: var(--muted);
+      gap: 8px;
+    }
+    .legend-center {
+      text-align: center;
+      color: #3c4a45;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+    }
+    .legend-right { text-align: right; }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 8px;
+      align-content: start;
+    }
+    button {
+      border: 1px solid #8fbca9;
+      border-radius: 10px;
+      padding: 10px 10px;
+      font-weight: 700;
+      background: #fff;
+      cursor: pointer;
+      font-size: 18px;
+    }
+    button:hover { background: #eaf8f2; }
+    button:disabled {
+      background: #e5e6e7;
+      color: #9aa0a6;
+      border-color: #c8cbcf;
+      cursor: not-allowed;
+    }
+    .danger { color: inherit; border-color: #8fbca9; }
+    .main { background: #0f8d63; color: #fff; border-color: #0f8d63; }
+    .c4 { color: var(--c4); }
+    .c3 { color: var(--c3); }
+    .rx {
+      font-size: 1.18em;
+      font-weight: 800;
+      color: #111;
+    }
+    button:disabled .c4,
+    button:disabled .c3 { color: inherit; }
+    button:disabled .rx { color: inherit; }
+
+    .status, .rules {
+      grid-column: 1/-1;
+      border: 1px solid #dbe7e2;
+      border-radius: 10px;
+      background: #f7f9f8;
+      padding: 10px;
+      font-size: 18px;
+    }
+    .status.goal {
+      background: #e8f7f0;
+      border-color: #7ec8a9;
+    }
+    .ok { color: var(--ok); font-weight: 700; }
+    .history {
+      margin-top: 12px;
+      border: 1px solid #dbe7e2;
+      border-radius: 10px;
+      background: #f7f9f8;
+      padding: 10px;
+      min-height: 120px;
+      max-height: 260px;
+      overflow: auto;
+      font-size: 18px;
+    }
+    .history ol { margin: 0 0 0 16px; padding: 0; }
+    .rules ul { margin: 6px 0 0 18px; padding: 0; }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <header class="head">
+        <h1>水差し問題：4Lと3Lの水差しで、4L側に正確に2Lを作る</h1>
+      </header>
+
+      <div class="grid">
+        <section class="panel">
+          <svg viewBox="0 0 920 420" width="100%" aria-label="水差し状態">
+            <defs>
+              <clipPath id="inner4"><path d="M156 117 L344 117 L312 319 L188 319 Z"/></clipPath>
+              <clipPath id="inner3"><path d="M569 147 L711 147 L687 319 L593 319 Z"/></clipPath>
+            </defs>
+            <path d="M156 117 L344 117 L312 319 L188 319 Z" fill="#efefef"/>
+            <path d="M569 147 L711 147 L687 319 L593 319 Z" fill="#efefef"/>
+            <rect id="water4" x="156" y="319" width="188" height="0" fill="var(--water)" opacity="0.82" clip-path="url(#inner4)"/>
+            <rect id="water3" x="569" y="319" width="142" height="0" fill="var(--water)" opacity="0.82" clip-path="url(#inner3)"/>
+
+            <path d="M175 115 C180 40, 320 40, 325 115" fill="none" stroke="#666" stroke-width="3"/>
+            <path d="M150 115 L350 115 L315 320 L185 320 Z" fill="none" stroke="#666" stroke-width="3"/>
+            <rect x="237" y="50" width="26" height="14" rx="2" fill="#efefef" stroke="#666" stroke-width="2"/>
+
+            <path d="M582 145 C585 92, 695 92, 698 145" fill="none" stroke="#666" stroke-width="3"/>
+            <path d="M565 145 L715 145 L690 320 L590 320 Z" fill="none" stroke="#666" stroke-width="3"/>
+            <rect x="626" y="95" width="24" height="12" rx="2" fill="#efefef" stroke="#666" stroke-width="2"/>
+
+            <text x="250" y="365" text-anchor="middle" font-size="44" font-weight="700" fill="#0b67c2">4L</text>
+            <text x="640" y="365" text-anchor="middle" font-size="44" font-weight="700" fill="#0a9a4a">3L</text>
+          </svg>
+          <div class="legend">
+            <span>4L側: <strong id="a4">0</strong> / 4 L</span>
+            <span class="legend-center" id="stateInline">(4L, 3L)=(0,0)</span>
+            <span class="legend-right">3L側: <strong id="a3">0</strong> / 3 L</span>
+          </div>
+          <div class="history">
+            <ol id="log"></ol>
+          </div>
+        </section>
+
+        <section class="controls">
+          <button data-act="R1"><span class="rx">R1:</span> <span class="c4">4L</span>を満杯</button>
+          <button data-act="R2"><span class="rx">R2:</span> <span class="c3">3L</span>を満杯</button>
+          <button data-act="R3" class="danger"><span class="rx">R3:</span> <span class="c4">4L</span>を空にする</button>
+          <button data-act="R4" class="danger"><span class="rx">R4:</span> <span class="c3">3L</span>を空にする</button>
+          <button data-act="R5"><span class="rx">R5:</span> <span class="c3">3L</span>→<span class="c4">4L</span>へ移す</button>
+          <button data-act="R6"><span class="rx">R6:</span> <span class="c4">4L</span>→<span class="c3">3L</span>へ移す</button>
+          <button data-act="reset">リセット</button>
+
+          <div id="status" class="status">初期状態は <strong>(0,0)</strong>。ゴール状態は <strong>(2,0)</strong> です。</div>
+
+          <div class="rules">
+            <strong>定式化:</strong> 状態 = (4L側の水量, 3L側の水量)<br>
+            目標 = (2,0)
+            <ul>
+              <li>R1〜R6を使って状態遷移を作る</li>
+              <li>履歴を追って「発火系列」を確認する</li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const CAP4 = 4, CAP3 = 3;
+    let j4 = 0, j3 = 0;
+    const water4 = document.getElementById('water4');
+    const water3 = document.getElementById('water3');
+    const a4 = document.getElementById('a4');
+    const a3 = document.getElementById('a3');
+    const stateInline = document.getElementById('stateInline');
+    const status = document.getElementById('status');
+    const log = document.getElementById('log');
+
+    const geo4 = { yTop: 117, yBot: 319 };
+    const geo3 = { yTop: 147, yBot: 319 };
+
+    function setWaterRect(el, amount, cap, g) {
+      const r = Math.max(0, Math.min(1, amount / cap));
+      if (r === 0) {
+        el.setAttribute('y', g.yBot);
+        el.setAttribute('height', 0);
+        el.style.display = 'none';
+        return;
+      }
+      el.style.display = 'block';
+      const h = (g.yBot - g.yTop) * r;
+      const y = g.yBot - h;
+      el.setAttribute('y', y.toFixed(1));
+      el.setAttribute('height', h.toFixed(1));
+    }
+
+    function addLog(text) {
+      const li = document.createElement('li');
+      li.textContent = `${text} -> (${j4},${j3})`;
+      log.appendChild(li);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function update() {
+      setWaterRect(water4, j4, CAP4, geo4);
+      setWaterRect(water3, j3, CAP3, geo3);
+
+      a4.textContent = j4;
+      a3.textContent = j3;
+      stateInline.textContent = `(4L, 3L)=(${j4},${j3})`;
+
+      if (j4 === 2 && j3 === 0) {
+        status.classList.add('goal');
+        status.innerHTML = '<span class="ok">ゴール達成: (2,0)</span> です。';
+      } else {
+        status.classList.remove('goal');
+        status.innerHTML = `現在状態: <strong>(${j4},${j3})</strong> / ゴール: <strong>(2,0)</strong>`;
+      }
+
+      updateRuleAvailability();
+    }
+
+    function canApply(act) {
+      if (act === 'R1') return j4 < CAP4;
+      if (act === 'R2') return j3 < CAP3;
+      if (act === 'R3') return j4 > 0;
+      if (act === 'R4') return j3 > 0;
+      if (act === 'R5') return j3 > 0 && j4 < CAP4;
+      if (act === 'R6') return j4 > 0 && j3 < CAP3;
+      return true;
+    }
+
+    function updateRuleAvailability() {
+      const reachedGoal = (j4 === 2 && j3 === 0);
+      document.querySelectorAll('button[data-act]').forEach((b) => {
+        const act = b.dataset.act;
+        if (act === 'reset') {
+          b.disabled = false;
+          return;
+        }
+        if (reachedGoal) {
+          b.disabled = true;
+          return;
+        }
+        b.disabled = !canApply(act);
+      });
+    }
+
+    function pour(fromVal, toVal, toCap) {
+      const m = Math.min(fromVal, toCap - toVal);
+      return [fromVal - m, toVal + m, m];
+    }
+
+    function step(act) {
+      if (!canApply(act) && act !== 'reset') return;
+
+      if (act === 'R1') { j4 = CAP4; addLog('R1 4Lを満杯'); }
+      if (act === 'R2') { j3 = CAP3; addLog('R2 3Lを満杯'); }
+      if (act === 'R3') { j4 = 0; addLog('R3 4Lを空'); }
+      if (act === 'R4') { j3 = 0; addLog('R4 3Lを空'); }
+      if (act === 'R5') {
+        const r = pour(j3, j4, CAP4); j3 = r[0]; j4 = r[1];
+        addLog(`R5 3L→4Lへ ${r[2]}L 移す`);
+      }
+      if (act === 'R6') {
+        const r = pour(j4, j3, CAP3); j4 = r[0]; j3 = r[1];
+        addLog(`R6 4L→3Lへ ${r[2]}L 移す`);
+      }
+      if (act === 'reset') {
+        j4 = 0; j3 = 0; log.innerHTML = '';
+        addLog('リセット');
+      }
+      update();
+    }
+
+    document.querySelectorAll('button[data-act]').forEach((b) => {
+      b.addEventListener('click', () => step(b.dataset.act));
+    });
+
+    update();
+    addLog('開始');
+  </script>
+</body>
+</html>

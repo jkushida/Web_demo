@@ -1,4 +1,19 @@
 # Webデモ
+# Webデモ
+
+このリポジトリは、さまざまなウェブデモをまとめたものです。
+
+## デモ一覧
+
+### データ構造とアルゴリズム
+
+- [Water Jug Problem](DSA/water-jug-problem.html) - 4Lと3Lの水差しで2Lを作るシミュレーション
+- [Stairs Recursion](DSA/stairs_recursion.html) - 再帰による階段の登り方問題のデモ
+- [Tower of Hanoi](DSA/hanoi.html) - ハノイの塔のインタラクティブなデモ
+- [River Crossing](DSA/river-crossing.html) - 川渡り問題のシミュレーション
+- [Maze Search (BFS/DFS)](DSA/maze-search.html) - 幅優先/深さ優先で迷路を探索。探索木とログを動的表示
+- [Huffman Coding](DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
+- [Graph Visualizer](DSA/graph-visualizer.html) - BFS/最短経路などの可視化
 
 このリポジトリは、さまざまなウェブデモをまとめたものです。
 
