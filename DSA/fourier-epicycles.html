@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>フーリエ・エピサイクル（手描き復元）</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 2rem;
+      line-height: 1.5;
+    }
+    header {
+      margin-bottom: 1rem;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px 16px;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    .controls fieldset {
+      border: 1px solid #ddd;
+      padding: 8px 12px;
+      border-radius: 6px;
+      min-width: 0;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    label span.val {
+      display: inline-block;
+      min-width: 3ch;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    canvas {
+      width: 100%;
+      max-width: 900px;
+      aspect-ratio: 3 / 2;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #fff;
+      touch-action: none;
+      display: block;
+      margin: 0 auto 0.5rem auto;
+    }
+    .hint {
+      color: #555;
+      font-size: 0.95rem;
+      margin-top: 0.5rem;
+    }
+    .small {
+      font-size: 0.9rem;
+      color: #666;
+    }
+    button {
+      cursor: pointer;
+    }
+  </style>
+  <!--
+    手描きした2D軌跡を複素数列に変換し、DFTで係数を求め、
+    回転ベクトル（エピサイクル）の合成で軌跡を再現するデモ。
+
+    使い方（最小手順）
+    1) キャンバス上でドラッグして線を描く
+    2) 「フーリエ化して再生」を押す
+    3) 円の数や並びを調整して精度の変化を観察
+  -->
+  <meta name="description" content="フリーハンドで描いた線をフーリエ係数（エピサイクル）で再現するデモ。外部依存なし。" />
+</head>
+<body>
+  <header>
+    <h1>フーリエ・エピサイクル（手描き復元）</h1>
+    <p class="small">手描きした軌跡を離散フーリエ変換（DFT）して、回転する円の合成で再現します。</p>
+  </header>
+
+  <section class="controls">
+    <fieldset>
+      <legend>入力</legend>
+      <div class="row">
+        <button id="btnClear">消去</button>
+        <button id="btnFourier">フーリエ化して再生</button>
+        <button id="btnPause" disabled>一時停止</button>
+        <button id="btnResume" disabled>再開</button>
+      </div>
+      <label class="row">
+        サンプル点数 N：
+        <input id="samples" type="range" min="64" max="2048" step="64" value="512" />
+        <span class="val" id="samplesVal">512</span>
+      </label>
+      <label class="row">
+        閉曲線化：
+        <input id="closePath" type="checkbox" checked /> 始点と終点を結ぶ
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>再生・描画</legend>
+      <label class="row">
+        使用する円の数 K：
+        <input id="numCircles" type="range" min="1" max="512" step="1" value="128" />
+        <span class="val" id="numCirclesVal">128</span>
+      </label>
+      <label class="row">
+        速度：
+        <input id="speed" type="range" min="0.2" max="3" step="0.1" value="1" />
+        <span class="val" id="speedVal">1.0×</span>
+      </label>
+      <div class="row">
+        並べ替え：
+        <label><input type="radio" name="order" value="frequency" checked /> 周波数順</label>
+        <label><input type="radio" name="order" value="amplitude" /> 振幅（大→小）</label>
+      </div>
+      <div class="row">
+        表示：
+        <label><input type="checkbox" id="showCircles" checked /> 円</label>
+        <label><input type="checkbox" id="showVectors" checked /> ベクトル</label>
+        <label><input type="checkbox" id="showTrace" checked /> 軌跡</label>
+      </div>
+    </fieldset>
+  </section>
+
+  <canvas id="canvas" width="900" height="600"></canvas>
+  <p class="hint">描き方: マウス/タッチでドラッグして線を引き、ボタン「フーリエ化して再生」を押してください。<br>
+    開曲線は周期化のため最後にジャンプが生じます。必要なら「閉曲線化」をONにしてください。</p>
+
+  <script>
+    // ユーティリティ（複素数表現は {re, im}）
+    function cMul(a, b) { return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re }; }
+    function cAdd(a, b) { return { re: a.re + b.re, im: a.im + b.im }; }
+    function cScale(a, s) { return { re: a.re * s, im: a.im * s }; }
+    function cPolar(r, theta) { return { re: r * Math.cos(theta), im: r * Math.sin(theta) }; }
+    function cAbs(a) { return Math.hypot(a.re, a.im); }
+    function cArg(a) { return Math.atan2(a.im, a.re); }
+
+    // DOM 取得
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const btnClear = document.getElementById('btnClear');
+    const btnFourier = document.getElementById('btnFourier');
+    const btnPause = document.getElementById('btnPause');
+    const btnResume = document.getElementById('btnResume');
+    const samplesEl = document.getElementById('samples');
+    const samplesValEl = document.getElementById('samplesVal');
+    const closePathEl = document.getElementById('closePath');
+    const numCirclesEl = document.getElementById('numCircles');
+    const numCirclesValEl = document.getElementById('numCirclesVal');
+    const speedEl = document.getElementById('speed');
+    const speedValEl = document.getElementById('speedVal');
+    const orderEls = [...document.querySelectorAll('input[name="order"]')];
+    const showCirclesEl = document.getElementById('showCircles');
+    const showVectorsEl = document.getElementById('showVectors');
+    const showTraceEl = document.getElementById('showTrace');
+
+    // 描画関連の状態
+    let drawPoints = []; // キャンバス座標（ピクセル）で保管し、後で中心座標系に変換
+    let isDrawing = false;
+    let hasFourier = false;
+
+    // フーリエ関連の状態
+    let N = parseInt(samplesEl.value, 10);
+    let resampled = []; // 中心原点座標系のサンプル点 [{x,y}]
+    let coeffs = [];    // 係数配列 [{freq, c:{re,im}, amp, phase}]
+    let ordered = [];   // 表示順に並べ替えた係数
+    let K = parseInt(numCirclesEl.value, 10);
+    let scale = 1;      // 論理座標→ピクセルのスケール
+    let speed = parseFloat(speedEl.value);
+    let t = 0;          // [0,1) の時間
+    let lastTs = 0;
+    let paused = false;
+    let trace = [];
+
+    // 表示更新
+    samplesValEl.textContent = N.toString();
+    numCirclesValEl.textContent = K.toString();
+    speedValEl.textContent = speed.toFixed(1) + '×';
+
+    // 画面サイズに合わせて実ピクセル解像度を調整（Retina対策）
+    function fitCanvasToCSSPixelSize() {
+      const dpr = window.devicePixelRatio || 1;
+      const { width, height } = canvas.getBoundingClientRect();
+      const w = Math.round(width * dpr);
+      const h = Math.round(height * dpr);
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    // キャンバス⇔論理座標変換（中心原点、y軸上向き）
+    function toLogical(px, py) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      return { x: (px - cx) / scale, y: (cy - py) / scale };
+    }
+    function toPixel(x, y) {
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      return { x: cx + x * scale, y: cy - y * scale };
+    }
+
+    // フリーハンド入力
+    function getEventPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const isTouch = e.touches && e.touches.length;
+      const clientX = isTouch ? e.touches[0].clientX : e.clientX;
+      const clientY = isTouch ? e.touches[0].clientY : e.clientY;
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function startDraw(e) {
+      isDrawing = true;
+      hasFourier = false;
+      trace = [];
+      drawPoints = [];
+      const p = getEventPos(e);
+      drawPoints.push(p);
+      e.preventDefault();
+    }
+    function moveDraw(e) {
+      if (!isDrawing) return;
+      const p = getEventPos(e);
+      drawPoints.push(p);
+      e.preventDefault();
+      render();
+    }
+    function endDraw() {
+      isDrawing = false;
+    }
+
+    canvas.addEventListener('pointerdown', startDraw);
+    canvas.addEventListener('pointermove', moveDraw);
+    canvas.addEventListener('pointerup', endDraw);
+    canvas.addEventListener('pointerleave', endDraw);
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', moveDraw, { passive: false });
+    canvas.addEventListener('touchend', endDraw);
+
+    // 前処理：弧長等間隔リサンプリング
+    function resample(points, n, close) {
+      if (points.length < 2) return [];
+      // キャンバス座標→論理座標へ
+      const logical = points.map(p => toLogical(p.x * (canvas.width / canvas.getBoundingClientRect().width),
+                                                p.y * (canvas.height / canvas.getBoundingClientRect().height)));
+      // 距離列
+      const pts = logical.slice();
+      if (close) pts.push(pts[0]);
+      const dists = [];
+      let total = 0;
+      for (let i = 1; i < pts.length; i++) {
+        const dx = pts[i].x - pts[i - 1].x;
+        const dy = pts[i].y - pts[i - 1].y;
+        const d = Math.hypot(dx, dy);
+        dists.push(d);
+        total += d;
+      }
+      if (total === 0) return [];
+      const step = total / n;
+      const out = [];
+      let acc = 0;
+      let seg = 0;
+      let cur = { x: pts[0].x, y: pts[0].y };
+      out.push({ x: cur.x, y: cur.y });
+      for (let i = 1; i < n; i++) {
+        const target = i * step;
+        while (acc + dists[seg] < target && seg < dists.length - 1) {
+          acc += dists[seg];
+          seg++;
+        }
+        const remain = target - acc;
+        const segLen = dists[seg] || 1e-6;
+        const t = Math.max(0, Math.min(1, remain / segLen));
+        const a = pts[seg];
+        const b = pts[seg + 1];
+        out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+      }
+      return out;
+    }
+
+    // DFT（O(N^2)）
+    function dft(points) {
+      const N = points.length;
+      const out = [];
+      for (let k = 0; k < N; k++) {
+        let sum = { re: 0, im: 0 };
+        for (let n = 0; n < N; n++) {
+          const z = { re: points[n].x, im: points[n].y };
+          const theta = -2 * Math.PI * k * n / N;
+          const e = cPolar(1, theta);
+          sum = cAdd(sum, cMul(z, e));
+        }
+        sum = cScale(sum, 1 / N);
+        const freq = (k <= N / 2) ? k : k - N; // 負の周波数へ折り返し
+        out.push({
+          freq,
+          c: sum,
+          amp: cAbs(sum),
+          phase: cArg(sum)
+        });
+      }
+      return out;
+    }
+
+    // 並べ替え
+    function orderByFrequency(coeffs) {
+      // 0, +1, -1, +2, -2, ... の順
+      const byFreq = new Map(coeffs.map(c => [c.freq, c]));
+      const maxF = Math.max(...coeffs.map(c => Math.abs(c.freq)));
+      const ordered = [];
+      ordered.push(byFreq.get(0));
+      for (let f = 1; f <= maxF; f++) {
+        if (byFreq.has(f)) ordered.push(byFreq.get(f));
+        if (byFreq.has(-f)) ordered.push(byFreq.get(-f));
+      }
+      return ordered.filter(Boolean);
+    }
+    function orderByAmplitude(coeffs) {
+      return [...coeffs].sort((a, b) => b.amp - a.amp);
+    }
+
+    function computeScale(points) {
+      // 形のバウンディングに合わせてスケール自動調整（少し余白）
+      if (points.length === 0) return 1;
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (const p of points) {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      }
+      const w = maxX - minX; const h = maxY - minY;
+      const pad = 0.9; // 90% フィット
+      const sx = (canvas.width * pad) / (w || 1);
+      const sy = (canvas.height * pad) / (h || 1);
+      return Math.min(sx, sy) * 0.5; // 中心原点系なので 0.5 をかける
+    }
+
+    // 再生用：時刻tの先端位置と円/ベクトル描画
+    function drawEpicycles(t, list, kLimit) {
+      let pos = { re: 0, im: 0 };
+      const use = list.slice(0, kLimit);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#888';
+      for (let i = 0; i < use.length; i++) {
+        const { freq, c } = use[i];
+        const rot = cPolar(1, 2 * Math.PI * freq * t);
+        const vec = cMul(c, rot);
+        const next = cAdd(pos, vec);
+
+        const p1 = toPixel(pos.re, pos.im);
+        const p2 = toPixel(next.re, next.im);
+
+        if (showCirclesEl.checked) {
+          const r = cAbs(c) * scale;
+          ctx.beginPath();
+          ctx.arc(p1.x, p1.y, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (showVectorsEl.checked) {
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
+        pos = next;
+      }
+      return pos; // 論理座標の複素数
+    }
+
+    // レンダリング
+    function renderBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 目安の十字
+      ctx.strokeStyle = '#eee';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.stroke();
+    }
+
+    function render() {
+      fitCanvasToCSSPixelSize();
+      renderBackground();
+      // 手描きのプレビュー
+      if (!hasFourier && drawPoints.length > 1) {
+        ctx.strokeStyle = '#1f77b4';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        // キャンバス上の生ピクセル座標でそのまま描画
+        // ただしデバイスピクセル比に合わせる
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        for (let i = 0; i < drawPoints.length; i++) {
+          const p = drawPoints[i];
+          const x = p.x * dpr;
+          const y = p.y * dpr;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      if (hasFourier) {
+        const tip = drawEpicycles(t, ordered, K);
+        if (showTraceEl.checked) {
+          trace.push({ x: tip.re, y: tip.im });
+          if (trace.length > 4000) trace.shift();
+          ctx.strokeStyle = '#d62728';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for (let i = 0; i < trace.length; i++) {
+            const p = toPixel(trace[i].x, trace[i].y);
+            if (i === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
+      }
+    }
+
+    function animate(ts) {
+      if (!lastTs) lastTs = ts;
+      const dt = (ts - lastTs) / 1000; // 秒
+      lastTs = ts;
+      if (!paused && hasFourier) {
+        const period = 6; // 1周にかける秒数（UIの速度で変化）
+        t += (speed / period) * dt;
+        const wrapped = t >= 1;
+        if (wrapped) {
+          t -= 1;
+          trace = [];
+        }
+      }
+      render();
+      requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+
+    // UI イベント
+    btnClear.addEventListener('click', () => {
+      drawPoints = [];
+      resampled = [];
+      coeffs = [];
+      ordered = [];
+      trace = [];
+      hasFourier = false;
+      paused = false;
+      btnPause.disabled = true;
+      btnResume.disabled = true;
+      render();
+    });
+
+    btnFourier.addEventListener('click', () => {
+      N = parseInt(samplesEl.value, 10);
+      K = Math.min(parseInt(numCirclesEl.value, 10), N);
+      numCirclesEl.max = String(N);
+      numCirclesValEl.textContent = String(K);
+
+      if (drawPoints.length < 2) {
+        alert('キャンバスに線を描いてから実行してください。');
+        return;
+      }
+      resampled = resample(drawPoints, N, closePathEl.checked);
+      if (resampled.length === 0) {
+        alert('入力が短すぎます。もう一度描いてください。');
+        return;
+      }
+      scale = computeScale(resampled);
+      coeffs = dft(resampled);
+      const mode = orderEls.find(r => r.checked)?.value || 'frequency';
+      ordered = (mode === 'amplitude') ? orderByAmplitude(coeffs) : orderByFrequency(coeffs);
+      t = 0; trace = [];
+      hasFourier = true;
+      paused = false;
+      btnPause.disabled = false;
+      btnResume.disabled = true;
+      render();
+    });
+
+    btnPause.addEventListener('click', () => {
+      paused = true;
+      btnPause.disabled = true;
+      btnResume.disabled = false;
+    });
+    btnResume.addEventListener('click', () => {
+      paused = false;
+      btnPause.disabled = false;
+      btnResume.disabled = true;
+    });
+
+    samplesEl.addEventListener('input', () => {
+      samplesValEl.textContent = samplesEl.value;
+    });
+    numCirclesEl.addEventListener('input', () => {
+      K = Math.min(parseInt(numCirclesEl.value, 10), N);
+      numCirclesValEl.textContent = String(K);
+    });
+    speedEl.addEventListener('input', () => {
+      speed = parseFloat(speedEl.value);
+      speedValEl.textContent = speed.toFixed(1) + '×';
+    });
+    orderEls.forEach(r => r.addEventListener('change', () => {
+      if (!coeffs.length) return;
+      const mode = orderEls.find(x => x.checked)?.value || 'frequency';
+      ordered = (mode === 'amplitude') ? orderByAmplitude(coeffs) : orderByFrequency(coeffs);
+    }));
+
+    // 初回描画
+    window.addEventListener('resize', render);
+    render();
+  </script>
+</body>
+</html>
+
