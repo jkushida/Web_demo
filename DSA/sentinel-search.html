@@ -1,0 +1,1213 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>番兵探索の比較デモ</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --paper: #ffffff;
+      --ink: #1f2937;
+      --muted: #5b6473;
+      --line: #d5dceb;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --ok: #15803d;
+      --ok-soft: #dcfce7;
+      --warn: #b45309;
+      --warn-soft: #fef3c7;
+      --danger: #b91c1c;
+      --danger-soft: #fee2e2;
+      --target: #dc2626;
+      --shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #ffffff, #eef4ff 35%, var(--bg) 65%);
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    .target-text {
+      color: var(--target);
+    }
+
+    .wrap {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 14px 14px 20px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1d4ed8, #2563eb 52%, #0f766e);
+      color: #ffffff;
+      border-radius: 18px;
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero-top {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      align-items: center;
+    }
+
+    h1 {
+      margin: 8px 0 4px;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: none;
+      line-height: 1.5;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .layout {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .controls {
+      padding: 14px;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: minmax(320px, 560px) minmax(120px, 180px) minmax(180px, 240px);
+      gap: 10px;
+      justify-content: start;
+      align-items: end;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label,
+    .subhead {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--ink);
+      background: #fcfdff;
+    }
+
+    .field textarea {
+      min-height: 52px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      outline: 3px solid rgba(37, 99, 235, 0.12);
+      border-color: var(--accent);
+    }
+
+    .speed-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      justify-content: space-between;
+    }
+
+    .speed-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .speed-row input[type="range"] {
+      flex: 1;
+      margin: 0;
+    }
+
+    .speed-value {
+      min-width: 58px;
+      text-align: right;
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 13px;
+    }
+
+    .button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid #b8c6e6;
+      background: #ffffff;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: 0.16s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: #f8fbff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      color: #98a2b3;
+      background: #f7f8fa;
+      border-color: #d8dde7;
+      transform: none;
+    }
+
+    .main-button {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+
+    .main-button:hover {
+      background: #1d4ed8;
+      color: #ffffff;
+    }
+
+    .message {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+
+    .message.error {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: #fecaca;
+    }
+
+    .message.note {
+      background: #f8fafc;
+      color: var(--muted);
+      border-color: var(--line);
+      font-weight: 600;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .method-card {
+      padding: 14px;
+    }
+
+    .method-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .method-title {
+      margin: 0;
+      font-size: 21px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .pill.running {
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .pill.found {
+      color: var(--ok);
+      background: var(--ok-soft);
+    }
+
+    .pill.miss {
+      color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    .desc {
+      margin: 0 0 8px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+      min-height: 3em;
+    }
+
+    .array-stage {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      min-height: 134px;
+    }
+
+    .array-strip {
+      display: grid;
+      grid-template-columns: repeat(var(--cell-count, 8), minmax(0, 1fr));
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .array-cell {
+      width: auto;
+      min-width: 0;
+      min-height: 64px;
+      border: 2px solid #d3dbea;
+      border-radius: 12px;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      transition: 0.18s ease;
+    }
+
+    .array-cell .index {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .array-cell .value {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .array-cell .badge {
+      min-height: 12px;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .array-cell.current {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(37, 99, 235, 0.16);
+    }
+
+    .array-cell.checked {
+      border-color: #cbd5e1;
+      background: #eef2f7;
+      color: #64748b;
+    }
+
+    .array-cell.found {
+      border-color: #22c55e;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .array-cell.sentinel {
+      border-style: dashed;
+      border-color: #f59e0b;
+      background: #fffbeb;
+      color: var(--target);
+    }
+
+    .array-cell.sentinel.current {
+      background: #fde68a;
+      border-color: #d97706;
+      box-shadow: 0 10px 20px rgba(217, 119, 6, 0.18);
+    }
+
+    .status-line {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .stat-box {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 6px 8px;
+      background: #fbfdff;
+    }
+
+    .stat-box dt {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.2;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .stat-box dd {
+      margin: 2px 0 0;
+      font-size: 15px;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+
+    .algo-details {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fbfdff;
+      overflow: hidden;
+    }
+
+    .algo-title {
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      background: #fbfdff;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .code-block {
+      margin: 0;
+      border-radius: 0;
+      padding: 10px 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      line-height: 1.55;
+      font-size: 12.5px;
+    }
+
+    .algo-note {
+      padding: 8px 10px;
+      border-top: 1px solid var(--line);
+      background: #fbfdff;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .summary {
+      padding: 14px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 12px;
+    }
+
+    .summary-box,
+    .log-box {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fcfdff;
+    }
+
+    .summary-box h2,
+    .log-box h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .log-box summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .log-box summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .log-box[open] summary {
+      margin-bottom: 8px;
+    }
+
+    .summary-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .summary-item {
+      border-radius: 12px;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+    }
+
+    .summary-item .label {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .summary-item .value {
+      display: block;
+      margin-top: 6px;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .logs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .log-list {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--ink);
+      line-height: 1.5;
+      min-height: 92px;
+      max-height: 128px;
+      overflow: auto;
+      font-size: 14px;
+    }
+
+    .log-list li + li {
+      margin-top: 6px;
+    }
+
+    .small-note {
+      margin-top: 2px;
+      color: var(--muted);
+      line-height: 1.35;
+      font-size: 12px;
+    }
+
+    @media (max-width: 980px) {
+      .controls-grid,
+      .compare-grid,
+      .summary-grid,
+      .logs {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-list {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .wrap {
+        padding-left: 12px;
+        padding-right: 12px;
+      }
+
+      .hero,
+      .controls,
+      .method-card,
+      .summary {
+        padding: 16px;
+      }
+
+      .array-strip {
+        display: flex;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+
+      .array-cell {
+        width: 68px;
+        flex: 0 0 68px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div class="hero-top">
+        <a href="../index.html">← デモ一覧へ戻る</a>
+      </div>
+      <h1>番兵あり・なしの違いをその場で見比べる</h1>
+      <p>
+        同じ配列と探索値で、通常の線形探索と番兵法の判定回数の差をその場で比較できます。
+      </p>
+    </section>
+
+    <div class="layout">
+      <section class="card controls">
+        <div class="controls-grid">
+          <div class="field">
+            <label for="arrayInput">配列</label>
+            <textarea id="arrayInput" placeholder="例: 8, 3, 12, 5, 7, 14, 1, 10">8, 3, 12, 5, 7, 14, 1, 10</textarea>
+          </div>
+
+          <div class="field">
+            <label for="targetInput" class="target-text">探す値</label>
+            <input id="targetInput" class="target-text" type="number" value="14" />
+          </div>
+
+          <div class="speed-box">
+            <div class="subhead">自動実行の速度</div>
+            <div class="speed-row">
+              <input id="speedInput" type="range" min="120" max="1000" step="20" value="420" />
+              <span id="speedValue" class="speed-value">420 ms</span>
+            </div>
+            <div class="small-note">未発見時は番兵で停止</div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button id="applyButton" class="main-button">入力を反映</button>
+          <button id="stepButton">1ステップ</button>
+          <button id="playButton">自動実行</button>
+          <button id="stopButton">停止</button>
+          <button id="resetButton">リセット</button>
+        </div>
+
+        <div class="button-group">
+          <button id="presetHitButton">見つかる例</button>
+          <button id="presetTailButton">末尾で見つかる例</button>
+          <button id="presetMissButton">見つからない例</button>
+          <button id="randomButton">ランダム生成</button>
+        </div>
+
+        <div id="pageMessage" class="message">入力値を変えて、両方の探索を同時に比べられます。</div>
+      </section>
+
+      <section class="compare-grid">
+        <section class="card method-card">
+          <div class="method-head">
+            <h2 class="method-title">番兵なし</h2>
+            <span id="plainPill" class="pill running">準備完了</span>
+          </div>
+          <p class="desc">
+            各ステップで <code>index &lt; length</code> を確認し、そのあとで配列の要素と探索値を比較します。
+          </p>
+
+          <div class="array-stage">
+            <div id="plainArray" class="array-strip" aria-label="番兵なし配列"></div>
+            <div id="plainStatus" class="status-line"></div>
+          </div>
+
+          <div class="stats-grid">
+            <dl class="stat-box"><dt>現在位置(index)</dt><dd id="plainIndex">0</dd></dl>
+            <dl class="stat-box"><dt>結果</dt><dd id="plainResult">探索中</dd></dl>
+            <dl class="stat-box"><dt>要素比較</dt><dd id="plainElementChecks">0</dd></dl>
+            <dl class="stat-box"><dt>範囲確認</dt><dd id="plainBoundaryChecks">0</dd></dl>
+            <dl class="stat-box"><dt>合計判定</dt><dd id="plainTotalChecks">0</dd></dl>
+            <dl class="stat-box"><dt class="target-text">探索値</dt><dd id="plainTargetValue" class="target-text">14</dd></dl>
+          </div>
+
+          <div class="algo-details">
+            <div class="algo-title">擬似コード</div>
+            <pre class="code-block">int search(int array[], int target, int length) {
+  int index;
+
+  /* 線形探索 */
+  for (index = 0; index &lt; length; index++) {
+    if (array[index] == target) {
+      break;
+    }
+  }
+
+  return index;
+}</pre>
+            <div class="algo-note">判定は各反復で `index &lt; length` と `array[index] == target` を見ます。後ろまで調べるほど判定回数が増えます。</div>
+          </div>
+        </section>
+
+        <section class="card method-card">
+          <div class="method-head">
+            <h2 class="method-title">番兵あり</h2>
+            <span id="sentinelPill" class="pill running">準備完了</span>
+          </div>
+          <p class="desc">
+            ループ中は範囲確認せず、要素比較だけで進みます。止まったあとに、元の配列内かを 1 回だけ確認します。
+          </p>
+
+          <div class="array-stage">
+            <div id="sentinelArray" class="array-strip" aria-label="番兵あり配列"></div>
+            <div id="sentinelStatus" class="status-line"></div>
+          </div>
+
+          <div class="stats-grid">
+            <dl class="stat-box"><dt>現在位置(index)</dt><dd id="sentinelIndex">0</dd></dl>
+            <dl class="stat-box"><dt>結果</dt><dd id="sentinelResult">探索中</dd></dl>
+            <dl class="stat-box"><dt>要素比較</dt><dd id="sentinelElementChecks">0</dd></dl>
+            <dl class="stat-box"><dt>最後の確認</dt><dd id="sentinelBoundaryChecks">0</dd></dl>
+            <dl class="stat-box"><dt>合計判定</dt><dd id="sentinelTotalChecks">0</dd></dl>
+            <dl class="stat-box"><dt class="target-text">探索値</dt><dd id="sentinelTargetValue" class="target-text">14</dd></dl>
+          </div>
+
+          <div class="algo-details">
+            <div class="algo-title">擬似コード</div>
+            <pre class="code-block">int search(int array[], int x, int num) {
+  int i;
+
+  /* ダミーのデータを格納 */
+  array[num] = x;
+
+  /* 線形探索 */
+  i = 0;
+  while (1) {
+    if (array[i] == x) {
+      break;
+    }
+
+    i++;
+  }
+
+  return i;
+}
+
+/* 呼び出し側で判定 */
+if (search(array, x, num) &lt; num) {
+  /* 発見 */
+} else {
+  /* 番兵で停止 = 未発見 */
+}</pre>
+            <div class="algo-note">`while` の中では `array[i] == x` だけを見ます。<br>止まったあとに、下の `if (search(array, x, num) &lt; num)` が 1 回だけ本物か番兵かを判定する部分です。</div>
+          </div>
+        </section>
+      </section>
+
+      <section class="card summary">
+        <div class="summary-grid">
+          <section class="summary-box">
+            <h2>比較まとめ</h2>
+            <div class="summary-list">
+              <div class="summary-item">
+                <span class="label">番兵なしの合計判定</span>
+                <span id="summaryPlain" class="value">0</span>
+              </div>
+              <div class="summary-item">
+                <span class="label">番兵ありの合計判定</span>
+                <span id="summarySentinel" class="value">0</span>
+              </div>
+              <div class="summary-item">
+                <span class="label">削減できた判定数</span>
+                <span id="summaryDiff" class="value">0</span>
+              </div>
+            </div>
+            <div id="summaryText" class="status-line">
+              まずは「1ステップ」か「自動実行」で探索を進めてください。
+            </div>
+            <div class="small-note">見つからないケースや末尾で見つかるケースにすると、番兵の差が見えやすくなります。</div>
+          </section>
+
+          <details class="log-box">
+            <summary>ステップログ</summary>
+            <div class="logs">
+              <div>
+                <div class="subhead">番兵なし</div>
+                <ol id="plainLog" class="log-list"></ol>
+              </div>
+              <div>
+                <div class="subhead">番兵あり</div>
+                <ol id="sentinelLog" class="log-list"></ol>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const arrayInput = document.getElementById('arrayInput');
+    const targetInput = document.getElementById('targetInput');
+    const speedInput = document.getElementById('speedInput');
+    const speedValue = document.getElementById('speedValue');
+    const pageMessage = document.getElementById('pageMessage');
+    const applyButton = document.getElementById('applyButton');
+    const stepButton = document.getElementById('stepButton');
+    const playButton = document.getElementById('playButton');
+    const stopButton = document.getElementById('stopButton');
+    const resetButton = document.getElementById('resetButton');
+    const presetHitButton = document.getElementById('presetHitButton');
+    const presetTailButton = document.getElementById('presetTailButton');
+    const presetMissButton = document.getElementById('presetMissButton');
+    const randomButton = document.getElementById('randomButton');
+
+    const state = {
+      baseArray: [],
+      targetValue: 14,
+      speedMs: Number(speedInput.value),
+      timerId: null,
+      plain: null,
+      sentinel: null,
+      initialArrayText: arrayInput.value,
+      initialTargetText: targetInput.value
+    };
+
+    function createMethodState(displayArray) {
+      return {
+        displayArray,
+        currentIndex: 0,
+        checkedIndices: [],
+        elementChecks: 0,
+        boundaryChecks: 0,
+        finished: false,
+        found: false,
+        foundIndex: -1,
+        statusText: '探索を開始できます。',
+        logs: []
+      };
+    }
+
+    function setPageMessage(text, isError) {
+      pageMessage.textContent = text;
+      pageMessage.className = isError ? 'message error' : 'message';
+    }
+
+    function parseArrayValues(text) {
+      const tokens = text
+        .split(/[\s,、]+/)
+        .map(token => token.trim())
+        .filter(Boolean);
+
+      if (tokens.length === 0) {
+        throw new Error('配列を 1 つ以上入力してください。');
+      }
+
+      const parsedValues = tokens.map(token => Number(token));
+
+      if (parsedValues.some(value => Number.isNaN(value))) {
+        throw new Error('配列には数値のみを入力してください。');
+      }
+
+      if (parsedValues.length > 20) {
+        throw new Error('配列は 20 要素以内で入力してください。');
+      }
+
+      return parsedValues;
+    }
+
+    function parseTargetValue(text) {
+      const parsedValue = Number(text);
+      if (Number.isNaN(parsedValue)) {
+        throw new Error('探索値には数値を入力してください。');
+      }
+      return parsedValue;
+    }
+
+    function pushLog(logs, text) {
+      logs.push(text);
+      if (logs.length > 12) {
+        logs.shift();
+      }
+    }
+
+    function rebuildState(messageText) {
+      stopAutoRun();
+      state.plain = createMethodState(state.baseArray.slice());
+      state.sentinel = createMethodState(state.baseArray.concat([state.targetValue]));
+      renderAll();
+      setPageMessage(messageText, false);
+    }
+
+    function applyInputs() {
+      try {
+        state.baseArray = parseArrayValues(arrayInput.value);
+        state.targetValue = parseTargetValue(targetInput.value);
+        rebuildState('入力内容を反映しました。探索を始めてください。');
+      } catch (error) {
+        setPageMessage(error.message, true);
+      }
+    }
+
+    function applyPreset(arrayValues, targetValue, messageText) {
+      state.baseArray = arrayValues.slice();
+      state.targetValue = targetValue;
+      arrayInput.value = arrayValues.join(', ');
+      targetInput.value = String(targetValue);
+      rebuildState(messageText);
+    }
+
+    function createRandomArray() {
+      const pool = Array.from({ length: 18 }, (_unusedEntry, index) => index + 1);
+      for (let currentIndex = pool.length - 1; currentIndex > 0; currentIndex -= 1) {
+        const swapIndex = Math.floor(Math.random() * (currentIndex + 1));
+        const temporaryValue = pool[currentIndex];
+        pool[currentIndex] = pool[swapIndex];
+        pool[swapIndex] = temporaryValue;
+      }
+
+      return pool.slice(0, 8);
+    }
+
+    function runRandomPreset() {
+      const randomArray = createRandomArray();
+      const shouldHit = Math.random() >= 0.5;
+      const targetValue = shouldHit
+        ? randomArray[Math.floor(Math.random() * randomArray.length)]
+        : 99;
+      const messageText = shouldHit
+        ? 'ランダムな見つかる例を生成しました。'
+        : 'ランダムな見つからない例を生成しました。';
+      applyPreset(randomArray, targetValue, messageText);
+    }
+
+    function stepPlain() {
+      const plainState = state.plain;
+      if (plainState.finished) {
+        return;
+      }
+
+      plainState.boundaryChecks += 1;
+
+      if (plainState.currentIndex >= state.baseArray.length) {
+        plainState.finished = true;
+        plainState.found = false;
+        plainState.statusText = '配列の末尾を越えたため、見つかりませんでした。';
+        pushLog(plainState.logs, '範囲確認で末尾に到達。探索失敗。');
+        return;
+      }
+
+      const currentValue = state.baseArray[plainState.currentIndex];
+      plainState.elementChecks += 1;
+
+      if (currentValue === state.targetValue) {
+        plainState.finished = true;
+        plainState.found = true;
+        plainState.foundIndex = plainState.currentIndex;
+        plainState.statusText = `index ${plainState.currentIndex} で ${state.targetValue} を見つけました。`;
+        pushLog(plainState.logs, `index ${plainState.currentIndex}: ${currentValue} と一致。探索成功。`);
+        return;
+      }
+
+      pushLog(plainState.logs, `index ${plainState.currentIndex}: ${currentValue} は不一致。次へ進む。`);
+      plainState.checkedIndices.push(plainState.currentIndex);
+      plainState.currentIndex += 1;
+
+      if (plainState.currentIndex < state.baseArray.length) {
+        plainState.statusText = `index ${plainState.currentIndex} を次に確認します。`;
+      } else {
+        plainState.statusText = '次のステップで末尾の範囲確認を行います。';
+      }
+    }
+
+    function stepSentinel() {
+      const sentinelState = state.sentinel;
+      if (sentinelState.finished) {
+        return;
+      }
+
+      const currentValue = sentinelState.displayArray[sentinelState.currentIndex];
+      sentinelState.elementChecks += 1;
+
+      if (currentValue === state.targetValue) {
+        sentinelState.boundaryChecks += 1;
+
+        if (sentinelState.currentIndex < state.baseArray.length) {
+          sentinelState.finished = true;
+          sentinelState.found = true;
+          sentinelState.foundIndex = sentinelState.currentIndex;
+          sentinelState.statusText = `index ${sentinelState.currentIndex} で ${state.targetValue} を見つけました。`;
+          pushLog(sentinelState.logs, `index ${sentinelState.currentIndex}: ${currentValue} と一致。探索成功。`);
+        } else {
+          sentinelState.finished = true;
+          sentinelState.found = false;
+          sentinelState.statusText = '番兵セルで停止したため、元の配列には見つかりませんでした。';
+          pushLog(sentinelState.logs, '番兵セルに到達。最後の確認で探索失敗。');
+        }
+        return;
+      }
+
+      pushLog(sentinelState.logs, `index ${sentinelState.currentIndex}: ${currentValue} は不一致。次へ進む。`);
+      sentinelState.checkedIndices.push(sentinelState.currentIndex);
+      sentinelState.currentIndex += 1;
+
+      if (sentinelState.currentIndex < sentinelState.displayArray.length - 1) {
+        sentinelState.statusText = `index ${sentinelState.currentIndex} を次に確認します。`;
+      } else {
+        sentinelState.statusText = '次は番兵セルを確認します。';
+      }
+    }
+
+    function runStep() {
+      if (state.plain.finished && state.sentinel.finished) {
+        stopAutoRun();
+        return;
+      }
+
+      stepPlain();
+      stepSentinel();
+      renderAll();
+
+      if (state.plain.finished && state.sentinel.finished) {
+        stopAutoRun();
+      }
+    }
+
+    function updateButtons() {
+      const isRunning = Boolean(state.timerId);
+      const isFinished = state.plain && state.sentinel && state.plain.finished && state.sentinel.finished;
+
+      stepButton.disabled = isRunning || isFinished;
+      playButton.disabled = isRunning || isFinished;
+      stopButton.disabled = !isRunning;
+    }
+
+    function stopAutoRun() {
+      if (state.timerId) {
+        window.clearInterval(state.timerId);
+        state.timerId = null;
+      }
+      updateButtons();
+    }
+
+    function startAutoRun() {
+      if (state.timerId || (state.plain.finished && state.sentinel.finished)) {
+        updateButtons();
+        return;
+      }
+
+      state.timerId = window.setInterval(runStep, state.speedMs);
+      updateButtons();
+    }
+
+    function restartAutoRunIfNeeded() {
+      if (!state.timerId) {
+        return;
+      }
+
+      window.clearInterval(state.timerId);
+      state.timerId = window.setInterval(runStep, state.speedMs);
+      updateButtons();
+    }
+
+    function updateSpeed() {
+      state.speedMs = Number(speedInput.value);
+      speedValue.textContent = `${state.speedMs} ms`;
+      restartAutoRunIfNeeded();
+    }
+
+    function formatIndex(methodState, hasSentinel) {
+      if (methodState.finished && !methodState.found && hasSentinel && methodState.currentIndex >= state.baseArray.length) {
+        return '番兵';
+      }
+      if (methodState.currentIndex >= state.baseArray.length && !hasSentinel) {
+        return '末尾外';
+      }
+      if (methodState.currentIndex >= methodState.displayArray.length) {
+        return '完了';
+      }
+      return String(methodState.currentIndex);
+    }
+
+    function formatResult(methodState) {
+      if (methodState.finished && methodState.found) {
+        return `発見 @ ${methodState.foundIndex}`;
+      }
+      if (methodState.finished) {
+        return '未発見';
+      }
+      return '探索中';
+    }
+
+    function totalChecks(methodState) {
+      return methodState.elementChecks + methodState.boundaryChecks;
+    }
+
+    function renderMethod(methodName, methodState, hasSentinel) {
+      const arrayContainer = document.getElementById(`${methodName}Array`);
+      const statusLine = document.getElementById(`${methodName}Status`);
+      const pill = document.getElementById(`${methodName}Pill`);
+      const currentIndexText = document.getElementById(`${methodName}Index`);
+      const resultText = document.getElementById(`${methodName}Result`);
+      const elementChecksText = document.getElementById(`${methodName}ElementChecks`);
+      const boundaryChecksText = document.getElementById(`${methodName}BoundaryChecks`);
+      const totalChecksText = document.getElementById(`${methodName}TotalChecks`);
+      const targetValueText = document.getElementById(`${methodName}TargetValue`);
+      const logList = document.getElementById(`${methodName}Log`);
+
+      arrayContainer.textContent = '';
+      arrayContainer.style.setProperty('--cell-count', String(state.baseArray.length + 1));
+      const checkedSet = new Set(methodState.checkedIndices);
+
+      methodState.displayArray.forEach((value, index) => {
+        const cell = document.createElement('div');
+        const indexLabel = document.createElement('div');
+        const valueLabel = document.createElement('div');
+        const badgeLabel = document.createElement('div');
+
+        cell.className = 'array-cell';
+        indexLabel.className = 'index';
+        valueLabel.className = 'value';
+        badgeLabel.className = 'badge';
+
+        const isSentinelCell = hasSentinel && index === methodState.displayArray.length - 1;
+        if (isSentinelCell) {
+          cell.classList.add('sentinel');
+        }
+        if (!methodState.finished && index === methodState.currentIndex) {
+          cell.classList.add('current');
+        }
+        if (checkedSet.has(index)) {
+          cell.classList.add('checked');
+        }
+        if (methodState.finished && methodState.found && index === methodState.foundIndex) {
+          cell.classList.add('found');
+        }
+        if (methodState.finished && !methodState.found && isSentinelCell) {
+          cell.classList.add('current');
+        }
+
+        indexLabel.textContent = isSentinelCell ? '番兵' : `index ${index}`;
+        valueLabel.textContent = String(value);
+        badgeLabel.textContent = isSentinelCell ? 'target' : checkedSet.has(index) ? '確認済み' : '';
+
+        cell.append(indexLabel, valueLabel, badgeLabel);
+        arrayContainer.appendChild(cell);
+      });
+
+      statusLine.textContent = methodState.statusText;
+      currentIndexText.textContent = formatIndex(methodState, hasSentinel);
+      resultText.textContent = formatResult(methodState);
+      elementChecksText.textContent = String(methodState.elementChecks);
+      boundaryChecksText.textContent = String(methodState.boundaryChecks);
+      totalChecksText.textContent = String(totalChecks(methodState));
+      targetValueText.textContent = String(state.targetValue);
+
+      if (methodState.finished && methodState.found) {
+        pill.textContent = '発見';
+        pill.className = 'pill found';
+      } else if (methodState.finished) {
+        pill.textContent = '未発見';
+        pill.className = 'pill miss';
+      } else {
+        pill.textContent = '探索中';
+        pill.className = 'pill running';
+      }
+
+      logList.textContent = '';
+      methodState.logs.forEach(logText => {
+        const item = document.createElement('li');
+        item.textContent = logText;
+        logList.appendChild(item);
+      });
+    }
+
+    function renderSummary() {
+      const plainChecks = totalChecks(state.plain);
+      const sentinelChecks = totalChecks(state.sentinel);
+      const diffChecks = plainChecks - sentinelChecks;
+
+      document.getElementById('summaryPlain').textContent = String(plainChecks);
+      document.getElementById('summarySentinel').textContent = String(sentinelChecks);
+      document.getElementById('summaryDiff').textContent = String(diffChecks);
+
+      const summaryText = document.getElementById('summaryText');
+
+      if (state.plain.finished && state.sentinel.finished) {
+        if (diffChecks > 0) {
+          summaryText.textContent = `このケースでは、番兵ありのほうが ${diffChecks} 回だけ少ない判定で終わりました。範囲確認の差が効いています。`;
+        } else if (diffChecks === 0) {
+          summaryText.textContent = 'このケースでは合計判定回数は同じでした。配列や探索値を変えて差を確認してみてください。';
+        } else {
+          summaryText.textContent = '今回の設定では番兵ありの判定回数が多く見えます。番兵セルまで進んだ回数を含めて確認してください。';
+        }
+      } else {
+        summaryText.textContent = '探索途中です。両側の現在位置と、要素比較・範囲確認の増え方を見比べてください。';
+      }
+    }
+
+    function renderAll() {
+      renderMethod('plain', state.plain, false);
+      renderMethod('sentinel', state.sentinel, true);
+      renderSummary();
+      updateButtons();
+    }
+
+    applyButton.addEventListener('click', applyInputs);
+    stepButton.addEventListener('click', runStep);
+    playButton.addEventListener('click', startAutoRun);
+    stopButton.addEventListener('click', stopAutoRun);
+    resetButton.addEventListener('click', () => {
+      arrayInput.value = state.initialArrayText;
+      targetInput.value = state.initialTargetText;
+      applyInputs();
+    });
+    presetHitButton.addEventListener('click', () => {
+      applyPreset([8, 3, 12, 5, 7, 14, 1, 10], 14, '見つかる例をセットしました。');
+    });
+    presetTailButton.addEventListener('click', () => {
+      applyPreset([4, 9, 2, 8, 1, 7, 3, 11], 11, '末尾で見つかる例をセットしました。');
+    });
+    presetMissButton.addEventListener('click', () => {
+      applyPreset([6, 13, 2, 9, 15, 4, 8, 1], 10, '見つからない例をセットしました。');
+    });
+    randomButton.addEventListener('click', runRandomPreset);
+    speedInput.addEventListener('input', updateSpeed);
+
+    applyInputs();
+  </script>
+</body>
+</html>

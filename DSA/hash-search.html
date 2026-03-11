@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSA: ハッシュ法探索</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --panel-alt: #f8fafc;
+        --text: #1f2937;
+        --muted: #5b6472;
+        --line: #d7dce5;
+        --accent: #2563eb;
+        --accent-soft: #dbeafe;
+        --good: #15803d;
+        --good-soft: #dcfce7;
+        --warn: #b45309;
+        --warn-soft: #fef3c7;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111827;
+          --panel: #1f2937;
+          --panel-alt: #243041;
+          --text: #f3f4f6;
+          --muted: #c4cad4;
+          --line: #374151;
+          --accent: #60a5fa;
+          --accent-soft: #1e3a8a;
+          --good: #4ade80;
+          --good-soft: #14532d;
+          --warn: #fbbf24;
+          --warn-soft: #78350f;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 20px 16px 48px;
+      }
+      a { color: var(--accent); }
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(28px, 4vw, 38px);
+      }
+      h2 {
+        margin: 0 0 10px;
+        font-size: 22px;
+      }
+      h3 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: var(--muted);
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--panel-alt);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        color: var(--text);
+      }
+      .hero,
+      .section,
+      .panel,
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      .hero {
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .hero p:last-child { margin-bottom: 0; }
+      .section {
+        padding: 18px;
+        margin-bottom: 16px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        padding: 14px;
+      }
+      .mini-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 6px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .chip {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--text);
+        font-size: 13px;
+      }
+      .formula {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--accent-soft);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-top: 10px;
+        display: inline-block;
+      }
+      .example-strip {
+        display: grid;
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+        gap: 6px;
+        margin-top: 12px;
+      }
+      .example-slot {
+        min-height: 72px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 8px 6px;
+        background: var(--panel-alt);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        text-align: center;
+      }
+      .example-slot strong {
+        font-size: 14px;
+      }
+      .example-slot span {
+        font-size: 15px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .example-slot.active {
+        background: var(--good-soft);
+        border-color: var(--good);
+      }
+      .demo-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 360px) 1fr;
+        gap: 14px;
+      }
+      .panel {
+        padding: 16px;
+      }
+      .controls {
+        display: grid;
+        gap: 12px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+      }
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      button {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 9px 12px;
+        background: var(--panel);
+        color: var(--text);
+        cursor: pointer;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      button:hover {
+        filter: brightness(1.03);
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .stat {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+      }
+      .stat strong {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .stat span {
+        font-size: 20px;
+        font-weight: 700;
+      }
+      .stat small {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .history-panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: var(--panel-alt);
+      }
+      .history-panel strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+      .history-list {
+        display: grid;
+        gap: 8px;
+      }
+      .history-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        font-size: 14px;
+      }
+      .history-item code {
+        margin-left: 6px;
+      }
+      .history-empty {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .status {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        background: var(--panel-alt);
+      }
+      .status strong {
+        display: block;
+        margin-bottom: 6px;
+      }
+      .table-wrap {
+        display: grid;
+        gap: 10px;
+      }
+      .table-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .mode-note {
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .mode-note.mode-open {
+        color: #dc2626;
+        font-weight: 700;
+      }
+      .mode-note.mode-chain {
+        color: #2563eb;
+        font-weight: 700;
+      }
+      .open-table,
+      .chain-table {
+        display: grid;
+        gap: 8px;
+      }
+      .open-row,
+      .chain-row {
+        display: grid;
+        gap: 8px;
+        align-items: center;
+      }
+      .open-row {
+        grid-template-columns: 72px 1fr;
+      }
+      .chain-row {
+        grid-template-columns: 72px 1fr;
+      }
+      .index-badge {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        text-align: center;
+        padding: 6px 10px;
+        font-weight: 700;
+        background: var(--panel-alt);
+      }
+      .slot,
+      .bucket {
+        min-height: 56px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--panel-alt);
+      }
+      .slot.empty,
+      .node.empty {
+        color: var(--muted);
+      }
+      .slot.visited,
+      .bucket.visited,
+      .node.visited {
+        border-color: var(--warn);
+        background: var(--warn-soft);
+      }
+      .slot.found,
+      .bucket.found,
+      .node.found {
+        border-color: var(--good);
+        background: var(--good-soft);
+      }
+      .chain-nodes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .node {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px;
+        min-width: 54px;
+        text-align: center;
+      }
+      .arrow {
+        color: var(--muted);
+        font-weight: 700;
+      }
+      .log-list {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .note {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      @media (max-width: 840px) {
+        .demo-layout {
+          grid-template-columns: 1fr;
+        }
+        .example-strip {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+        <h1>ハッシュ法探索</h1>
+        <p>
+          ハッシュ法は、ハッシュ関数で求めた番地を使ってデータの位置を直接見つける探索法です。
+        </p>
+      </section>
+
+      <section class="section">
+        <h2>ハッシュ法</h2>
+        <p>
+          配列やリストの中から目的のデータを探す方法の1つがハッシュ法です。格納時と探索時に同じハッシュ関数を使うことで、
+          目的のデータがありそうな位置をすばやく絞り込めます。
+        </p>
+        <div class="grid">
+          <article class="card">
+            <div class="mini-title">考え方</div>
+            <p>データそのものから格納位置を計算し、その番地を直接参照します。</p>
+          </article>
+          <article class="card">
+            <div class="mini-title">このページの例</div>
+            <p>ハッシュ関数として <code>key mod 10</code> を使い、0〜9 の10個の番地に格納します。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>ハッシュ法の探索例</h2>
+        <p>
+          たとえばデータ <code>12</code> を格納するとき、<code>12 mod 10 = 2</code> なので、配列の位置 <code>2</code> に置きます。
+          探索するときも同じ計算を行えば、最初に確認すべき位置をすぐに求められます。
+        </p>
+        <p><code>-1</code> は、まだ何も格納されていない空の場所を表す初期値です。</p>
+        <div class="formula">h(12) = 12 mod 10 = 2</div>
+        <div class="example-strip" aria-label="12 を位置 2 に格納する例">
+          <div class="example-slot"><strong>0</strong><span>-1</span></div>
+          <div class="example-slot"><strong>1</strong><span>-1</span></div>
+          <div class="example-slot active"><strong>2</strong><span>12</span></div>
+          <div class="example-slot"><strong>3</strong><span>-1</span></div>
+          <div class="example-slot"><strong>4</strong><span>-1</span></div>
+          <div class="example-slot"><strong>5</strong><span>-1</span></div>
+          <div class="example-slot"><strong>6</strong><span>-1</span></div>
+          <div class="example-slot"><strong>7</strong><span>-1</span></div>
+          <div class="example-slot"><strong>8</strong><span>-1</span></div>
+          <div class="example-slot"><strong>9</strong><span>-1</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>ハッシュ法の衝突</h2>
+        <p>
+          異なるデータから同じハッシュ値が出ると衝突（コリジョン）が起きます。たとえば <code>22</code> も <code>22 mod 10 = 2</code> となり、
+          <code>12</code> と同じ位置にぶつかります。
+        </p>
+        <div class="grid">
+          <article class="card">
+            <div class="mini-title">オープンアドレス法</div>
+            <p>衝突したら次の番地へ進み、空いている場所を順番に探します。ここでは線形探索（+1）を使います。</p>
+          </article>
+          <article class="card">
+            <div class="mini-title">チェイン法</div>
+            <p>同じ番地のデータを連結して保持します。探索時はそのバケットのリストを順にたどります。</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>ハッシュ法シミュレータ</h2>
+        <div class="demo-layout">
+          <aside class="panel controls">
+            <label>
+              衝突処理
+              <select id="collisionMode">
+                <option value="open">オープンアドレス法（線形探索）</option>
+                <option value="chain">チェイン法</option>
+              </select>
+            </label>
+
+            <label>
+              操作する値
+              <input id="keyInput" type="number" min="0" max="999" step="1" value="12" />
+            </label>
+
+            <div class="formula" id="formulaPreview">h(12) = 12 mod 10 = 2</div>
+
+            <div class="button-row">
+              <button id="insertButton" class="primary">挿入</button>
+              <button id="searchButton">探索</button>
+              <button id="resetButton">リセット</button>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <strong>使用中スロット</strong>
+                <span id="usedCount">0 / 10</span>
+                <small>現在データが入っている場所の数です。</small>
+              </div>
+              <div class="stat">
+                <strong>負荷率（埋まり具合）</strong>
+                <span id="loadFactor">0.00</span>
+              </div>
+            </div>
+
+            <div class="history-panel">
+              <strong>入力履歴</strong>
+              <div id="inputHistoryList" class="history-list"></div>
+            </div>
+
+            <div class="status">
+              <strong>操作ログ</strong>
+              <ol id="logList" class="log-list"></ol>
+            </div>
+
+            <p class="note">
+              すべての計算は <code>key mod 10</code> です。入力は 0 以上 999 以下の整数に制限しています。表示中の
+              <code>-1</code> は、まだ何も格納されていない空の場所を表します。
+            </p>
+          </aside>
+
+          <div class="panel table-wrap">
+            <div class="table-head">
+              <h3>ハッシュテーブル</h3>
+              <div class="mode-note" id="modeNote"></div>
+            </div>
+            <div id="tableView"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>探索計算量</h2>
+        <p>
+          ハッシュ法の探索計算量は、オープンアドレス法でもチェイン法でも、<strong>平均は O(1)、最悪は O(N)</strong>
+          です。
+        </p>
+        <div class="grid">
+          <article class="card">
+            <div class="mini-title">オープンアドレス法</div>
+            <p>平均: <code>O(1)</code> / 最悪: <code>O(N)</code></p>
+          </article>
+          <article class="card">
+            <div class="mini-title">チェイン法</div>
+            <p>平均: <code>O(1)</code> / 最悪: <code>O(N)</code></p>
+          </article>
+        </div>
+        <p>
+          ハッシュ値がうまく分散していれば、調べる場所は少なくて済むため平均は <code>O(1)</code> です。
+          ただし衝突が多いと、オープンアドレス法では配列を長くたどり、チェイン法では1つのバケットのリストが長くなるため、
+          最悪は <code>O(N)</code> になります。
+        </p>
+      </section>
+    </main>
+
+    <script>
+      const tableSize = 10;
+      const state = {
+        collisionMode: 'open',
+        openTable: Array(tableSize).fill(null),
+        chainTable: createChainTable(),
+        inputHistory: [],
+        visitedSlots: [],
+        visitedBucket: null,
+        visitedNodes: [],
+        foundSlot: null,
+        foundNode: null
+      };
+
+      const collisionModeSelect = document.getElementById('collisionMode');
+      const keyInput = document.getElementById('keyInput');
+      const formulaPreview = document.getElementById('formulaPreview');
+      const usedCount = document.getElementById('usedCount');
+      const loadFactor = document.getElementById('loadFactor');
+      const inputHistoryList = document.getElementById('inputHistoryList');
+      const modeNote = document.getElementById('modeNote');
+      const tableView = document.getElementById('tableView');
+      const logList = document.getElementById('logList');
+
+      function createChainTable() {
+        return Array.from({ length: tableSize }, () => []);
+      }
+
+      function hashKey(key) {
+        return key % tableSize;
+      }
+
+      function clearHighlights() {
+        state.visitedSlots = [];
+        state.visitedBucket = null;
+        state.visitedNodes = [];
+        state.foundSlot = null;
+        state.foundNode = null;
+      }
+
+      function getInputValue() {
+        const rawValue = Number.parseInt(keyInput.value, 10);
+        if (Number.isNaN(rawValue) || rawValue < 0 || rawValue > 999) {
+          return null;
+        }
+        return rawValue;
+      }
+
+      function setLogs(lines) {
+        logList.textContent = '';
+        lines.forEach((line) => {
+          const item = document.createElement('li');
+          item.textContent = line;
+          logList.appendChild(item);
+        });
+      }
+
+      function countItems() {
+        if (state.collisionMode === 'open') {
+          return state.openTable.filter((value) => value !== null).length;
+        }
+        return state.chainTable.reduce((sum, bucket) => sum + bucket.length, 0);
+      }
+
+      function updateFormulaPreview() {
+        const key = getInputValue();
+        if (key === null) {
+          formulaPreview.textContent = 'h(x) = x mod 10';
+          return;
+        }
+        formulaPreview.textContent = `h(${key}) = ${key} mod 10 = ${hashKey(key)}`;
+      }
+
+      function updateStats() {
+        const itemCount = countItems();
+        usedCount.textContent = `${itemCount} / ${tableSize}`;
+        loadFactor.textContent = (itemCount / tableSize).toFixed(2);
+      }
+
+      function addInputHistory(action, key) {
+        state.inputHistory.unshift({ action, key });
+        if (state.inputHistory.length > 8) {
+          state.inputHistory.length = 8;
+        }
+      }
+
+      function renderInputHistory() {
+        inputHistoryList.textContent = '';
+
+        if (state.inputHistory.length === 0) {
+          const empty = document.createElement('span');
+          empty.className = 'history-empty';
+          empty.textContent = 'まだ履歴はありません。';
+          inputHistoryList.appendChild(empty);
+          return;
+        }
+
+        state.inputHistory.forEach((entry) => {
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.innerHTML = `${entry.action}<code>${entry.key}</code>`;
+          inputHistoryList.appendChild(item);
+        });
+      }
+
+      function getModeNote() {
+        if (state.collisionMode === 'open') {
+          return '衝突時は +1 ずつ次の番地を探します。';
+        }
+        return '同じ番地のデータは同じバケットに連結して保持します。';
+      }
+
+      function renderOpenTable() {
+        const container = document.createElement('div');
+        container.className = 'open-table';
+
+        state.openTable.forEach((value, index) => {
+          const row = document.createElement('div');
+          row.className = 'open-row';
+
+          const badge = document.createElement('div');
+          badge.className = 'index-badge';
+          badge.textContent = index;
+
+          const slot = document.createElement('div');
+          slot.className = 'slot';
+          if (value === null) {
+            slot.classList.add('empty');
+            slot.textContent = '-1';
+          } else {
+            slot.textContent = value;
+          }
+          if (state.visitedSlots.includes(index)) {
+            slot.classList.add('visited');
+          }
+          if (state.foundSlot === index) {
+            slot.classList.remove('visited');
+            slot.classList.add('found');
+          }
+
+          row.appendChild(badge);
+          row.appendChild(slot);
+          container.appendChild(row);
+        });
+
+        return container;
+      }
+
+      function renderChainTable() {
+        const container = document.createElement('div');
+        container.className = 'chain-table';
+
+        state.chainTable.forEach((bucketValues, bucketIndex) => {
+          const row = document.createElement('div');
+          row.className = 'chain-row';
+
+          const badge = document.createElement('div');
+          badge.className = 'index-badge';
+          badge.textContent = bucketIndex;
+
+          const bucket = document.createElement('div');
+          bucket.className = 'bucket';
+          if (state.visitedBucket === bucketIndex) {
+            bucket.classList.add('visited');
+          }
+          if (state.foundNode && state.foundNode.bucketIndex === bucketIndex) {
+            bucket.classList.remove('visited');
+            bucket.classList.add('found');
+          }
+
+          const nodes = document.createElement('div');
+          nodes.className = 'chain-nodes';
+
+          if (bucketValues.length === 0) {
+            const emptyNode = document.createElement('div');
+            emptyNode.className = 'node empty';
+            emptyNode.textContent = '-1';
+            nodes.appendChild(emptyNode);
+          } else {
+            bucketValues.forEach((value, nodeIndex) => {
+              const node = document.createElement('div');
+              node.className = 'node';
+              node.textContent = value;
+
+              const wasVisited = state.visitedNodes.some((visited) => {
+                return visited.bucketIndex === bucketIndex && visited.nodeIndex === nodeIndex;
+              });
+              if (wasVisited) {
+                node.classList.add('visited');
+              }
+              if (
+                state.foundNode &&
+                state.foundNode.bucketIndex === bucketIndex &&
+                state.foundNode.nodeIndex === nodeIndex
+              ) {
+                node.classList.remove('visited');
+                node.classList.add('found');
+              }
+
+              nodes.appendChild(node);
+              if (nodeIndex < bucketValues.length - 1) {
+                const arrow = document.createElement('span');
+                arrow.className = 'arrow';
+                arrow.textContent = '→';
+                nodes.appendChild(arrow);
+              }
+            });
+          }
+
+          bucket.appendChild(nodes);
+          row.appendChild(badge);
+          row.appendChild(bucket);
+          container.appendChild(row);
+        });
+
+        return container;
+      }
+
+      function renderTable() {
+        modeNote.textContent = getModeNote();
+        modeNote.className = state.collisionMode === 'open' ? 'mode-note mode-open' : 'mode-note mode-chain';
+        tableView.textContent = '';
+        if (state.collisionMode === 'open') {
+          tableView.appendChild(renderOpenTable());
+        } else {
+          tableView.appendChild(renderChainTable());
+        }
+        updateStats();
+        renderInputHistory();
+      }
+
+      function resetTable(keepLogs = false) {
+        state.openTable = Array(tableSize).fill(null);
+        state.chainTable = createChainTable();
+        state.inputHistory = [];
+        clearHighlights();
+        if (!keepLogs) {
+          setLogs(['ハッシュテーブルを初期値 -1 に戻しました。']);
+        }
+        renderTable();
+      }
+
+      function insertOpenAddress(key) {
+        const startIndex = hashKey(key);
+        const logs = [`${key} の挿入を開始`, `h(${key}) = ${startIndex}`];
+        clearHighlights();
+
+        for (let offset = 0; offset < tableSize; offset += 1) {
+          const slotIndex = (startIndex + offset) % tableSize;
+          state.visitedSlots.push(slotIndex);
+
+          if (state.openTable[slotIndex] === key) {
+            state.foundSlot = slotIndex;
+            logs.push(`位置 ${slotIndex} に同じ値があるため、重複挿入しません。`);
+            setLogs(logs);
+            renderTable();
+            return;
+          }
+
+          if (state.openTable[slotIndex] === null) {
+            state.openTable[slotIndex] = key;
+            state.foundSlot = slotIndex;
+            if (slotIndex === startIndex) {
+              logs.push(`位置 ${slotIndex} は -1 で未使用なので、そのまま格納しました。`);
+            } else {
+              logs.push(`衝突したため順に調べ、位置 ${slotIndex} に格納しました。`);
+            }
+            setLogs(logs);
+            renderTable();
+            return;
+          }
+
+          logs.push(`位置 ${slotIndex} は ${state.openTable[slotIndex]} が使用中です。`);
+        }
+
+        logs.push('空きが見つからないため、挿入できませんでした。');
+        setLogs(logs);
+        renderTable();
+      }
+
+      function insertChain(key) {
+        const bucketIndex = hashKey(key);
+        const bucket = state.chainTable[bucketIndex];
+        clearHighlights();
+        state.visitedBucket = bucketIndex;
+
+        const logs = [`${key} の挿入を開始`, `h(${key}) = ${bucketIndex}`];
+        const duplicateIndex = bucket.findIndex((value) => value === key);
+        if (duplicateIndex !== -1) {
+          state.foundNode = { bucketIndex, nodeIndex: duplicateIndex };
+          logs.push(`バケット ${bucketIndex} に同じ値があるため、重複挿入しません。`);
+          setLogs(logs);
+          renderTable();
+          return;
+        }
+
+        bucket.push(key);
+        state.foundNode = { bucketIndex, nodeIndex: bucket.length - 1 };
+        if (bucket.length === 1) {
+          logs.push(`バケット ${bucketIndex} は -1 で未使用なので、そのまま格納しました。`);
+        } else {
+          logs.push(`衝突したため、バケット ${bucketIndex} の末尾へ連結しました。`);
+        }
+        setLogs(logs);
+        renderTable();
+      }
+
+      function insertKey() {
+        const key = getInputValue();
+        if (key === null) {
+          setLogs(['0 以上 999 以下の整数を入力してください。']);
+          return;
+        }
+        addInputHistory('挿入', key);
+
+        if (state.collisionMode === 'open') {
+          insertOpenAddress(key);
+        } else {
+          insertChain(key);
+        }
+      }
+
+      function searchOpenAddress(key) {
+        const startIndex = hashKey(key);
+        const logs = [`${key} の探索を開始`, `h(${key}) = ${startIndex}`];
+        clearHighlights();
+
+        for (let offset = 0; offset < tableSize; offset += 1) {
+          const slotIndex = (startIndex + offset) % tableSize;
+          state.visitedSlots.push(slotIndex);
+          const slotValue = state.openTable[slotIndex];
+
+          if (slotValue === null) {
+            logs.push(`位置 ${slotIndex} は -1 で未使用なので、${key} は見つかりません。`);
+            setLogs(logs);
+            renderTable();
+            return;
+          }
+
+          if (slotValue === key) {
+            state.foundSlot = slotIndex;
+            logs.push(`位置 ${slotIndex} で ${key} を見つけました。`);
+            setLogs(logs);
+            renderTable();
+            return;
+          }
+
+          logs.push(`位置 ${slotIndex} には ${slotValue} があるため次を調べます。`);
+        }
+
+        logs.push(`${key} は見つかりませんでした。`);
+        setLogs(logs);
+        renderTable();
+      }
+
+      function searchChain(key) {
+        const bucketIndex = hashKey(key);
+        const bucket = state.chainTable[bucketIndex];
+        const logs = [`${key} の探索を開始`, `h(${key}) = ${bucketIndex}`];
+        clearHighlights();
+        state.visitedBucket = bucketIndex;
+
+        if (bucket.length === 0) {
+          logs.push(`バケット ${bucketIndex} は -1 で未使用なので、${key} は見つかりません。`);
+          setLogs(logs);
+          renderTable();
+          return;
+        }
+
+        for (let nodeIndex = 0; nodeIndex < bucket.length; nodeIndex += 1) {
+          state.visitedNodes.push({ bucketIndex, nodeIndex });
+          const nodeValue = bucket[nodeIndex];
+          if (nodeValue === key) {
+            state.foundNode = { bucketIndex, nodeIndex };
+            logs.push(`バケット ${bucketIndex} の ${nodeIndex + 1} 個目で ${key} を見つけました。`);
+            setLogs(logs);
+            renderTable();
+            return;
+          }
+          logs.push(`${nodeValue} を確認しましたが一致しません。`);
+        }
+
+        logs.push(`バケット ${bucketIndex} を最後まで確認しましたが、${key} は見つかりません。`);
+        setLogs(logs);
+        renderTable();
+      }
+
+      function searchKey() {
+        const key = getInputValue();
+        if (key === null) {
+          setLogs(['0 以上 999 以下の整数を入力してください。']);
+          return;
+        }
+        addInputHistory('探索', key);
+
+        if (state.collisionMode === 'open') {
+          searchOpenAddress(key);
+        } else {
+          searchChain(key);
+        }
+      }
+
+      collisionModeSelect.addEventListener('change', () => {
+        state.collisionMode = collisionModeSelect.value;
+        resetTable(true);
+        setLogs([
+          state.collisionMode === 'open'
+            ? 'オープンアドレス法に切り替えました。'
+            : 'チェイン法に切り替えました。',
+          '値を入力して挿入または探索を試してください。'
+        ]);
+      });
+
+      keyInput.addEventListener('input', updateFormulaPreview);
+      document.getElementById('insertButton').addEventListener('click', insertKey);
+      document.getElementById('searchButton').addEventListener('click', searchKey);
+      document.getElementById('resetButton').addEventListener('click', () => resetTable(false));
+
+      setLogs([
+        '準備完了です。',
+        '値を入力して「挿入」または「探索」を押してください。'
+      ]);
+      updateFormulaPreview();
+      renderTable();
+    </script>
+  </body>
+</html>
