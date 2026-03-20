@@ -1,0 +1,2480 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSA: 単方向リストの挿入・削除</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f5f7fb;
+        --panel: #ffffff;
+        --panel-alt: #f8fafc;
+        --text: #1f2937;
+        --muted: #667085;
+        --line: #d7dce5;
+        --accent: #2563eb;
+        --accent-soft: #dbeafe;
+        --head: #2563eb;
+        --prev: #b45309;
+        --target: #dc2626;
+        --new: #15803d;
+        --changed: #7c3aed;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #111827;
+          --panel: #1f2937;
+          --panel-alt: #243041;
+          --text: #f3f4f6;
+          --muted: #c4cad4;
+          --line: #374151;
+          --accent: #60a5fa;
+          --accent-soft: #1e3a8a;
+          --head: #60a5fa;
+          --prev: #f59e0b;
+          --target: #f87171;
+          --new: #4ade80;
+          --changed: #a78bfa;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      main {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 12px 12px 28px;
+      }
+
+      a {
+        color: var(--accent);
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: clamp(24px, 3.4vw, 32px);
+      }
+
+      h2 {
+        margin: 0 0 8px;
+        font-size: 19px;
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      p {
+        margin: 0 0 8px;
+        color: var(--muted);
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        background: var(--panel-alt);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        color: var(--text);
+      }
+
+      .hero,
+      .section,
+      .panel,
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .hero {
+        padding: 14px 16px;
+        margin-bottom: 10px;
+      }
+
+      .section {
+        padding: 14px;
+        margin-bottom: 10px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 10px;
+      }
+
+      .card {
+        padding: 12px;
+      }
+
+      .mini-title {
+        margin-bottom: 6px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--accent);
+      }
+
+      .sim-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 330px) 1fr;
+        gap: 10px;
+      }
+
+      .panel {
+        padding: 12px;
+      }
+
+      .controls {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+
+      label {
+        display: grid;
+        gap: 4px;
+        font-size: 13px;
+      }
+
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+      }
+
+      .button-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .button-row.single {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        min-height: 52px;
+        background: var(--panel);
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+      }
+
+      button.primary:disabled {
+        background: #cbd5e1;
+        border-color: #cbd5e1;
+        color: #475569;
+        opacity: 1;
+      }
+
+      .guide-panel,
+      .status,
+      .list-panel,
+      .change-panel,
+      .pointer-panel,
+      .legend-panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel-alt);
+      }
+
+      .guide-panel,
+      .status,
+      .list-panel,
+      .change-panel,
+      .pointer-panel {
+        padding: 10px;
+      }
+
+      .guide-panel strong,
+      .status strong,
+      .list-panel strong,
+      .change-panel strong,
+      .pointer-panel strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .status p:last-child,
+      .list-panel p:last-child {
+        margin-bottom: 0;
+      }
+
+      .card p:last-child,
+      .guide-block p:last-child {
+        margin-bottom: 0;
+      }
+
+      .check-list,
+      .step-list {
+        margin: 0;
+        padding-left: 18px;
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .callout {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        border-radius: 12px;
+        background: var(--accent-soft);
+      }
+
+      .callout strong {
+        display: block;
+        margin-bottom: 8px;
+      }
+
+      .guide-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .guide-block {
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+
+      .compact-details summary {
+        cursor: pointer;
+        list-style: none;
+        font-weight: 700;
+      }
+
+      .compact-details summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .compact-details summary::before {
+        content: '▶';
+        display: inline-block;
+        margin-right: 8px;
+        color: var(--accent);
+        transform-origin: center;
+        transition: transform 0.18s ease;
+      }
+
+      .compact-details[open] summary::before {
+        transform: rotate(90deg);
+      }
+
+      .compact-details > *:not(summary) {
+        margin-top: 10px;
+      }
+
+      .intro-details {
+        padding: 12px 14px;
+      }
+
+      .intro-summary-note {
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: 6px;
+      }
+
+      .hero p:last-child,
+      .footnote {
+        font-size: 13px;
+      }
+
+      .guide-code {
+        margin-top: 0;
+        white-space: pre-wrap;
+      }
+
+      .step-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
+
+      .step-counter {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .code-box {
+        margin-top: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .viewer {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+
+      .viewer-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .legend-panel {
+        padding: 10px 12px;
+      }
+
+      .legend-items {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .legend-chip {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        display: inline-block;
+      }
+
+      .dot.head { background: var(--head); }
+      .dot.prev { background: var(--prev); }
+      .dot.target { background: var(--target); }
+      .dot.new { background: var(--new); }
+      .dot.changed { background: var(--changed); }
+
+      .chain-canvas,
+      .work-canvas {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 14px;
+        background: var(--panel-alt);
+      }
+
+      #chainView {
+        overflow: hidden;
+      }
+
+      .chain-svg {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+      }
+
+      .diagram-head-label,
+      .diagram-node-label,
+      .diagram-head-box-text,
+      .diagram-node-value,
+      .diagram-node-next,
+      .diagram-node-role {
+        fill: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .diagram-head-label {
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .diagram-head-box,
+      .diagram-node-outer,
+      .diagram-node-divider {
+        stroke: #3f3f46;
+        stroke-width: 2.2;
+      }
+
+      .diagram-node-outer {
+        fill: none;
+      }
+
+      .diagram-head-box {
+        fill: var(--panel);
+      }
+
+      .diagram-node-cell {
+        fill: #dce6d4;
+      }
+
+      .diagram-node-cell.next {
+        fill: #d7e2cf;
+      }
+
+      .diagram-node-cell.newNode {
+        fill: #ead7c8;
+      }
+
+      .diagram-node-cell.changed {
+        fill: color-mix(in srgb, var(--changed) 12%, #d7e2cf);
+      }
+
+      .diagram-node-outer.head {
+        stroke: var(--head);
+      }
+
+      .diagram-node-outer.prev {
+        stroke: var(--prev);
+      }
+
+      .diagram-node-outer.target {
+        stroke: var(--target);
+      }
+
+      .diagram-node-outer.newNode {
+        stroke: var(--new);
+      }
+
+      .diagram-node-outer.dashed,
+      .diagram-node-divider.dashed {
+        stroke-dasharray: 7 5;
+      }
+
+      .diagram-node-label {
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .diagram-node-role {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .diagram-head-box-text {
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .diagram-node-next {
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .diagram-node-value {
+        font-size: 26px;
+        font-weight: 800;
+      }
+
+      .diagram-pointer-dot {
+        fill: #111111;
+      }
+
+      .diagram-link {
+        fill: none;
+        stroke: #5b5b5b;
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        marker-end: url(#diagram-arrowhead);
+      }
+
+      .diagram-link.changed {
+        stroke: var(--changed);
+        stroke-dasharray: 100;
+        animation: diagram-arrow-draw 0.8s ease;
+      }
+
+      .chain-canvas strong,
+      .work-canvas strong {
+        display: block;
+        margin-bottom: 10px;
+      }
+
+      .chain-row,
+      .work-row,
+      .pointer-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .head-badge,
+      .null-badge,
+      .pointer-badge {
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        font-weight: 700;
+      }
+
+      .head-badge {
+        color: var(--head);
+        border-color: color-mix(in srgb, var(--head) 55%, var(--line));
+      }
+
+      .null-badge {
+        color: var(--muted);
+      }
+
+      .chain-arrow,
+      .pointer-arrow {
+        color: var(--muted);
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .pointer-badge {
+        font-weight: 600;
+      }
+
+      .pointer-badge.head { color: var(--head); }
+      .pointer-badge.prev { color: var(--prev); }
+      .pointer-badge.target { color: var(--target); }
+      .pointer-badge.newNode { color: var(--new); }
+
+      .change-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .change-item {
+        display: grid;
+        grid-template-columns: minmax(96px, 140px) 1fr;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+
+      .change-name {
+        font-weight: 700;
+        color: var(--changed);
+      }
+
+      .change-flow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+      }
+
+      .change-value {
+        min-width: 72px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--panel-alt);
+        text-align: center;
+        font-weight: 700;
+      }
+
+      .change-value.before {
+        color: var(--target);
+      }
+
+      .change-value.after {
+        color: var(--new);
+        animation: change-pop 0.9s ease;
+      }
+
+      .change-arrow {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--changed);
+      }
+
+      .change-stage {
+        position: relative;
+        flex: 1;
+        min-width: 120px;
+        height: 22px;
+      }
+
+      .change-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 50%;
+        height: 4px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--target), var(--changed), var(--new));
+        transform: translateY(-50%);
+        opacity: 0.45;
+      }
+
+      .change-line::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        top: 50%;
+        transform: translateY(-50%);
+        border-top: 6px solid transparent;
+        border-bottom: 6px solid transparent;
+        border-left: 10px solid var(--new);
+      }
+
+      .change-traveler {
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: var(--changed);
+        border: 2px solid var(--panel);
+        box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.18);
+        transform: translate(-50%, -50%);
+        animation: rewire-move 1s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .change-traveler::after {
+        content: "➜";
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -52%);
+        font-size: 10px;
+        color: #ffffff;
+      }
+
+      .change-empty {
+        color: var(--muted);
+      }
+
+      .node-card {
+        min-width: 150px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        overflow: hidden;
+      }
+
+      .node-card.head { border-color: var(--head); box-shadow: 0 0 0 2px color-mix(in srgb, var(--head) 15%, transparent); }
+      .node-card.prev { border-color: var(--prev); box-shadow: 0 0 0 2px color-mix(in srgb, var(--prev) 15%, transparent); }
+      .node-card.target { border-color: var(--target); box-shadow: 0 0 0 2px color-mix(in srgb, var(--target) 15%, transparent); }
+      .node-card.newNode { border-color: var(--new); box-shadow: 0 0 0 2px color-mix(in srgb, var(--new) 15%, transparent); }
+
+      .node-caption {
+        padding: 6px 10px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel-alt);
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .node-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .cell {
+        padding: 8px 10px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .cell:nth-child(2n) {
+        border-right: 0;
+      }
+
+      .cell.label {
+        font-size: 13px;
+        color: var(--muted);
+        background: var(--panel-alt);
+      }
+
+      .cell.value {
+        font-size: 24px;
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .cell.value.next.changed {
+        color: var(--changed);
+        background: color-mix(in srgb, var(--changed) 12%, var(--panel));
+        position: relative;
+        overflow: hidden;
+        animation: changed-cell 0.9s ease;
+      }
+
+      .cell.value.next.changed::after {
+        content: "↝";
+        position: absolute;
+        left: -18px;
+        top: 50%;
+        transform: translateY(-52%);
+        font-size: 20px;
+        color: var(--changed);
+        opacity: 0;
+        animation: next-sweep 0.9s ease;
+      }
+
+      .empty-note {
+        color: var(--muted);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .footnote {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      @keyframes rewire-move {
+        0% {
+          left: 0%;
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.9);
+        }
+        15% {
+          opacity: 1;
+        }
+        70% {
+          opacity: 1;
+        }
+        100% {
+          left: 100%;
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1.05);
+        }
+      }
+
+      @keyframes changed-cell {
+        0% {
+          transform: scale(0.96);
+          box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.26);
+        }
+        45% {
+          transform: scale(1.04);
+          box-shadow: 0 0 0 10px rgba(124, 58, 237, 0);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(124, 58, 237, 0);
+        }
+      }
+
+      @keyframes next-sweep {
+        0% {
+          left: -18px;
+          opacity: 0;
+        }
+        20% {
+          opacity: 1;
+        }
+        100% {
+          left: calc(100% - 20px);
+          opacity: 0;
+        }
+      }
+
+      @keyframes change-pop {
+        0% {
+          transform: scale(0.9);
+          background: var(--panel-alt);
+        }
+        45% {
+          transform: scale(1.08);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes diagram-arrow-draw {
+        0% {
+          stroke-dashoffset: 100;
+        }
+        100% {
+          stroke-dashoffset: 0;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .sim-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .guide-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @supports not (color: color-mix(in srgb, red 50%, white)) {
+        .head-badge,
+        .node-card.head,
+        .node-card.prev,
+        .node-card.target,
+        .node-card.newNode,
+        .cell.value.next.changed {
+          box-shadow: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+        <h1>単方向リストの挿入・削除</h1>
+        <p>
+          <code>head</code> を入口にして、<code>挿入</code> と <code>削除</code> で矢印がどうつなぎ替わるかを、図で確認できます。
+        </p>
+      </section>
+
+      <details class="section intro-details compact-details">
+        <summary>基本説明<span class="intro-summary-note">必要なときだけ開く</span></summary>
+        <div class="grid">
+          <article class="card">
+            <div class="mini-title">なぜ配列ではなくリスト？</div>
+            <p>配列は番号で素早く読めますが、要素数を先に決める必要があります。単方向リストは、あとから増減しやすいのが強みです。</p>
+            <ul class="check-list">
+              <li>配列は番号で直接アクセスできる</li>
+              <li>リストは先頭から順番にたどる</li>
+              <li>リストは挿入・削除で形を変えやすい</li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="mini-title">head は入口</div>
+            <p>リスト全体は <code>head</code> から始まります。各ノードは <code>data</code> と <code>next</code> を持ち、最後は <code>NULL</code> で終わります。</p>
+            <ul class="check-list">
+              <li><code>head</code> は最初のノードを指す</li>
+              <li><code>next</code> は次のノードを指す</li>
+              <li><code>NULL</code> は「もう次がない」印</li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="mini-title">挿入の鉄則</div>
+            <p>途中に新しいノードを差し込むときは、先に <code>newNode</code> の行き先を決めてから、前のノードの <code>next</code> を変えます。</p>
+            <ul class="check-list">
+              <li>先に <code>newNode.next</code> をつなぐ</li>
+              <li>あとで <code>prev.next</code> を <code>newNode</code> に変える</li>
+            </ul>
+          </article>
+          <article class="card">
+            <div class="mini-title">削除の鉄則</div>
+            <p>削除では、消すノードそのものよりも、<code>前のノード</code> が次にどこを指すかが重要です。飛び越すイメージで考えます。</p>
+            <ul class="check-list">
+              <li>まず <code>target = prev.next</code> を確認する</li>
+              <li>次に <code>prev.next = target.next</code> で飛び越す</li>
+            </ul>
+          </article>
+        </div>
+        <div class="callout">
+          <strong>このページの見方</strong>
+          <ol class="step-list">
+            <li><code>参照中のポインタ</code> で、いま注目しているノードを確認する</li>
+            <li><code>ポインタ付け替え</code> で、どの参照が何から何へ変わったかを見る</li>
+            <li><code>リスト本体</code> が最後まで <code>HEAD → ... → NULL</code> でつながっているか確かめる</li>
+          </ol>
+        </div>
+      </details>
+
+      <section class="section">
+        <div class="sim-layout">
+          <aside class="panel controls">
+            <label>
+              現在のリスト
+              <input id="listInput" type="text" value="10, 20, 30, 40" />
+            </label>
+
+            <div class="button-row">
+              <button id="applyListButton">リストを反映</button>
+              <button id="sampleButton">サンプルに戻す</button>
+            </div>
+
+            <label>
+              操作
+              <select id="operationSelect">
+                <option value="insert-head">先頭に挿入</option>
+                <option value="insert-after" selected>指定したノードの直後に挿入</option>
+                <option value="delete-head">先頭を削除</option>
+                <option value="delete-after">指定したノードの次を削除</option>
+              </select>
+            </label>
+
+            <label id="insertValueGroup">
+              挿入する値
+              <input id="insertValueInput" type="number" min="0" max="999" step="1" value="25" />
+            </label>
+
+            <label id="targetIndexGroup">
+              <span id="targetIndexLabel">何番目のノードの直後に入れる？（先頭が 1）</span>
+              <input id="targetIndexInput" type="number" min="1" max="99" step="1" value="1" />
+            </label>
+
+            <details class="guide-panel compact-details" aria-live="polite">
+              <summary><span id="guideTitle">今回の操作の考え方</span></summary>
+              <p id="guideSummary">選んだ操作ごとに、見るべき順番と注意点を表示します。</p>
+              <div class="guide-block">
+                <div class="mini-title">基本コード</div>
+                <div id="guideCode" class="code-box guide-code">-</div>
+              </div>
+              <div class="guide-block">
+                <div class="mini-title">考える順番</div>
+                <ol id="guideSteps" class="step-list"></ol>
+              </div>
+              <div class="guide-block">
+                <div class="mini-title">いまの入力での例</div>
+                <p id="guideExample">-</p>
+              </div>
+            </details>
+
+            <div class="list-panel">
+              <strong>現在のリスト</strong>
+              <p id="currentListText">HEAD → 10 → 20 → 30 → 40 → NULL</p>
+            </div>
+
+            <div class="status">
+              <div class="step-meta">
+                <strong id="stepTitle">手順を作成してください</strong>
+                <span id="stepCounter" class="step-counter">Step 0 / 0</span>
+              </div>
+              <p id="stepDescription">操作を選んで <code>手順を作成</code> を押すと、ポインタのつなぎ替えを段階的に表示します。</p>
+              <div id="stepCode" class="code-box">-</div>
+            </div>
+
+            <p class="footnote">
+              図の <code>ノード1</code>・<code>ノード2</code> … に合わせて、先頭を <code>1</code> として数えます。
+            </p>
+          </aside>
+
+          <div class="panel viewer">
+            <div class="viewer-head">
+              <h3>可視化</h3>
+            </div>
+
+            <div class="legend-panel">
+              <div class="legend-items">
+                <span class="legend-chip"><span class="dot head"></span>head</span>
+                <span class="legend-chip"><span class="dot prev"></span>prev</span>
+                <span class="legend-chip"><span class="dot target"></span>target</span>
+                <span class="legend-chip"><span class="dot new"></span>newNode</span>
+                <span class="legend-chip"><span class="dot changed"></span>このステップで更新した next</span>
+              </div>
+            </div>
+
+            <div class="chain-canvas">
+              <strong>リスト本体</strong>
+              <div id="chainView"></div>
+            </div>
+
+            <div class="button-row single">
+              <button id="buildButton" class="primary">この内容で手順を作成</button>
+            </div>
+
+            <div class="button-row">
+              <button id="prevButton">前へ</button>
+              <button id="nextButton">次へ</button>
+            </div>
+
+            <div class="work-canvas">
+              <strong>作業中のノード</strong>
+              <div id="workView"></div>
+            </div>
+
+            <div class="pointer-panel">
+              <strong>参照中のポインタ</strong>
+              <div id="pointerView" class="pointer-row"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const sampleValues = [10, 20, 30, 40];
+      const defaultInsertValue = 25;
+
+      const state = {
+        nodeSerial: 0,
+        currentList: [],
+        steps: [],
+        stepIndex: -1,
+        pendingResult: null,
+        activeOperation: 'insert-after'
+      };
+
+      const listInput = document.getElementById('listInput');
+      const operationSelect = document.getElementById('operationSelect');
+      const insertValueGroup = document.getElementById('insertValueGroup');
+      const insertValueInput = document.getElementById('insertValueInput');
+      const targetIndexGroup = document.getElementById('targetIndexGroup');
+      const targetIndexLabel = document.getElementById('targetIndexLabel');
+      const targetIndexInput = document.getElementById('targetIndexInput');
+      const currentListText = document.getElementById('currentListText');
+      const stepTitle = document.getElementById('stepTitle');
+      const stepCounter = document.getElementById('stepCounter');
+      const stepDescription = document.getElementById('stepDescription');
+      const stepCode = document.getElementById('stepCode');
+      const chainView = document.getElementById('chainView');
+      const changeView = document.getElementById('changeView');
+      const workView = document.getElementById('workView');
+      const pointerView = document.getElementById('pointerView');
+      const buildButton = document.getElementById('buildButton');
+      const prevButton = document.getElementById('prevButton');
+      const nextButton = document.getElementById('nextButton');
+      const applyListButton = document.getElementById('applyListButton');
+      const sampleButton = document.getElementById('sampleButton');
+      const guideTitle = document.getElementById('guideTitle');
+      const guideSummary = document.getElementById('guideSummary');
+      const guideGoal = document.getElementById('guideGoal');
+      const guideCaution = document.getElementById('guideCaution');
+      const guideCode = document.getElementById('guideCode');
+      const guideSteps = document.getElementById('guideSteps');
+      const guideExample = document.getElementById('guideExample');
+      const svgNamespace = 'http://www.w3.org/2000/svg';
+
+      const operationGuides = {
+        'insert-head': {
+          label: '先頭に挿入',
+          summary: '新しいノードを入口にする、もっとも基本的な挿入です。',
+          goal: '新しいノードを作り、head をそのノードへ付け替えます。',
+          caution: '先に head を変えるのではなく、まず newNode.next に古い head を入れます。',
+          code: ['newNode = Node(value)', 'newNode.next = head', 'head = newNode'],
+          steps: ['新しいノードを作る', 'newNode.next に古い head を入れる', '最後に head を newNode へ更新する']
+        },
+        'insert-after': {
+          label: '指定したノードの直後に挿入',
+          summary: '途中に差し込むときは、既存のつながりを切らない順番が大切です。',
+          goal: '指定したノードの直後に newNode を差し込みます。',
+          caution: '先に prev.next を変えると、もともとつながっていた先を見失うことがあります。',
+          code: ['prev = node[index]', 'newNode = Node(value)', 'newNode.next = prev.next', 'prev.next = newNode'],
+          steps: ['挿入位置の前のノード prev を決める', 'newNode.next を prev の次へ向ける', 'prev.next を newNode に変えて差し込む']
+        },
+        'delete-head': {
+          label: '先頭を削除',
+          summary: '先頭削除は、head をひとつ先へ進める操作として考えるとわかりやすいです。',
+          goal: 'head が 2 番目のノードを指すように更新します。',
+          caution: '削除対象は古い head です。C では付け替え後に必要なら解放します。',
+          code: ['target = head', 'head = head.next'],
+          steps: ['いまの head が削除対象だと確認する', 'head を 1 つ先へ進める', '古い先頭はリスト本体から外れる']
+        },
+        'delete-after': {
+          label: '指定したノードの次を削除',
+          summary: '削除では、前のノードが target を飛び越える形にすると整理しやすいです。',
+          goal: '指定したノード prev の next を、削除対象のさらに次へ向け直します。',
+          caution: '消すのは prev ではなく prev の次のノードです。target.next を見てから飛び越します。',
+          code: ['prev = node[index]', 'target = prev.next', 'prev.next = target.next'],
+          steps: ['削除位置の前のノード prev を決める', '削除対象 target = prev.next を確認する', 'prev.next を target.next に変えて飛び越す']
+        }
+      };
+
+      function createNode(value) {
+        state.nodeSerial += 1;
+        return { id: `node-${state.nodeSerial}`, value };
+      }
+
+      function cloneList(nodes) {
+        return nodes.map((node) => ({ ...node }));
+      }
+
+      function listValuesText(nodes) {
+        if (nodes.length === 0) {
+          return 'HEAD → NULL';
+        }
+        return `HEAD → ${nodes.map((node) => node.value).join(' → ')} → NULL`;
+      }
+
+      function listValuesTextFromNumbers(values) {
+        if (values.length === 0) {
+          return 'HEAD → NULL';
+        }
+        return `HEAD → ${values.join(' → ')} → NULL`;
+      }
+
+      function renderGuideStepList(items) {
+        const fragment = document.createDocumentFragment();
+        items.forEach((item) => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          fragment.appendChild(li);
+        });
+        guideSteps.replaceChildren(fragment);
+      }
+
+      function buildGuideExample(operation) {
+        const listResult = parseListInput(listInput.value);
+        if (!listResult.ok) {
+          return '現在のリストを整数のカンマ区切りで入力すると、ここに具体例を表示します。';
+        }
+
+        const values = listResult.values;
+        const insertResult = parseInsertValue();
+        const targetResult = parseTargetIndex();
+
+        if (operation === 'insert-head') {
+          if (!insertResult.ok) {
+            return '挿入する値を入れると、先頭挿入の具体例を表示します。';
+          }
+          return `${listValuesTextFromNumbers(values)} の先頭に ${insertResult.value} を入れると、${listValuesTextFromNumbers([insertResult.value, ...values])} になります。`;
+        }
+
+        if (operation === 'insert-after') {
+          if (values.length === 0) {
+            return '空のリストでは途中挿入できません。先頭に挿入を使います。';
+          }
+          if (!insertResult.ok || !targetResult.ok) {
+            return '挿入する値と、何番目のノードの直後に入れるかを入れると、途中挿入の具体例を表示します。';
+          }
+          if (targetResult.value > values.length - 1) {
+            return `何番目のノードかは 1 から ${values.length} の範囲です。`;
+          }
+          const nextValues = [...values];
+          nextValues.splice(targetResult.value + 1, 0, insertResult.value);
+          return `${listValuesTextFromNumbers(values)} で ${targetResult.display} 番目は値 ${values[targetResult.value]} のノードです。その直後に ${insertResult.value} を入れると、${listValuesTextFromNumbers(nextValues)} になります。`;
+        }
+
+        if (operation === 'delete-head') {
+          if (values.length === 0) {
+            return '空のリストでは先頭削除はできません。';
+          }
+          return `${listValuesTextFromNumbers(values)} から先頭の ${values[0]} を外すと、${listValuesTextFromNumbers(values.slice(1))} になります。`;
+        }
+
+        if (values.length < 2) {
+          return '途中削除は、少なくとも 2 個のノードがあるときに行えます。';
+        }
+        if (!targetResult.ok) {
+          return '何番目のノードかを入れると、途中削除の具体例を表示します。';
+        }
+        if (targetResult.value > values.length - 2) {
+          return `何番目のノードかは 1 から ${values.length - 1} の範囲です。`;
+        }
+        const removedValue = values[targetResult.value + 1];
+        const nextValues = values.filter((_, index) => index !== targetResult.value + 1);
+        return `${listValuesTextFromNumbers(values)} で ${targetResult.display} 番目は値 ${values[targetResult.value]} のノードです。その次の ${removedValue} を飛び越すと、${listValuesTextFromNumbers(nextValues)} になります。`;
+      }
+
+      function renderOperationGuide() {
+        const guide = operationGuides[operationSelect.value];
+        guideTitle.textContent = `今回の操作: ${guide.label}`;
+        guideSummary.textContent = guide.summary;
+        if (guideGoal) {
+          guideGoal.textContent = guide.goal;
+        }
+        if (guideCaution) {
+          guideCaution.textContent = guide.caution;
+        }
+        guideCode.textContent = guide.code.join('\n');
+        renderGuideStepList(guide.steps);
+        guideExample.textContent = buildGuideExample(operationSelect.value);
+      }
+
+      function parseListInput(text) {
+        const trimmed = text.trim();
+        if (!trimmed) {
+          return { ok: true, values: [] };
+        }
+
+        const parts = trimmed.split(',').map((part) => part.trim()).filter(Boolean);
+        const values = [];
+        for (const part of parts) {
+          const value = Number.parseInt(part, 10);
+          if (Number.isNaN(value) || value < 0 || value > 999) {
+            return { ok: false, message: 'リストは 0 以上 999 以下の整数をカンマ区切りで入力してください。' };
+          }
+          values.push(value);
+        }
+        return { ok: true, values };
+      }
+
+      function parseInsertValue() {
+        const value = Number.parseInt(insertValueInput.value, 10);
+        if (Number.isNaN(value) || value < 0 || value > 999) {
+          return { ok: false, message: '挿入する値は 0 以上 999 以下の整数にしてください。' };
+        }
+        return { ok: true, value };
+      }
+
+      function parseTargetIndex() {
+        const displayNumber = Number.parseInt(targetIndexInput.value, 10);
+        if (Number.isNaN(displayNumber) || displayNumber < 1) {
+          return { ok: false, message: '何番目のノードかは 1 以上の整数にしてください。' };
+        }
+        return { ok: true, value: displayNumber - 1, display: displayNumber };
+      }
+
+      function syncTargetIndexInput() {
+        const operation = operationSelect.value;
+        const nodeCount = state.currentList.length;
+        const maxDisplay = operation === 'delete-after'
+          ? Math.max(1, nodeCount - 1)
+          : operation === 'insert-after'
+          ? Math.max(1, nodeCount)
+          : 1;
+
+        const currentDisplay = Number.parseInt(targetIndexInput.value, 10);
+        const clampedDisplay = Number.isNaN(currentDisplay)
+          ? 1
+          : Math.min(Math.max(currentDisplay, 1), maxDisplay);
+
+        targetIndexInput.min = '1';
+        targetIndexInput.max = String(maxDisplay);
+        targetIndexInput.value = String(clampedDisplay);
+      }
+
+      function syncTargetIndexAfterListChange(previousNodeCount, previousTargetDisplay) {
+        syncTargetIndexInput();
+        if (operationSelect.value === 'insert-after') {
+          const nextDisplay = Number.isNaN(previousTargetDisplay)
+            ? Math.max(1, state.currentList.length)
+            : Math.min(Math.max(previousTargetDisplay + 1, 1), Math.max(1, state.currentList.length));
+          targetIndexInput.value = String(nextDisplay);
+          return;
+        }
+
+        if (operationSelect.value === 'delete-after') {
+          const maxDisplay = Math.max(1, state.currentList.length - 1);
+          const nextDisplay = Number.isNaN(previousTargetDisplay)
+            ? 1
+            : Math.min(Math.max(previousTargetDisplay, 1), maxDisplay);
+          targetIndexInput.value = String(nextDisplay);
+        }
+      }
+
+      function getNextInsertValue(startValue, values) {
+        const usedValues = new Set(values);
+        let candidate = Number.isInteger(startValue) ? startValue : defaultInsertValue;
+        candidate = Math.max(0, Math.min(999, candidate));
+
+        while (candidate <= 999 && usedValues.has(candidate)) {
+          candidate += 1;
+        }
+
+        return candidate <= 999 ? candidate : 999;
+      }
+
+      function bumpInsertValueAfterListChange(values) {
+        const currentValue = Number.parseInt(insertValueInput.value, 10);
+        const nextStart = Number.isNaN(currentValue)
+          ? defaultInsertValue
+          : currentValue + 1;
+        insertValueInput.value = String(getNextInsertValue(nextStart, values));
+      }
+
+      function setCurrentListFromValues(values, options = {}) {
+        const { resetInsertValue = false } = options;
+        state.currentList = values.map((value) => createNode(value));
+        state.steps = [];
+        state.stepIndex = -1;
+        state.pendingResult = null;
+        state.activeOperation = operationSelect.value;
+        listInput.value = values.join(', ');
+        if (resetInsertValue) {
+          insertValueInput.value = String(defaultInsertValue);
+        }
+        syncTargetIndexInput();
+        currentListText.textContent = listValuesText(state.currentList);
+        renderIdleState();
+        renderOperationGuide();
+        updateButtons();
+      }
+
+      function chainLinksFromOrder(order) {
+        const links = {};
+        order.forEach((id, index) => {
+          links[id] = order[index + 1] || null;
+        });
+        return links;
+      }
+
+      function makeStep(config) {
+        return {
+          title: config.title,
+          description: config.description,
+          code: config.code,
+          mainOrder: config.mainOrder,
+          detached: config.detached || [],
+          variables: config.variables || [],
+          pointerChanges: config.pointerChanges || [],
+          changedNextOf: config.changedNextOf || [],
+          dashedNodes: config.dashedNodes || [],
+          hiddenOutgoingOf: config.hiddenOutgoingOf || [],
+          nextOverrides: config.nextOverrides || {},
+          roles: config.roles || {}
+        };
+      }
+
+      function buildInsertHeadSteps(list, value) {
+        const resultBase = cloneList(list);
+        const newNode = createNode(value);
+        const oldHead = resultBase[0] || null;
+        const oldOrder = resultBase.map((node) => node.id);
+        const resultList = [newNode, ...resultBase];
+        const steps = [
+          makeStep({
+            title: 'Step 1: newNode を作る',
+            description: '新しいノードを用意します。まだリスト本体にはつながっていません。',
+            code: 'newNode = Node(value)',
+            mainOrder: oldOrder,
+            detached: [{ id: newNode.id, label: 'newNode' }],
+            variables: [
+              { name: 'head', id: oldHead ? oldHead.id : null },
+              { name: 'newNode', id: newNode.id }
+            ],
+            roles: {
+              head: oldHead ? oldHead.id : null,
+              newNode: newNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 2: newNode.next を head に向ける',
+            description: '新しいノードの next に、いまの先頭ノードを入れます。',
+            code: 'newNode.next = head',
+            mainOrder: oldOrder,
+            detached: [{ id: newNode.id, label: 'newNode' }],
+            variables: [
+              { name: 'head', id: oldHead ? oldHead.id : null },
+              { name: 'newNode', id: newNode.id }
+            ],
+            pointerChanges: [
+              {
+                label: 'newNode.next',
+                from: 'NULL',
+                to: oldHead ? String(oldHead.value) : 'NULL'
+              }
+            ],
+            changedNextOf: [newNode.id],
+            nextOverrides: {
+              [newNode.id]: oldHead ? oldHead.id : null
+            },
+            roles: {
+              head: oldHead ? oldHead.id : null,
+              newNode: newNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 3: head を newNode に更新する',
+            description: 'head を新しいノードに変えると、挿入完了です。',
+            code: 'head = newNode',
+            mainOrder: resultList.map((node) => node.id),
+            pointerChanges: [
+              {
+                label: 'head',
+                from: oldHead ? String(oldHead.value) : 'NULL',
+                to: String(newNode.value)
+              }
+            ],
+            variables: [{ name: 'head', id: newNode.id }],
+            roles: {
+              head: newNode.id,
+              newNode: newNode.id
+            }
+          })
+        ];
+        return { steps, resultList };
+      }
+
+      function buildInsertAfterSteps(list, value, index) {
+        const resultBase = cloneList(list);
+        const newNode = createNode(value);
+        const prevNode = resultBase[index];
+        const nextNode = resultBase[index + 1] || null;
+        const oldOrder = resultBase.map((node) => node.id);
+        const resultList = cloneList(resultBase);
+        resultList.splice(index + 1, 0, newNode);
+
+        const steps = [
+          makeStep({
+            title: 'Step 1: prev と newNode を確認する',
+            description: `index ${index} のノードを prev として、その直後へ newNode を入れる準備をします。`,
+            code: `prev = node[${index}]`,
+            mainOrder: oldOrder,
+            detached: [{ id: newNode.id, label: 'newNode' }],
+            variables: [
+              { name: 'head', id: resultBase[0] ? resultBase[0].id : null },
+              { name: 'prev', id: prevNode.id },
+              { name: 'newNode', id: newNode.id }
+            ],
+            roles: {
+              head: resultBase[0] ? resultBase[0].id : null,
+              prev: prevNode.id,
+              newNode: newNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 2: newNode.next = prev.next',
+            description: '新しいノードの next を、もともと prev が指していた先へ向けます。',
+            code: 'newNode.next = prev.next',
+            mainOrder: oldOrder,
+            detached: [{ id: newNode.id, label: 'newNode' }],
+            variables: [
+              { name: 'head', id: resultBase[0] ? resultBase[0].id : null },
+              { name: 'prev', id: prevNode.id },
+              { name: 'newNode', id: newNode.id }
+            ],
+            pointerChanges: [
+              {
+                label: 'newNode.next',
+                from: 'NULL',
+                to: nextNode ? String(nextNode.value) : 'NULL'
+              }
+            ],
+            changedNextOf: [newNode.id],
+            nextOverrides: {
+              [newNode.id]: nextNode ? nextNode.id : null
+            },
+            roles: {
+              head: resultBase[0] ? resultBase[0].id : null,
+              prev: prevNode.id,
+              newNode: newNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 3: prev.next = newNode',
+            description: 'prev の next を newNode に更新すると、新しいノードがリストへ組み込まれます。',
+            code: 'prev.next = newNode',
+            mainOrder: resultList.map((node) => node.id),
+            variables: [
+              { name: 'head', id: resultList[0] ? resultList[0].id : null },
+              { name: 'prev', id: prevNode.id },
+              { name: 'newNode', id: newNode.id }
+            ],
+            pointerChanges: [
+              {
+                label: 'prev.next',
+                from: nextNode ? String(nextNode.value) : 'NULL',
+                to: String(newNode.value)
+              }
+            ],
+            changedNextOf: [prevNode.id],
+            roles: {
+              head: resultList[0] ? resultList[0].id : null,
+              prev: prevNode.id,
+              newNode: newNode.id
+            }
+          })
+        ];
+
+        return { steps, resultList };
+      }
+
+      function buildDeleteHeadSteps(list) {
+        const resultBase = cloneList(list);
+        const targetNode = resultBase[0];
+        const nextNode = resultBase[1] || null;
+        const resultList = cloneList(resultBase.slice(1));
+        const steps = [
+          makeStep({
+            title: 'Step 1: 削除対象を点線で示す',
+            description: '削除対象は head が指している先頭ノードなので、まず点線で示します。',
+            code: 'target = head',
+            mainOrder: resultBase.map((node) => node.id),
+            variables: [
+              { name: 'head', id: targetNode.id },
+              { name: 'target', id: targetNode.id }
+            ],
+            dashedNodes: [targetNode.id],
+            roles: {
+              head: targetNode.id,
+              target: targetNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 2: head = head.next',
+            description: 'head を次ノードへ進めます。削除対象のノード自体はまだ図に残したまま、head の向きだけを付け替えます。',
+            code: 'head = head.next',
+            mainOrder: resultBase.map((node) => node.id),
+            pointerChanges: [
+              {
+                label: 'head',
+                from: String(targetNode.value),
+                to: nextNode ? String(nextNode.value) : 'NULL'
+              }
+            ],
+            variables: [
+              { name: 'head', id: nextNode ? nextNode.id : null },
+              { name: 'target', id: targetNode.id }
+            ],
+            dashedNodes: [targetNode.id],
+            hiddenOutgoingOf: [targetNode.id],
+            roles: {
+              head: nextNode ? nextNode.id : null,
+              target: targetNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 3: 削除完了',
+            description: 'target は head からたどれなくなったので、削除完了です。',
+            code: 'target を削除',
+            mainOrder: resultList.map((node) => node.id),
+            variables: [{ name: 'head', id: nextNode ? nextNode.id : null }],
+            roles: { head: nextNode ? nextNode.id : null }
+          })
+        ];
+        return { steps, resultList };
+      }
+
+      function buildDeleteAfterSteps(list, index) {
+        const resultBase = cloneList(list);
+        const prevNode = resultBase[index];
+        const targetNode = resultBase[index + 1];
+        const successorNode = resultBase[index + 2] || null;
+        const resultList = cloneList(resultBase.filter((_, nodeIndex) => nodeIndex !== index + 1));
+
+        const steps = [
+          makeStep({
+            title: 'Step 1: 削除対象を点線で示す',
+            description: `${index + 1} 番目のノードを prev とすると、その次のノードが削除対象 target なので、まず点線で示します。`,
+            code: 'target = prev.next',
+            mainOrder: resultBase.map((node) => node.id),
+            variables: [
+              { name: 'head', id: resultBase[0] ? resultBase[0].id : null },
+              { name: 'prev', id: prevNode.id },
+              { name: 'target', id: targetNode.id }
+            ],
+            dashedNodes: [targetNode.id],
+            roles: {
+              head: resultBase[0] ? resultBase[0].id : null,
+              prev: prevNode.id,
+              target: targetNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 2: prev.next = target.next',
+            description: 'prev の next を target の次へつなぎ替えると、target を飛び越せます。',
+            code: 'prev.next = target.next',
+            mainOrder: resultList.map((node) => node.id),
+            detached: [{ id: targetNode.id, label: 'target' }],
+            pointerChanges: [
+              {
+                label: 'prev.next',
+                from: String(targetNode.value),
+                to: successorNode ? String(successorNode.value) : 'NULL'
+              }
+            ],
+            variables: [
+              { name: 'head', id: resultList[0] ? resultList[0].id : null },
+              { name: 'prev', id: prevNode.id },
+              { name: 'target', id: targetNode.id }
+            ],
+            changedNextOf: [prevNode.id],
+            nextOverrides: {
+              [targetNode.id]: successorNode ? successorNode.id : null
+            },
+            roles: {
+              head: resultList[0] ? resultList[0].id : null,
+              prev: prevNode.id,
+              target: targetNode.id
+            }
+          }),
+          makeStep({
+            title: 'Step 3: 削除完了',
+            description: 'target は head からたどれなくなったので、削除完了です。',
+            code: 'target を削除',
+            mainOrder: resultList.map((node) => node.id),
+            variables: [
+              { name: 'head', id: resultList[0] ? resultList[0].id : null },
+              { name: 'prev', id: prevNode.id }
+            ],
+            roles: {
+              head: resultList[0] ? resultList[0].id : null,
+              prev: prevNode.id
+            }
+          })
+        ];
+
+        return { steps, resultList };
+      }
+
+      function getNodeMap(step) {
+        const map = new Map();
+        state.currentList.forEach((node) => map.set(node.id, node));
+        if (state.pendingResult) {
+          state.pendingResult.forEach((node) => map.set(node.id, node));
+        }
+        step.detached.forEach((item) => {
+          if (!map.has(item.id)) {
+            const known = state.pendingResult && state.pendingResult.find((node) => node.id === item.id);
+            if (known) {
+              map.set(item.id, known);
+            }
+          }
+        });
+        return map;
+      }
+
+      function renderNodeCard(node, options) {
+        const card = document.createElement('div');
+        card.className = 'node-card';
+
+        if (options.roles.includes('head')) {
+          card.classList.add('head');
+        }
+        if (options.roles.includes('prev')) {
+          card.classList.add('prev');
+        }
+        if (options.roles.includes('target')) {
+          card.classList.add('target');
+        }
+        if (options.roles.includes('newNode')) {
+          card.classList.add('newNode');
+        }
+
+        const caption = document.createElement('div');
+        caption.className = 'node-caption';
+        caption.textContent = options.caption;
+
+        const grid = document.createElement('div');
+        grid.className = 'node-grid';
+
+        const dataLabel = document.createElement('div');
+        dataLabel.className = 'cell label';
+        dataLabel.textContent = 'data';
+
+        const nextLabel = document.createElement('div');
+        nextLabel.className = 'cell label';
+        nextLabel.textContent = 'next';
+
+        const dataValue = document.createElement('div');
+        dataValue.className = 'cell value';
+        dataValue.textContent = node.value;
+
+        const nextValue = document.createElement('div');
+        nextValue.className = 'cell value next';
+        if (options.changedNext) {
+          nextValue.classList.add('changed');
+        }
+        nextValue.textContent = options.nextText;
+
+        grid.appendChild(dataLabel);
+        grid.appendChild(nextLabel);
+        grid.appendChild(dataValue);
+        grid.appendChild(nextValue);
+
+        card.appendChild(caption);
+        card.appendChild(grid);
+        return card;
+      }
+
+      function roleNamesForNode(step, nodeId) {
+        return Object.entries(step.roles)
+          .filter(([, id]) => id === nodeId)
+          .map(([name]) => name);
+      }
+
+      function nextOfNode(step, links, nodeId) {
+        if (Object.prototype.hasOwnProperty.call(step.nextOverrides, nodeId)) {
+          return step.nextOverrides[nodeId];
+        }
+        return links[nodeId] ?? null;
+      }
+
+      function createSvgElement(name, attributes = {}) {
+        const element = document.createElementNS(svgNamespace, name);
+        Object.entries(attributes).forEach(([key, value]) => {
+          element.setAttribute(key, value);
+        });
+        return element;
+      }
+
+      function appendSvgText(parent, x, y, lines, className, options = {}) {
+        const text = createSvgElement('text', {
+          x,
+          y,
+          class: className,
+          'text-anchor': options.anchor || 'middle',
+          'dominant-baseline': options.baseline || 'middle'
+        });
+
+        lines.forEach((line, index) => {
+          const tspan = createSvgElement('tspan', {
+            x,
+            dy: index === 0 ? '0' : '1.2em'
+          });
+          tspan.textContent = line;
+          text.appendChild(tspan);
+        });
+
+        parent.appendChild(text);
+        return text;
+      }
+
+      function diagramRolesClass(roles) {
+        if (roles.includes('newNode')) {
+          return 'newNode';
+        }
+        if (roles.includes('prev')) {
+          return 'prev';
+        }
+        if (roles.includes('target')) {
+          return 'target';
+        }
+        if (roles.includes('head')) {
+          return 'head';
+        }
+        return '';
+      }
+
+      function buildDiagramPath(start, end) {
+        if (Math.abs(start.y - end.y) < 4) {
+          return `M ${start.x} ${start.y} H ${end.x}`;
+        }
+
+        const middleX = end.x > start.x
+          ? start.x + Math.max(34, (end.x - start.x) / 2)
+          : start.x + 34;
+        return `M ${start.x} ${start.y} H ${middleX} V ${end.y} H ${end.x}`;
+      }
+
+      function buildDiagramTopEntryPath(start, end) {
+        return `M ${start.x} ${start.y} H ${end.x} V ${end.y}`;
+      }
+
+      function buildDiagramLeftEntryPath(start, end, viaX) {
+        return `M ${start.x} ${start.y} H ${viaX} V ${end.y} H ${end.x}`;
+      }
+
+      function drawDiagramNode(parent, node, layout) {
+        const group = createSvgElement('g');
+        const outerClass = ['diagram-node-outer', diagramRolesClass(layout.roles), layout.dashed ? 'dashed' : ''].filter(Boolean).join(' ');
+        const dividerClass = ['diagram-node-divider', layout.dashed ? 'dashed' : ''].filter(Boolean).join(' ');
+        const splitX = layout.x + layout.valueWidth;
+        const leftClass = ['diagram-node-cell'];
+        const rightClass = ['diagram-node-cell', 'next'];
+        if (layout.roles.includes('newNode')) {
+          leftClass.push('newNode');
+          rightClass.push('newNode');
+        }
+        if (layout.changedNext) {
+          rightClass.push('changed');
+        }
+
+        group.appendChild(createSvgElement('rect', {
+          x: layout.x,
+          y: layout.y,
+          width: layout.valueWidth,
+          height: layout.height,
+          rx: 0,
+          class: leftClass.join(' ')
+        }));
+        group.appendChild(createSvgElement('rect', {
+          x: splitX,
+          y: layout.y,
+          width: layout.width - layout.valueWidth,
+          height: layout.height,
+          rx: 0,
+          class: rightClass.join(' ')
+        }));
+        group.appendChild(createSvgElement('rect', {
+          x: layout.x,
+          y: layout.y,
+          width: layout.width,
+          height: layout.height,
+          rx: 0,
+          class: outerClass
+        }));
+        group.appendChild(createSvgElement('line', {
+          x1: splitX,
+          y1: layout.y,
+          x2: splitX,
+          y2: layout.y + layout.height,
+          class: dividerClass
+        }));
+
+        appendSvgText(group, layout.x + layout.width / 2, layout.y - 26, [layout.label], 'diagram-node-label');
+        if (layout.roleText) {
+          appendSvgText(group, layout.x + layout.width / 2, layout.y - 10, [layout.roleText], 'diagram-node-role');
+        }
+        appendSvgText(group, layout.x + layout.valueWidth / 2, layout.y + layout.height / 2, [String(node.value)], 'diagram-node-value');
+        appendSvgText(
+          group,
+          splitX + (layout.width - layout.valueWidth) / 2,
+          layout.y + layout.height / 2,
+          layout.nextLines,
+          'diagram-node-next'
+        );
+
+        parent.appendChild(group);
+      }
+
+      function drawDiagramPointerDot(parent, layout) {
+        if (!layout.hasOutgoingLink) {
+          return;
+        }
+        const splitX = layout.x + layout.valueWidth;
+        const pointerCenterX = splitX + (layout.width - layout.valueWidth) * 0.44;
+        const pointerCenterY = layout.y + layout.height / 2;
+        parent.appendChild(createSvgElement('circle', {
+          cx: pointerCenterX,
+          cy: pointerCenterY,
+          r: 4.2,
+          class: 'diagram-pointer-dot'
+        }));
+      }
+
+      function renderSimpleChain(step) {
+        chainView.textContent = '';
+
+        if (step.mainOrder.length === 0) {
+          const row = document.createElement('div');
+          row.className = 'chain-row';
+
+          const headBadge = document.createElement('span');
+          headBadge.className = 'head-badge';
+          headBadge.textContent = 'HEAD';
+
+          const arrow = document.createElement('span');
+          arrow.className = 'chain-arrow';
+          arrow.textContent = '→';
+
+          const nullBadge = document.createElement('span');
+          nullBadge.className = 'null-badge';
+          nullBadge.textContent = 'NULL';
+
+          row.appendChild(headBadge);
+          row.appendChild(arrow);
+          row.appendChild(nullBadge);
+          chainView.appendChild(row);
+          return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'chain-row';
+
+        const nodeMap = getNodeMap(step);
+        const chainLinks = chainLinksFromOrder(step.mainOrder);
+
+        const headBadge = document.createElement('span');
+        headBadge.className = 'head-badge';
+        headBadge.textContent = 'HEAD';
+        row.appendChild(headBadge);
+
+        const firstArrow = document.createElement('span');
+        firstArrow.className = 'chain-arrow';
+        firstArrow.textContent = '→';
+        row.appendChild(firstArrow);
+
+        step.mainOrder.forEach((nodeId, index) => {
+          const node = nodeMap.get(nodeId);
+          const nextId = nextOfNode(step, chainLinks, nodeId);
+          const nextNode = nextId ? nodeMap.get(nextId) : null;
+          const nextText = nextNode ? nextNode.value : 'NULL';
+          const card = renderNodeCard(node, {
+            caption: `index ${index}`,
+            nextText,
+            changedNext: step.changedNextOf.includes(nodeId),
+            roles: roleNamesForNode(step, nodeId)
+          });
+
+          row.appendChild(card);
+
+          if (index < step.mainOrder.length - 1) {
+            const arrow = document.createElement('span');
+            arrow.className = 'chain-arrow';
+            arrow.textContent = '→';
+            row.appendChild(arrow);
+          }
+        });
+
+        const tailArrow = document.createElement('span');
+        tailArrow.className = 'chain-arrow';
+        tailArrow.textContent = '→';
+        row.appendChild(tailArrow);
+
+        const nullBadge = document.createElement('span');
+        nullBadge.className = 'null-badge';
+        nullBadge.textContent = 'NULL';
+        row.appendChild(nullBadge);
+
+        chainView.appendChild(row);
+      }
+
+      function renderInsertDiagram(step) {
+        chainView.textContent = '';
+
+        const operation = state.activeOperation || operationSelect.value;
+        const nodeMap = getNodeMap(step);
+        const logicalOrder = step.mainOrder.slice();
+        const logicalLinks = chainLinksFromOrder(logicalOrder);
+        const isDeleteOperation = operation.startsWith('delete');
+        const baseOrder = isDeleteOperation
+          ? logicalOrder.slice()
+          : state.currentList.map((node) => node.id).filter((id) => nodeMap.has(id));
+        const variableMap = Object.fromEntries(step.variables.map((item) => [item.name, item.id]));
+        const detachedNewNode = step.detached.find((item) => item.label === 'newNode');
+        const extraNodeIds = logicalOrder.filter((id) => !baseOrder.includes(id));
+        const newNodeId = step.roles.newNode
+          || variableMap.newNode
+          || (detachedNewNode ? detachedNewNode.id : null)
+          || (extraNodeIds.length === 1 ? extraNodeIds[0] : null);
+        const headTargetId = step.roles.head || variableMap.head || logicalOrder[0] || null;
+
+        const diagramNodeCount = Math.max(baseOrder.length + (newNodeId && !baseOrder.includes(newNodeId) ? 1 : 0), 1);
+        const compactOffset = Math.max(0, diagramNodeCount - 3);
+        const nodeWidth = Math.max(122, 156 - compactOffset * 10);
+        const nodeHeight = Math.max(58, 82 - compactOffset * 4);
+        const valueWidth = Math.round(nodeWidth * 0.58);
+        const gapX = Math.max(40, 88 - compactOffset * 8);
+        const rowY = 156;
+        const topY = 44;
+        const headBoxX = 58;
+        const headBoxY = 124;
+        const headBoxWidth = 132;
+        const headBoxHeight = 64;
+        const startX = 240;
+        const positions = new Map();
+
+        if (baseOrder.length === 0 && newNodeId) {
+          positions.set(newNodeId, { x: startX, y: topY });
+        }
+
+        baseOrder.forEach((id, index) => {
+          positions.set(id, {
+            x: startX + index * (nodeWidth + gapX),
+            y: rowY
+          });
+        });
+
+        if (newNodeId && !positions.has(newNodeId)) {
+          if (operation === 'insert-head') {
+            const firstPos = positions.get(baseOrder[0]) || { x: startX, y: rowY };
+            positions.set(newNodeId, {
+              x: Math.max(startX - 4, firstPos.x - 6),
+              y: topY
+            });
+          } else {
+            const prevId = step.roles.prev;
+            const prevPos = positions.get(prevId) || { x: startX, y: rowY };
+            const successorId = nextOfNode(step, logicalLinks, newNodeId) || nextOfNode(step, logicalLinks, prevId);
+            const successorPos = successorId ? positions.get(successorId) : null;
+            positions.set(newNodeId, {
+              x: successorPos ? (prevPos.x + successorPos.x) / 2 : prevPos.x + nodeWidth + gapX * 0.8,
+              y: topY
+            });
+          }
+        }
+
+        const allPositions = [...positions.values()];
+        const maxX = allPositions.length > 0 ? Math.max(...allPositions.map((position) => position.x)) : startX;
+        const width = Math.max(760, maxX + nodeWidth + 56);
+        const height = 276;
+        const svg = createSvgElement('svg', {
+          class: 'chain-svg',
+          viewBox: `0 0 ${width} ${height}`,
+          width,
+          height,
+          preserveAspectRatio: 'xMidYMin meet',
+          role: 'img',
+          'aria-label': '単方向リストの挿入図'
+        });
+
+        const defs = createSvgElement('defs');
+        const marker = createSvgElement('marker', {
+          id: 'diagram-arrowhead',
+          viewBox: '0 0 7 7',
+          markerWidth: 7,
+          markerHeight: 7,
+          refX: 6.2,
+          refY: 3.5,
+          orient: 'auto',
+          markerUnits: 'userSpaceOnUse'
+        });
+        marker.appendChild(createSvgElement('path', {
+          d: 'M 0 0 L 7 3.5 L 0 7 z',
+          fill: 'context-stroke'
+        }));
+        defs.appendChild(marker);
+        svg.appendChild(defs);
+
+        appendSvgText(svg, 62, headBoxY + 50, ['head'], 'diagram-head-label', { anchor: 'start' });
+        svg.appendChild(createSvgElement('rect', {
+          x: headBoxX,
+          y: headBoxY,
+          width: headBoxWidth,
+          height: headBoxHeight,
+          class: 'diagram-head-box'
+        }));
+        appendSvgText(svg, headBoxX + headBoxWidth / 2, headBoxY + 28, ['先頭ノード'], 'diagram-head-box-text');
+        appendSvgText(svg, headBoxX + headBoxWidth / 2, headBoxY + 54, ['のアドレス'], 'diagram-head-box-text');
+
+        const nodesGroup = createSvgElement('g');
+        const linksGroup = createSvgElement('g');
+        const dotsGroup = createSvgElement('g');
+
+        const headChanged = step.pointerChanges.some((change) => change.label === 'head');
+        if (headTargetId && positions.has(headTargetId)) {
+          const targetPos = positions.get(headTargetId);
+          const headPath = createSvgElement('path', {
+            d: buildDiagramPath(
+              { x: headBoxX + headBoxWidth, y: headBoxY + headBoxHeight / 2 },
+              { x: targetPos.x, y: targetPos.y + nodeHeight / 2 }
+            ),
+            class: `diagram-link${headChanged ? ' changed' : ''}`,
+            pathLength: 100
+          });
+          linksGroup.appendChild(headPath);
+        }
+
+        const nodeIdsForDrawing = baseOrder.slice();
+        if (newNodeId && !nodeIdsForDrawing.includes(newNodeId)) {
+          nodeIdsForDrawing.push(newNodeId);
+        }
+
+        nodeIdsForDrawing.forEach((nodeId) => {
+          const node = nodeMap.get(nodeId);
+          if (!node || !positions.has(nodeId)) {
+            return;
+          }
+
+          const nextId = nextOfNode(step, logicalLinks, nodeId);
+          const hideOutgoing = step.hiddenOutgoingOf.includes(nodeId);
+          const changedNext = step.changedNextOf.includes(nodeId);
+          const position = positions.get(nodeId);
+          const destination = nextId ? positions.get(nextId) : null;
+          if (destination && !hideOutgoing) {
+            const pointerStartX = position.x + valueWidth + (nodeWidth - valueWidth) * 0.44;
+            const entersFromTop = position.y < destination.y;
+            const entersFromLeftOutside = changedNext && destination.y < position.y;
+            const destinationPoint = entersFromTop
+              ? { x: destination.x + valueWidth / 2, y: destination.y }
+              : { x: destination.x, y: destination.y + nodeHeight / 2 };
+            const linkPath = createSvgElement('path', {
+              d: entersFromLeftOutside
+                ? buildDiagramLeftEntryPath(
+                  { x: pointerStartX, y: position.y + nodeHeight / 2 },
+                  destinationPoint,
+                  Math.min(destination.x - 22, pointerStartX + 26)
+                )
+                : entersFromTop
+                ? buildDiagramTopEntryPath(
+                  { x: pointerStartX, y: position.y + nodeHeight / 2 },
+                  destinationPoint
+                )
+                : buildDiagramPath(
+                  { x: pointerStartX, y: position.y + nodeHeight / 2 },
+                  destinationPoint
+                ),
+              class: `diagram-link${changedNext ? ' changed' : ''}`,
+              pathLength: 100
+            });
+            linksGroup.appendChild(linkPath);
+          }
+        });
+
+        svg.appendChild(nodesGroup);
+        svg.appendChild(linksGroup);
+        svg.appendChild(dotsGroup);
+
+        nodeIdsForDrawing.forEach((nodeId) => {
+          const node = nodeMap.get(nodeId);
+          if (!node || !positions.has(nodeId)) {
+            return;
+          }
+          const nextId = nextOfNode(step, logicalLinks, nodeId);
+          const hideOutgoing = step.hiddenOutgoingOf.includes(nodeId);
+          const changedNext = step.changedNextOf.includes(nodeId);
+          const roles = roleNamesForNode(step, nodeId);
+          const position = positions.get(nodeId);
+          const roleText = roles.length > 0 ? roles.join(' / ') : '';
+          const label = nodeId === newNodeId
+            ? '新ノード'
+            : `ノード${baseOrder.indexOf(nodeId) + 1}`;
+          drawDiagramNode(nodesGroup, node, {
+            x: position.x,
+            y: position.y,
+            width: nodeWidth,
+            height: nodeHeight,
+            valueWidth,
+            label,
+            roleText,
+            roles,
+            dashed: step.dashedNodes.includes(nodeId),
+            changedNext,
+            hasOutgoingLink: Boolean(nextId) && !hideOutgoing,
+            nextLines: nextId ? [''] : ['NULL']
+          });
+          drawDiagramPointerDot(dotsGroup, {
+            x: position.x,
+            y: position.y,
+            width: nodeWidth,
+            height: nodeHeight,
+            valueWidth,
+            hasOutgoingLink: Boolean(nextId)
+          });
+        });
+
+        chainView.appendChild(svg);
+      }
+
+      function renderChain(step) {
+        if ((state.activeOperation || operationSelect.value).startsWith('insert')
+          || (state.activeOperation || operationSelect.value).startsWith('delete')) {
+          renderInsertDiagram(step);
+          return;
+        }
+        renderSimpleChain(step);
+      }
+
+      function renderWork(step) {
+        workView.textContent = '';
+
+        if (step.detached.length === 0) {
+          const note = document.createElement('p');
+          note.className = 'empty-note';
+          note.textContent = 'このステップでは、作業中のノードはありません。';
+          workView.appendChild(note);
+          return;
+        }
+
+        const row = document.createElement('div');
+        row.className = 'work-row';
+        const nodeMap = getNodeMap(step);
+        const chainLinks = chainLinksFromOrder(step.mainOrder);
+
+        step.detached.forEach((item) => {
+          const node = nodeMap.get(item.id);
+          const nextId = nextOfNode(step, chainLinks, item.id);
+          const nextNode = nextId ? nodeMap.get(nextId) : null;
+          const nextText = nextNode ? nextNode.value : 'NULL';
+          const card = renderNodeCard(node, {
+            caption: item.label,
+            nextText,
+            changedNext: step.changedNextOf.includes(item.id),
+            roles: roleNamesForNode(step, item.id)
+          });
+          row.appendChild(card);
+        });
+
+        workView.appendChild(row);
+      }
+
+      function renderPointerChanges(step) {
+        if (!changeView) {
+          return;
+        }
+        changeView.textContent = '';
+
+        if (step.pointerChanges.length === 0) {
+          const note = document.createElement('p');
+          note.className = 'change-empty';
+          note.textContent = 'このステップでは、ポインタの付け替えはまだ行っていません。';
+          changeView.appendChild(note);
+          return;
+        }
+
+        step.pointerChanges.forEach((change) => {
+          const item = document.createElement('div');
+          item.className = 'change-item';
+
+          const name = document.createElement('div');
+          name.className = 'change-name';
+          name.textContent = change.label;
+
+          const flow = document.createElement('div');
+          flow.className = 'change-flow';
+
+          const before = document.createElement('span');
+          before.className = 'change-value before';
+          before.textContent = change.from;
+
+          const stage = document.createElement('div');
+          stage.className = 'change-stage';
+
+          const line = document.createElement('div');
+          line.className = 'change-line';
+
+          const traveler = document.createElement('div');
+          traveler.className = 'change-traveler';
+
+          stage.appendChild(line);
+          stage.appendChild(traveler);
+
+          const after = document.createElement('span');
+          after.className = 'change-value after';
+          after.textContent = change.to;
+
+          flow.appendChild(before);
+          flow.appendChild(stage);
+          flow.appendChild(after);
+          item.appendChild(name);
+          item.appendChild(flow);
+          changeView.appendChild(item);
+        });
+      }
+
+      function renderPointers(step) {
+        pointerView.textContent = '';
+        const nodeMap = getNodeMap(step);
+
+        if (step.variables.length === 0) {
+          const note = document.createElement('span');
+          note.className = 'empty-note';
+          note.textContent = 'このステップで参照しているポインタはありません。';
+          pointerView.appendChild(note);
+          return;
+        }
+
+        step.variables.forEach((item, index) => {
+          const badge = document.createElement('span');
+          badge.className = `pointer-badge ${item.name}`;
+          const node = item.id ? nodeMap.get(item.id) : null;
+          badge.textContent = `${item.name} → ${node ? node.value : 'NULL'}`;
+          pointerView.appendChild(badge);
+
+          if (index < step.variables.length - 1) {
+            const arrow = document.createElement('span');
+            arrow.className = 'pointer-arrow';
+            arrow.textContent = '·';
+            pointerView.appendChild(arrow);
+          }
+        });
+      }
+
+      function renderStep(step, stepIndex, totalSteps) {
+        stepTitle.textContent = step.title;
+        stepCounter.textContent = `Step ${stepIndex + 1} / ${totalSteps}`;
+        stepDescription.textContent = step.description;
+        stepCode.textContent = step.code;
+        renderChain(step);
+        renderPointerChanges(step);
+        renderWork(step);
+        renderPointers(step);
+      }
+
+      function renderIdleState(message) {
+        state.steps = [];
+        state.stepIndex = -1;
+        state.pendingResult = null;
+        const idleStep = makeStep({
+          title: '手順を作成してください',
+          description: message || '操作を選んで手順を作成すると、next の更新箇所が段階的に表示されます。',
+          code: '-',
+          mainOrder: state.currentList.map((node) => node.id),
+          variables: state.currentList.length > 0 ? [{ name: 'head', id: state.currentList[0].id }] : [{ name: 'head', id: null }],
+          roles: { head: state.currentList[0] ? state.currentList[0].id : null }
+        });
+        stepTitle.textContent = idleStep.title;
+        stepCounter.textContent = 'Step 0 / 0';
+        stepDescription.textContent = idleStep.description;
+        stepCode.textContent = idleStep.code;
+        renderChain(idleStep);
+        renderPointerChanges(idleStep);
+        renderWork(idleStep);
+        renderPointers(idleStep);
+        renderOperationGuide();
+        updateButtons();
+      }
+
+      function updateButtons() {
+        const hasSteps = state.steps.length > 0;
+        const isLastStep = hasSteps && state.stepIndex >= state.steps.length - 1;
+        buildButton.disabled = hasSteps;
+        prevButton.disabled = !hasSteps || state.stepIndex <= 0;
+        nextButton.disabled = !hasSteps;
+        nextButton.textContent = isLastStep && state.pendingResult ? '反映して完了' : '次へ';
+      }
+
+      function updateOperationInputs() {
+        const operation = operationSelect.value;
+        state.activeOperation = operation;
+        insertValueGroup.classList.toggle('hidden', operation.startsWith('delete'));
+        targetIndexGroup.classList.toggle('hidden', operation.endsWith('head'));
+        if (targetIndexLabel) {
+          targetIndexLabel.textContent = operation === 'delete-after'
+            ? '何番目のノードの次を消す？（先頭が 1）'
+            : '何番目のノードの直後に入れる？（先頭が 1）';
+        }
+        syncTargetIndexInput();
+        renderOperationGuide();
+      }
+
+      function showCurrentStep() {
+        if (state.steps.length === 0 || state.stepIndex < 0) {
+          renderIdleState();
+          updateButtons();
+          return;
+        }
+        renderStep(state.steps[state.stepIndex], state.stepIndex, state.steps.length);
+        updateButtons();
+      }
+
+      function buildSteps() {
+        const listResult = parseListInput(listInput.value);
+        if (!listResult.ok) {
+          renderIdleState(listResult.message);
+          return;
+        }
+
+        const baseList = listResult.values.map((value) => createNode(value));
+        state.currentList = baseList;
+        syncTargetIndexInput();
+        currentListText.textContent = listValuesText(state.currentList);
+
+        const operation = operationSelect.value;
+        state.activeOperation = operation;
+        let buildResult = null;
+
+        if (operation === 'insert-head') {
+          const insertResult = parseInsertValue();
+          if (!insertResult.ok) {
+            renderIdleState(insertResult.message);
+            return;
+          }
+          buildResult = buildInsertHeadSteps(state.currentList, insertResult.value);
+        }
+
+        if (operation === 'insert-after') {
+          const insertResult = parseInsertValue();
+          const targetResult = parseTargetIndex();
+          if (!insertResult.ok) {
+            renderIdleState(insertResult.message);
+            return;
+          }
+          if (!targetResult.ok) {
+            renderIdleState(targetResult.message);
+            return;
+          }
+          if (state.currentList.length === 0) {
+            renderIdleState('空のリストには途中挿入できません。先頭への挿入を使ってください。');
+            return;
+          }
+          if (targetResult.value > state.currentList.length - 1) {
+            renderIdleState(`何番目のノードかは 1 から ${state.currentList.length} の範囲で指定してください。`);
+            return;
+          }
+          buildResult = buildInsertAfterSteps(state.currentList, insertResult.value, targetResult.value);
+        }
+
+        if (operation === 'delete-head') {
+          if (state.currentList.length === 0) {
+            renderIdleState('空のリストでは先頭を削除できません。');
+            return;
+          }
+          buildResult = buildDeleteHeadSteps(state.currentList);
+        }
+
+        if (operation === 'delete-after') {
+          const targetResult = parseTargetIndex();
+          if (!targetResult.ok) {
+            renderIdleState(targetResult.message);
+            return;
+          }
+          if (state.currentList.length < 2) {
+            renderIdleState('途中削除をするには、少なくとも 2 個のノードが必要です。');
+            return;
+          }
+          if (targetResult.value > state.currentList.length - 2) {
+            renderIdleState(`何番目のノードかは 1 から ${state.currentList.length - 1} の範囲で指定してください。`);
+            return;
+          }
+          buildResult = buildDeleteAfterSteps(state.currentList, targetResult.value);
+        }
+
+        state.steps = buildResult.steps;
+        state.pendingResult = cloneList(buildResult.resultList);
+        state.stepIndex = 0;
+        showCurrentStep();
+      }
+
+      function applyCurrentListInput() {
+        const listResult = parseListInput(listInput.value);
+        if (!listResult.ok) {
+          renderIdleState(listResult.message);
+          return;
+        }
+        setCurrentListFromValues(listResult.values);
+      }
+
+      function applyPendingResult() {
+        if (!state.pendingResult) {
+          return;
+        }
+        const previousNodeCount = state.currentList.length;
+        const previousTargetDisplay = Number.parseInt(targetIndexInput.value, 10);
+        state.currentList = cloneList(state.pendingResult);
+        state.activeOperation = operationSelect.value;
+        currentListText.textContent = listValuesText(state.currentList);
+        listInput.value = state.currentList.map((node) => node.value).join(', ');
+        bumpInsertValueAfterListChange(state.currentList.map((node) => node.value));
+        syncTargetIndexAfterListChange(previousNodeCount, previousTargetDisplay);
+        state.steps = [];
+        state.stepIndex = -1;
+        state.pendingResult = null;
+        renderIdleState('結果を現在のリストへ反映しました。次の操作を選べます。');
+        updateButtons();
+      }
+
+      buildButton.addEventListener('click', buildSteps);
+      prevButton.addEventListener('click', () => {
+        if (state.stepIndex > 0) {
+          state.stepIndex -= 1;
+          showCurrentStep();
+        }
+      });
+      nextButton.addEventListener('click', () => {
+        if (state.stepIndex < state.steps.length - 1) {
+          state.stepIndex += 1;
+          showCurrentStep();
+          return;
+        }
+        if (state.steps.length > 0 && state.stepIndex === state.steps.length - 1 && state.pendingResult) {
+          applyPendingResult();
+        }
+      });
+      applyListButton.addEventListener('click', applyCurrentListInput);
+      sampleButton.addEventListener('click', () => setCurrentListFromValues(sampleValues, { resetInsertValue: true }));
+      operationSelect.addEventListener('change', updateOperationInputs);
+      listInput.addEventListener('input', renderOperationGuide);
+      insertValueInput.addEventListener('input', renderOperationGuide);
+      targetIndexInput.addEventListener('input', renderOperationGuide);
+
+      updateOperationInputs();
+      setCurrentListFromValues(sampleValues, { resetInsertValue: true });
+    </script>
+  </body>
+</html>
