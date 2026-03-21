@@ -1588,8 +1588,7 @@
             title: 'Step 2: prev.next = target.next',
             description: 'prev の next を target の次へつなぎ替えると、target を飛び越せます。',
             code: 'prev.next = target.next',
-            mainOrder: resultList.map((node) => node.id),
-            detached: [{ id: targetNode.id, label: 'target' }],
+            mainOrder: resultBase.map((node) => node.id),
             pointerChanges: [
               {
                 label: 'prev.next',
@@ -1598,16 +1597,18 @@
               }
             ],
             variables: [
-              { name: 'head', id: resultList[0] ? resultList[0].id : null },
+              { name: 'head', id: resultBase[0] ? resultBase[0].id : null },
               { name: 'prev', id: prevNode.id },
               { name: 'target', id: targetNode.id }
             ],
             changedNextOf: [prevNode.id],
             nextOverrides: {
-              [targetNode.id]: successorNode ? successorNode.id : null
+              [prevNode.id]: successorNode ? successorNode.id : null
             },
+            dashedNodes: [targetNode.id],
+            hiddenOutgoingOf: [targetNode.id],
             roles: {
-              head: resultList[0] ? resultList[0].id : null,
+              head: resultBase[0] ? resultBase[0].id : null,
               prev: prevNode.id,
               target: targetNode.id
             }
@@ -1777,6 +1778,16 @@
 
       function buildDiagramLeftEntryPath(start, end, viaX) {
         return `M ${start.x} ${start.y} H ${viaX} V ${end.y} H ${end.x}`;
+      }
+
+      function buildDiagramBypassPath(start, end, obstacle, nodeWidth, nodeHeight) {
+        const marginX = Math.max(12, Math.round(nodeWidth * 0.12));
+        const marginY = Math.max(28, Math.round(nodeHeight * 0.7));
+        const leftBypassX = Math.max(start.x + 18, obstacle.x - marginX);
+        const rightBypassX = Math.min(end.x - 18, obstacle.x + nodeWidth + marginX);
+        const topBypassY = obstacle.y - marginY;
+
+        return `M ${start.x} ${start.y} H ${leftBypassX} V ${topBypassY} H ${rightBypassX} V ${end.y} H ${end.x}`;
       }
 
       function drawDiagramNode(parent, node, layout) {
@@ -2080,11 +2091,33 @@
             const pointerStartX = position.x + valueWidth + (nodeWidth - valueWidth) * 0.44;
             const entersFromTop = position.y < destination.y;
             const entersFromLeftOutside = changedNext && destination.y < position.y;
+            const bypassNodeId = step.dashedNodes.find((candidateId) => {
+              if (!positions.has(candidateId)) {
+                return false;
+              }
+              const candidatePos = positions.get(candidateId);
+              return candidatePos.y === position.y
+                && candidatePos.x > position.x
+                && candidatePos.x < destination.x;
+            });
+            const shouldBypassNode = changedNext
+              && !entersFromTop
+              && !entersFromLeftOutside
+              && Boolean(bypassNodeId);
+            const bypassNodePos = bypassNodeId ? positions.get(bypassNodeId) : null;
             const destinationPoint = entersFromTop
               ? { x: destination.x + valueWidth / 2, y: destination.y }
               : { x: destination.x, y: destination.y + nodeHeight / 2 };
             const linkPath = createSvgElement('path', {
-              d: entersFromLeftOutside
+              d: shouldBypassNode
+                ? buildDiagramBypassPath(
+                  { x: pointerStartX, y: position.y + nodeHeight / 2 },
+                  destinationPoint,
+                  bypassNodePos,
+                  nodeWidth,
+                  nodeHeight
+                )
+                : entersFromLeftOutside
                 ? buildDiagramLeftEntryPath(
                   { x: pointerStartX, y: position.y + nodeHeight / 2 },
                   destinationPoint,
