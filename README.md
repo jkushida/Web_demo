@@ -9,6 +9,7 @@
 - [Water Jug Problem](https://jkushida.github.io/Web_demo/DSA/water-jug-problem.html) - 4Lと3Lの水差しで2Lを作るシミュレーション
 - [Sentinel Search Comparison](https://jkushida.github.io/Web_demo/DSA/sentinel-search.html) - 番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化
 - [Hash Search](https://jkushida.github.io/Web_demo/DSA/hash-search.html) - ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化
+- [Singly Linked List](https://jkushida.github.io/Web_demo/DSA/singly-linked-list.html) - 単方向リストの挿入・削除で、nextポインタのつなぎ替えをステップごとに可視化
 - [Stairs Recursion](https://jkushida.github.io/Web_demo/DSA/stairs_recursion.html) - 再帰による階段の登り方問題のデモ
 - [Tower of Hanoi](https://jkushida.github.io/Web_demo/DSA/hanoi.html) - ハノイの塔のインタラクティブなデモ
 - [River Crossing](https://jkushida.github.io/Web_demo/DSA/river-crossing.html) - 川渡り問題のシミュレーション
