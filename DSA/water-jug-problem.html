@@ -304,17 +304,17 @@
     function step(act) {
       if (!canApply(act) && act !== 'reset') return;
 
-      if (act === 'R1') { j4 = CAP4; addLog('R1 4Lを満杯'); }
-      if (act === 'R2') { j3 = CAP3; addLog('R2 3Lを満杯'); }
-      if (act === 'R3') { j4 = 0; addLog('R3 4Lを空'); }
-      if (act === 'R4') { j3 = 0; addLog('R4 3Lを空'); }
+      if (act === 'R1') { j4 = CAP4; addLog('R1: 4Lを満杯'); }
+      if (act === 'R2') { j3 = CAP3; addLog('R2: 3Lを満杯'); }
+      if (act === 'R3') { j4 = 0; addLog('R3: 4Lを空'); }
+      if (act === 'R4') { j3 = 0; addLog('R4: 3Lを空'); }
       if (act === 'R5') {
         const r = pour(j3, j4, CAP4); j3 = r[0]; j4 = r[1];
-        addLog(`R5 3L→4Lへ ${r[2]}L 移す`);
+        addLog(`R5: 3L→4Lへ ${r[2]}L 移す`);
       }
       if (act === 'R6') {
         const r = pour(j4, j3, CAP3); j4 = r[0]; j3 = r[1];
-        addLog(`R6 4L→3Lへ ${r[2]}L 移す`);
+        addLog(`R6: 4L→3Lへ ${r[2]}L 移す`);
       }
       if (act === 'reset') {
         j4 = 0; j3 = 0; log.innerHTML = '';
