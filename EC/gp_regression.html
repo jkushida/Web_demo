@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GP 回帰デモ（遺伝的プログラミング）</title>
+  <title>遺伝的プログラミングによる回帰デモ</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -14,7 +14,7 @@
       padding: 10px;
     }
     .container {
-      max-width: 1000px;
+      max-width: 1280px;
       margin: 0 auto;
       background: rgba(255,255,255,0.96);
       border-radius: 12px;
@@ -34,9 +34,26 @@
     .btn-reset { background: linear-gradient(135deg,#4facfe,#00f2fe); color: #fff; }
     .statusbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 2px 4px; font-size: .85em; color: #374151; }
     .statusbar .v { color: #667eea; font-weight: 800; }
+    .viz-grid { display: flex; gap: 10px; align-items: stretch; margin-top: 8px; }
+    .viz-panel { flex: 1 1 0; min-width: 0; }
+    .viz-panel.plot-panel { flex: 1.7 1 0; }
+    .viz-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 6px;
+      color: #374151;
+      font-size: 0.95em;
+      font-weight: 700;
+    }
+    .viz-subtitle { color: #6b7280; font-size: 0.78em; font-weight: 600; }
     canvas { width: 100%; height: 360px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; }
     .about h2 { margin: 0 0 6px; font-size: 1.05em; color: #333; }
     .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+    @media (max-width: 980px) {
+      .viz-grid { flex-direction: column; }
+    }
   </style>
   <script>
     // --- 目標データ生成 ---
@@ -70,12 +87,12 @@
 
     function clone(node) { return JSON.parse(JSON.stringify(node)); }
 
-    function randTree(maxDepth) {
+    function randTree(maxDepth, forceFunction = false) {
       if (maxDepth === 0) {
         const t = randChoice(TermSet);
         return t === 'x' ? { type:'x' } : newConst();
       }
-      const chooseFunc = Math.random() < 0.7; // 葉ばかりにならないよう関数を優先
+      const chooseFunc = forceFunction || Math.random() < 0.7; // 葉ばかりにならないよう関数を優先
       if (!chooseFunc) {
         const t = randChoice(TermSet);
         return t === 'x' ? { type:'x' } : newConst();
@@ -131,6 +148,156 @@
       if (node.type === 'op') return 1 + treeSize(node.left) + treeSize(node.right);
       if (node.type === 'uop') return 1 + treeSize(node.arg);
       return 1;
+    }
+
+    function treeDepth(node) {
+      if (!node) return 0;
+      if (node.type === 'op') return 1 + Math.max(treeDepth(node.left), treeDepth(node.right));
+      if (node.type === 'uop') return 1 + treeDepth(node.arg);
+      return 1;
+    }
+
+    function nodeLabel(node) {
+      switch (node.type) {
+        case 'x': return 'x';
+        case 'const': {
+          const rounded = Math.abs(node.value) >= 100 ? node.value.toExponential(1) : node.value.toFixed(2);
+          return rounded.replace(/\.00$/, '').replace(/(\.[1-9])0$/, '$1');
+        }
+        case 'op':
+        case 'uop':
+          return node.op;
+        default:
+          return '?';
+      }
+    }
+
+    function buildTreeLayout(node) {
+      let leafIndex = 0;
+      let maxLevel = 0;
+
+      function visit(cur, level) {
+        maxLevel = Math.max(maxLevel, level);
+        const children = [];
+        if (cur.type === 'op') {
+          children.push(visit(cur.left, level + 1), visit(cur.right, level + 1));
+        } else if (cur.type === 'uop') {
+          children.push(visit(cur.arg, level + 1));
+        }
+        const x = children.length
+          ? children.reduce((sum, child) => sum + child.x, 0) / children.length
+          : leafIndex++;
+        return { node: cur, label: nodeLabel(cur), level, x, children };
+      }
+
+      const root = visit(node, 0);
+      const nodes = [];
+      const edges = [];
+      (function flatten(cur, parent = null) {
+        nodes.push(cur);
+        if (parent) edges.push([parent, cur]);
+        cur.children.forEach(child => flatten(child, cur));
+      })(root);
+
+      return { root, nodes, edges, leafCount: Math.max(leafIndex, 1), levels: maxLevel + 1 };
+    }
+
+    function drawRoundedRect(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      ctx.lineTo(x + r, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function getNodeColors(node) {
+      switch (node.type) {
+        case 'x': return { fill: '#dbeafe', stroke: '#60a5fa', text: '#1d4ed8' };
+        case 'const': return { fill: '#ffedd5', stroke: '#fb923c', text: '#c2410c' };
+        case 'uop': return { fill: '#dcfce7', stroke: '#4ade80', text: '#15803d' };
+        case 'op': return { fill: '#ede9fe', stroke: '#a78bfa', text: '#6d28d9' };
+        default: return { fill: '#e5e7eb', stroke: '#9ca3af', text: '#374151' };
+      }
+    }
+
+    function drawBestTree() {
+      const canvas = document.getElementById('treeCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height = canvas.clientHeight;
+      const info = document.getElementById('treeInfo');
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, w, h);
+
+      if (!best || !best.ind) {
+        info.textContent = 'depth - / size -';
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '14px Segoe UI, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('最良個体がまだありません', w / 2, h / 2);
+        return;
+      }
+
+      const layout = buildTreeLayout(best.ind);
+      info.textContent = `depth ${treeDepth(best.ind)} / size ${treeSize(best.ind)}`;
+
+      const padding = { left: 28, right: 28, top: 30, bottom: 28 };
+      const usableWidth = Math.max(1, w - padding.left - padding.right);
+      const usableHeight = Math.max(1, h - padding.top - padding.bottom);
+      const levelCount = Math.max(1, layout.levels);
+      const leafCount = Math.max(1, layout.leafCount);
+      const fontSize = Math.max(9, Math.min(13, Math.floor(usableWidth / Math.max(leafCount * 1.9, 22)) + 8));
+      const nodeHeight = Math.max(22, fontSize + 10);
+      const maxNodeWidth = Math.max(34, Math.min(92, usableWidth / Math.max(Math.min(leafCount, 8), 3) + 10));
+
+      ctx.font = `600 ${fontSize}px Segoe UI, system-ui, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      function project(cur) {
+        const x = leafCount === 1
+          ? w / 2
+          : padding.left + (cur.x / Math.max(leafCount - 1, 1)) * usableWidth;
+        const y = levelCount === 1
+          ? h / 2
+          : padding.top + (cur.level / Math.max(levelCount - 1, 1)) * usableHeight;
+        return { x, y };
+      }
+
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      layout.edges.forEach(([from, to]) => {
+        const p1 = project(from);
+        const p2 = project(to);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y + nodeHeight / 2 - 2);
+        ctx.lineTo(p2.x, p2.y - nodeHeight / 2 + 2);
+        ctx.stroke();
+      });
+
+      layout.nodes.forEach(cur => {
+        const pos = project(cur);
+        const colors = getNodeColors(cur.node);
+        const labelWidth = ctx.measureText(cur.label).width;
+        const nodeWidth = Math.min(maxNodeWidth, Math.max(32, labelWidth + 18));
+        drawRoundedRect(ctx, pos.x - nodeWidth / 2, pos.y - nodeHeight / 2, nodeWidth, nodeHeight, 9);
+        ctx.fillStyle = colors.fill;
+        ctx.fill();
+        ctx.strokeStyle = colors.stroke;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = colors.text;
+        ctx.fillText(cur.label, pos.x, pos.y + 0.5);
+      });
     }
 
     // --- 適応度（MSE + 罰則） ---
@@ -229,7 +396,7 @@
 
       pop = [];
       for (let i = 0; i < popSize; i++) {
-        const ind = randTree(maxDepth);
+        const ind = randTree(maxDepth, true);
         const f = fitness(ind, dataset.xs, dataset.ys);
         pop.push({ ind, f });
       }
@@ -274,6 +441,7 @@
     }
 
     function draw() {
+      if (!dataset || !best) return;
       const canvas = document.getElementById('canvas');
       const ctx = canvas.getContext('2d');
       const w = canvas.width = canvas.clientWidth;
@@ -341,6 +509,8 @@
         if (i===0) ctx.moveTo(xp, yp); else ctx.lineTo(xp, yp);
       }
       ctx.stroke();
+
+      drawBestTree();
     }
 
     function tick(gen) {
@@ -375,6 +545,7 @@
 </head>
 <body>
   <div class="container">
+    <p style="margin-bottom: 8px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
     <h1>🧬 遺伝的プログラミング（GP）による回帰デモ</h1>
     <div class="panel">
       <div class="toolbar">
@@ -382,7 +553,7 @@
           <select id="dataset" onchange="resetAll()">
             <option value="sinx_plus_x">sin(x)+x</option>
             <option value="poly3">多項式3次</option>
-            <option value="abs_sin">|sin(1.5x)|+0.2x</option>
+            <option value="abs_sin" selected>|sin(1.5x)|+0.2x</option>
           </select>
         </div>
         <div class="tool"><label for="nData">点数</label><input id="nData" type="number" value="60" min="10" max="400" onchange="resetAll()" /></div>
@@ -412,7 +583,22 @@
         <span>expr <span class="v code" id="expr">-</span></span>
       </div>
 
-      <canvas id="canvas"></canvas>
+      <div class="viz-grid">
+        <div class="viz-panel plot-panel">
+          <div class="viz-title">
+            <span>回帰曲線</span>
+            <span class="viz-subtitle">灰: 目標関数 / 緑: 最良個体</span>
+          </div>
+          <canvas id="canvas"></canvas>
+        </div>
+        <div class="viz-panel">
+          <div class="viz-title">
+            <span>最良個体の木構造</span>
+            <span class="viz-subtitle" id="treeInfo">depth - / size -</span>
+          </div>
+          <canvas id="treeCanvas"></canvas>
+        </div>
+      </div>
     </div>
 
     <div class="panel about">
@@ -433,4 +619,3 @@
   </div>
 </body>
 </html>
-

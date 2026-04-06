@@ -24,7 +24,7 @@
 - [DE Simulator](https://jkushida.github.io/Web_demo/EC/de_simulator.html) - 差分進化のシミュレータ
 - [PSO Simulator](https://jkushida.github.io/Web_demo/EC/pso_simulator.html) - 粒子群最適化のシミュレータ
 - [ACO TSP](https://jkushida.github.io/Web_demo/EC/aco_tsp.html) - アリコロニー最適化でTSP
-- [GP Regression](https://jkushida.github.io/Web_demo/EC/gp_regression.html) - ガウス過程回帰
+- [Genetic Programming Regression](https://jkushida.github.io/Web_demo/EC/gp_regression.html) - 遺伝的プログラミングによる回帰
 
 ### 機械学習
 - [k-means Clustering](https://jkushida.github.io/Web_demo/ML/k-means.html) - k-meansクラスタリングのシミュレーション
@@ -36,7 +36,6 @@
 - [Boid Fish (Hand Control)](https://jkushida.github.io/Web_demo/MediaPipe/boid-fish-hand-control.html) - 手の動きで群れ（Boids）の魚を制御
 - [3D Physics × Hand Tracking](https://jkushida.github.io/Web_demo/MediaPipe/mediapipe_physics_3d.html) - 3D物理×ハンドトラッキング
 - [Emotion Recognition](https://jkushida.github.io/Web_demo/MediaPipe/emotion_recognition.html) - 表情認識（Face Mesh + face-api.js）
-- [Face Mesh 画像生成](https://jkushida.github.io/Web_demo/MediaPipe/face-mesh-generative.html) - MediaPipe Face Meshのランドマーク情報を利用した画像生成デモ
 
 ### 音声処理 (Audio)
 - [マイク波形（リアルタイム）](https://jkushida.github.io/Web_demo/Audio/mic-waveform.html) - マイク入力の時間波形をリアルタイム描画
