@@ -1022,6 +1022,52 @@
                 ctx.restore();
             }
 
+            drawFinalAnswerLabel(marker, gcd) {
+                const ctx = this.ctx;
+                const boxWidth = 128;
+                const boxHeight = 52;
+                const squareCenterX = marker.squareX + marker.size / 2;
+                const squareCenterY = marker.squareY + marker.size / 2;
+                let boxX = marker.groupX + marker.groupW + 18;
+                let boxY = marker.groupY + marker.groupH / 2 - boxHeight / 2;
+
+                if (boxX + boxWidth > this.canvas.width - 12) {
+                    boxX = marker.groupX - boxWidth - 18;
+                }
+                boxX = Math.max(12, boxX);
+                boxY = Math.min(Math.max(12, boxY), this.canvas.height - boxHeight - 12);
+
+                const attachX = boxX > squareCenterX ? boxX : boxX + boxWidth;
+                const attachY = boxY + boxHeight / 2;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(72, 187, 120, 0.15)';
+                ctx.strokeStyle = '#48bb78';
+                ctx.lineWidth = 3;
+                ctx.fillRect(marker.squareX, marker.squareY, marker.size, marker.size);
+                ctx.strokeRect(marker.squareX, marker.squareY, marker.size, marker.size);
+
+                ctx.beginPath();
+                ctx.moveTo(squareCenterX, squareCenterY);
+                ctx.lineTo(attachX, attachY);
+                ctx.stroke();
+
+                ctx.fillStyle = '#f0fff4';
+                ctx.strokeStyle = '#48bb78';
+                ctx.lineWidth = 2;
+                ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+                ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+                ctx.fillStyle = '#2f855a';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'top';
+                ctx.font = 'bold 13px Arial';
+                ctx.fillText('答え', boxX + 10, boxY + 8);
+                ctx.font = 'bold 16px Arial';
+                ctx.fillText(`一辺 = ${gcd}`, boxX + 10, boxY + 26);
+                ctx.restore();
+            }
+
             draw() {
                 if (this.currentStepIdx === -1) return;
 
@@ -1064,6 +1110,7 @@
                 let curA = this.originalA;
                 let curB = this.originalB;
                 let horizontal = true;
+                let finalMarker = null;
 
                 // 完了したステップを描画
                 for (let i = 0; i < this.currentStepIdx; i++) {
@@ -1071,9 +1118,13 @@
                     ctx.fillStyle = this.getStepColor(i);
                     ctx.strokeStyle = 'rgba(0,0,0,0.1)';
                     ctx.lineWidth = 1;
+                    const size = step.b * this.scale;
+                    const groupX = curX;
+                    const groupY = curY;
+                    const groupW = horizontal ? step.q * size : size;
+                    const groupH = horizontal ? size : step.q * size;
 
                     for (let j = 0; j < step.q; j++) {
-                        const size = step.b * this.scale;
                         if (horizontal) {
                             ctx.fillRect(curX, curY, size, size);
                             ctx.strokeRect(curX, curY, size, size);
@@ -1083,6 +1134,18 @@
                             ctx.strokeRect(curX, curY, size, size);
                             curY += size;
                         }
+                    }
+
+                    if (i === this.currentStepIdx - 1 && this.isFinished) {
+                        finalMarker = {
+                            squareX: groupX,
+                            squareY: groupY,
+                            size,
+                            groupX,
+                            groupY,
+                            groupW,
+                            groupH
+                        };
                     }
 
                     if (horizontal) {
@@ -1121,6 +1184,11 @@
                         horizontal,
                         '#2b6cb0'
                     );
+                }
+
+                if (this.isFinished && finalMarker) {
+                    const gcd = this.steps[this.steps.length - 1].b;
+                    this.drawFinalAnswerLabel(finalMarker, gcd);
                 }
             }
 
