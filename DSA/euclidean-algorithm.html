@@ -726,7 +726,7 @@
                         <li class="code-line" data-line="3"><span class="code-line-number">3</span><span>while b ≠ 0:</span></li>
                         <li class="code-line" data-line="4"><span class="code-line-number">4</span><span><span class="code-indent"></span>q = ⌊a / b⌋, r = a mod b</span></li>
                         <li class="code-line" data-line="5"><span class="code-line-number">5</span><span><span class="code-indent"></span>a = b, b = r</span></li>
-                        <li class="code-line" data-line="6"><span class="code-line-number">6</span><span>最後の 0 でない値が GCD</span></li>
+                        <li class="code-line" data-line="6"><span class="code-line-number">6</span><span>b = 0 になったら終了。そのときの a が GCD</span></li>
                     </ol>
                     <div class="current-state">
                         <span class="current-state-title">現在の値</span>
@@ -989,7 +989,7 @@
                 if (this.isFinished) {
                     const gcd = this.steps[this.steps.length - 1].b;
                     this.stepTitle.textContent = '完了！';
-                    this.stepDesc.innerHTML = `最大公約数 (GCD) は <span class="highlight-gcd">${gcd}</span> です。${gcd}×${gcd}の正方形で埋め尽くされました。`;
+                    this.stepDesc.innerHTML = `b が 0 になったので終了です。そのときの a である <span class="highlight-gcd">${gcd}</span> が最大公約数 (GCD) です。`;
                 } else {
                     const step = this.steps[this.currentStepIdx];
                     this.stepTitle.textContent = `手順 ${this.currentStepIdx + 1}`;
