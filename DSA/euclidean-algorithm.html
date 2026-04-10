@@ -24,53 +24,101 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 12px;
+            box-sizing: border-box;
         }
 
         .container {
             background: var(--white);
-            padding: 40px;
+            padding: 20px 24px;
             border-radius: 24px;
             box-shadow: var(--shadow);
-            max-width: 900px;
+            max-width: 1280px;
             width: 100%;
+            height: calc(100vh - 24px);
+            box-sizing: border-box;
+            display: grid;
+            grid-template-rows: auto auto 1fr;
+            gap: 16px;
+            overflow: hidden;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .back-link {
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .back-link a {
+            color: #2b6cb0;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
         }
 
         h1 {
             text-align: center;
-            margin-bottom: 30px;
+            margin: 0;
             color: var(--text-dark);
-            font-size: 28px;
+            font-size: clamp(22px, 2.8vw, 26px);
+            flex: 1;
+            min-width: 0;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar > *,
+        .content-grid > * {
+            min-width: 0;
         }
 
         .input-group {
             display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
+            justify-content: flex-start;
+            gap: 12px;
+            flex-wrap: nowrap;
+            align-items: center;
         }
 
         .input-field {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            align-items: center;
             gap: 8px;
+            min-width: 0;
         }
 
         label {
             font-size: 14px;
             font-weight: bold;
             color: var(--text-muted);
+            white-space: nowrap;
         }
 
         input {
-            padding: 12px 16px;
-            font-size: 18px;
+            padding: 10px 14px;
+            font-size: 17px;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
-            width: 100px;
+            width: clamp(60px, 8vw, 96px);
             outline: none;
             transition: border-color 0.2s;
+            min-width: 0;
         }
 
         input:focus {
@@ -79,14 +127,14 @@
 
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
+            justify-content: flex-end;
+            gap: 10px;
+            flex-wrap: nowrap;
         }
 
         button {
-            padding: 12px 24px;
-            font-size: 16px;
+            padding: 10px 14px;
+            font-size: 14px;
             font-weight: bold;
             border: none;
             border-radius: 12px;
@@ -95,6 +143,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            white-space: nowrap;
         }
 
         .btn-primary {
@@ -122,34 +171,48 @@
             cursor: not-allowed;
         }
 
+        .content-grid {
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.95fr);
+            gap: 16px;
+        }
+
+        .visualization-panel,
+        .side-panel {
+            min-height: 0;
+        }
+
         .visualization-area {
             position: relative;
             background: #f8fafc;
             border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 30px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
-            min-height: 400px;
+            gap: 12px;
+            height: 100%;
+            box-sizing: border-box;
         }
 
         canvas {
+            display: block;
             max-width: 100%;
+            max-height: 100%;
+            width: auto;
             height: auto;
             border-radius: 8px;
-            /* box-shadow: 0 4px 6px rgba(0,0,0,0.05); */
         }
 
         .step-info {
-            margin-top: 20px;
-            padding: 15px 25px;
+            padding: 14px 18px;
             background: #ebf8ff;
             border-left: 5px solid #4299e1;
             border-radius: 8px;
-            width: 100%;
             box-sizing: border-box;
-            min-height: 80px;
+            min-height: 74px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -159,40 +222,200 @@
             font-weight: bold;
             color: #2b6cb0;
             margin-bottom: 5px;
-            font-size: 18px;
+            font-size: 17px;
         }
 
         .step-desc {
             color: #2c5282;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .algorithm-panel {
+            padding: 12px 14px;
+            background: #f7fafc;
+            border-radius: 16px;
+            box-sizing: border-box;
+        }
+
+        .algorithm-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .algorithm-panel h3 {
+            margin: 0;
             font-size: 16px;
+            color: var(--text-dark);
+            white-space: nowrap;
+        }
+
+        .algorithm-note {
+            margin: 0;
+            font-size: 12px;
+            line-height: 1.4;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .current-state {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: nowrap;
+            min-width: 0;
+        }
+
+        .current-state-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--text-dark);
+            white-space: nowrap;
+        }
+
+        .state-values {
+            display: inline-flex;
+            justify-content: flex-start;
+            gap: 8px;
+            min-width: 0;
+            flex-wrap: nowrap;
+        }
+
+        .state-value {
+            padding: 6px 8px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-width: 0;
+        }
+
+        .state-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .state-number {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 16px;
+            font-weight: bold;
+            color: #2b6cb0;
+            white-space: nowrap;
+        }
+
+        .pseudocode {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .code-line {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            gap: 10px;
+            align-items: start;
+            padding: 5px 7px;
+            border-radius: 8px;
+            color: #4a5568;
+            transition: background-color 0.2s, color 0.2s;
+            letter-spacing: 0.01em;
+        }
+
+        .code-line.is-active {
+            background: #e6fffa;
+            color: #234e52;
+            font-weight: 600;
+        }
+
+        .code-line-number {
+            text-align: right;
+            color: #a0aec0;
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 12px;
+        }
+
+        .code-line.is-active .code-line-number {
+            color: #319795;
+        }
+
+        .code-indent {
+            display: inline-block;
+            width: 16px;
+        }
+
+        .formula-note {
+            width: 100%;
+            padding: 12px 14px;
+            background: #ffffff;
+            border: 1px solid #dbe7f3;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #4a5568;
+        }
+
+        .formula-note strong {
+            color: #2b6cb0;
+        }
+
+        .formula-note code {
+            font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+            font-size: 12px;
+            background: #edf2f7;
+            padding: 2px 6px;
+            border-radius: 6px;
+            color: #1a202c;
         }
 
         .history {
-            margin-top: 30px;
-            border-top: 2px solid #f7fafc;
-            padding-top: 20px;
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-sizing: border-box;
+            min-height: 0;
+            display: none;
+            flex-direction: column;
         }
 
         .history h3 {
-            font-size: 18px;
-            margin-bottom: 15px;
+            font-size: 16px;
+            margin: 0 0 12px;
             color: var(--text-dark);
         }
 
         .history-list {
             list-style: none;
             padding: 0;
+            margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
+            overflow: auto;
+            min-height: 0;
         }
 
         .history-item {
-            padding: 10px 15px;
-            background: #f7fafc;
+            padding: 9px 12px;
+            background: var(--white);
             border-radius: 8px;
             font-family: 'Courier New', Courier, monospace;
-            font-size: 16px;
+            font-size: 14px;
             animation: slideIn 0.3s ease-out;
         }
 
@@ -202,81 +425,329 @@
         }
 
         .instructions {
-            margin-top: 40px;
-            padding: 20px;
+            padding: 16px;
             background: #fffaf0;
             border-radius: 16px;
             border: 1px solid #feebc8;
+            box-sizing: border-box;
         }
 
         .instructions h3 {
             color: #9c4221;
             margin-top: 0;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-size: 16px;
         }
 
         .instructions p {
             color: #7b341e;
-            line-height: 1.6;
-            font-size: 14px;
+            line-height: 1.5;
+            font-size: 13px;
             margin: 0;
         }
 
         .highlight-gcd {
             color: var(--primary);
             font-weight: bold;
-            font-size: 20px;
+            font-size: 18px;
+        }
+
+        .side-panel {
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        @media (max-width: 1180px) {
+            .container {
+                padding: 16px 18px;
+                gap: 14px;
+            }
+
+            .content-grid {
+                grid-template-columns: minmax(0, 1.45fr) minmax(240px, 0.85fr);
+                gap: 12px;
+            }
+
+            .visualization-area {
+                padding: 14px;
+            }
+
+            .step-info,
+            .algorithm-panel,
+            .history,
+            .instructions,
+            .formula-note {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+        }
+
+        @media (max-width: 980px) {
+            .content-grid {
+                grid-template-columns: minmax(0, 1.3fr) minmax(220px, 0.8fr);
+            }
+
+            .algorithm-note {
+                font-size: 12px;
+            }
+
+            .pseudocode {
+                font-size: 12px;
+                gap: 4px;
+            }
+
+            .code-line {
+                grid-template-columns: 24px 1fr;
+                gap: 8px;
+                padding: 6px 7px;
+            }
+
+            .history-item {
+                font-size: 13px;
+                padding: 8px 10px;
+            }
+
+            .formula-note {
+                font-size: 12px;
+            }
+
+            .current-state {
+                gap: 8px;
+            }
+
+            .current-state-title {
+                font-size: 13px;
+            }
+
+            .state-value {
+                padding: 5px 7px;
+                gap: 6px;
+            }
+
+            .state-number {
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .container {
+                padding: 16px;
+                gap: 14px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            h1 {
+                width: 100%;
+                text-align: left;
+            }
+
+            .toolbar {
+                gap: 10px;
+            }
+
+            .input-group {
+                gap: 10px;
+            }
+
+            label {
+                font-size: 13px;
+            }
+
+            input {
+                padding: 8px 10px;
+                font-size: 16px;
+                width: 72px;
+            }
+
+            .controls {
+                gap: 8px;
+            }
+
+            button {
+                padding: 9px 12px;
+                font-size: 13px;
+            }
+
+            .algorithm-header {
+                align-items: flex-start;
+            }
+
+            .algorithm-note {
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 780px) {
+            body {
+                align-items: flex-start;
+            }
+
+            .container {
+                height: auto;
+                min-height: calc(100vh - 24px);
+                overflow: visible;
+            }
+
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .visualization-area {
+                min-height: 320px;
+            }
+
+            .side-panel {
+                grid-template-rows: auto auto auto;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .toolbar {
+                gap: 8px;
+            }
+
+            .input-group {
+                gap: 8px;
+            }
+
+            .input-field {
+                gap: 6px;
+            }
+
+            label {
+                font-size: 12px;
+            }
+
+            input {
+                width: 64px;
+                padding: 7px 8px;
+                font-size: 15px;
+            }
+
+            .controls {
+                gap: 6px;
+            }
+
+            button {
+                justify-content: center;
+                padding: 8px 10px;
+                font-size: 12px;
+                gap: 6px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .toolbar {
+                grid-template-columns: 1fr;
+            }
+
+            .input-group,
+            .controls {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <p style="margin-bottom: 8px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
-        <h1>📐 ユークリッドの互除法ビジュアライザー 📐</h1>
-
-        <div class="input-group">
-            <div class="input-field">
-                <label for="numA">長辺 (a)</label>
-                <input type="number" id="numA" value="50" min="1" max="500">
-            </div>
-            <div class="input-field">
-                <label for="numB">短辺 (b)</label>
-                <input type="number" id="numB" value="30" min="1" max="500">
-            </div>
-        </div>
-
-        <div class="controls">
-            <button id="startBtn" class="btn-primary">
-                <span>▶</span> 開始
-            </button>
-            <button id="nextBtn" class="btn-primary" disabled>
-                <span>⏭</span> 次の手順
-            </button>
-            <button id="resetBtn" class="btn-secondary">
-                <span>🔄</span> リセット
-            </button>
-        </div>
-
-        <div class="visualization-area">
-            <canvas id="canvas"></canvas>
-            <div class="step-info" id="stepInfo">
-                <div class="step-title" id="stepTitle">準備完了</div>
-                <div class="step-desc" id="stepDesc">数値を入力して「開始」を押してください。</div>
-            </div>
-        </div>
-
-        <div class="history" id="historySection" style="display: none;">
-            <h3>計算プロセス</h3>
-            <ul class="history-list" id="historyList"></ul>
+        <div class="header">
+            <p class="back-link"><a href="../index.html">← デモ一覧へ戻る</a></p>
+            <h1>📐 ユークリッドの互除法ビジュアライザー</h1>
         </div>
 
         <div class="instructions">
             <h3>仕組みのイメージ</h3>
             <p>
-                ユークリッドの互除法は、長方形から正方形を切り出していくプロセスとして視覚化できます。
-                長い方の辺から、短い方の辺を一辺とする正方形を可能な限り切り取ります。
-                残った長方形に対して同じ操作を繰り返し、最後にぴったり正方形だけで埋まったとき、その正方形の辺の長さが最大公約数（GCD）となります。
+                入力した2つの数を、長方形の長辺と短辺の長さだと考えます。つまり、長辺(a)と短辺(b)は、最大公約数を求めたい2つの数です。<br>
+                この長方形を、短辺を一辺とする正方形でできるだけ敷き詰めるように分割し、余った長方形にも同じ操作を繰り返します。
+                こうして最後にぴったり埋め尽くせる正方形の一辺が、その2つの数の最大公約数（GCD）です。
             </p>
+        </div>
+
+        <div class="toolbar">
+            <div class="input-group">
+                <div class="input-field">
+                    <label for="numA">長辺 (a)</label>
+                    <input type="number" id="numA" value="722" min="1" max="9999">
+                </div>
+                <div class="input-field">
+                    <label for="numB">短辺 (b)</label>
+                    <input type="number" id="numB" value="171" min="1" max="9999">
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="startBtn" class="btn-primary">
+                    <span>▶</span> 開始
+                </button>
+                <button id="prevBtn" class="btn-secondary" disabled>
+                    <span>⏮</span> 戻る
+                </button>
+                <button id="nextBtn" class="btn-primary" disabled>
+                    <span>⏭</span> 次の手順
+                </button>
+                <button id="resetBtn" class="btn-secondary">
+                    <span>🔄</span> リセット
+                </button>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="visualization-panel">
+                <div class="visualization-area">
+                    <canvas id="canvas"></canvas>
+                    <div class="formula-note" id="formulaNote">
+                        <strong><code>q = ⌊a / b⌋</code></strong> は「a を b で割った商」、<strong><code>r = a mod b</code></strong> は「その余り」です。<br>
+                        つまり <strong><code>a = b × q + r</code></strong> となり、図では <strong>q 個の正方形を切り出し、r が残りの長さ</strong> を表します。
+                    </div>
+                </div>
+            </div>
+
+            <div class="side-panel">
+                <div class="step-info" id="stepInfo">
+                    <div class="step-title" id="stepTitle">準備完了</div>
+                    <div class="step-desc" id="stepDesc">数値を入力して「開始」を押してください。</div>
+                </div>
+
+                <div class="algorithm-panel">
+                    <div class="algorithm-header">
+                        <h3>疑似コード</h3>
+                        <p class="algorithm-note">いま実行している処理をハイライトします。</p>
+                    </div>
+                    <ol class="pseudocode" id="pseudocodeList">
+                        <li class="code-line" data-line="1"><span class="code-line-number">1</span><span>a と b を入力する</span></li>
+                        <li class="code-line" data-line="2"><span class="code-line-number">2</span><span>a &lt; b なら入れ替える</span></li>
+                        <li class="code-line" data-line="3"><span class="code-line-number">3</span><span>while b ≠ 0:</span></li>
+                        <li class="code-line" data-line="4"><span class="code-line-number">4</span><span><span class="code-indent"></span>q = ⌊a / b⌋, r = a mod b</span></li>
+                        <li class="code-line" data-line="5"><span class="code-line-number">5</span><span><span class="code-indent"></span>a = b, b = r</span></li>
+                        <li class="code-line" data-line="6"><span class="code-line-number">6</span><span>最後の 0 でない値が GCD</span></li>
+                    </ol>
+                    <div class="current-state">
+                        <span class="current-state-title">現在の値</span>
+                        <div class="state-values">
+                            <div class="state-value">
+                                <span class="state-label">a</span>
+                                <span class="state-number" id="currentA">-</span>
+                            </div>
+                            <div class="state-value">
+                                <span class="state-label">b</span>
+                                <span class="state-number" id="currentB">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history" id="historySection">
+                    <h3>計算プロセス</h3>
+                    <ul class="history-list" id="historyList"></ul>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -286,6 +757,7 @@
                 this.canvas = document.getElementById('canvas');
                 this.ctx = this.canvas.getContext('2d');
                 this.startBtn = document.getElementById('startBtn');
+                this.prevBtn = document.getElementById('prevBtn');
                 this.nextBtn = document.getElementById('nextBtn');
                 this.resetBtn = document.getElementById('resetBtn');
                 this.numAInput = document.getElementById('numA');
@@ -294,6 +766,10 @@
                 this.stepDesc = document.getElementById('stepDesc');
                 this.historySection = document.getElementById('historySection');
                 this.historyList = document.getElementById('historyList');
+                this.codeLines = Array.from(document.querySelectorAll('.code-line'));
+                this.formulaNote = document.getElementById('formulaNote');
+                this.currentAValue = document.getElementById('currentA');
+                this.currentBValue = document.getElementById('currentB');
 
                 this.a = 0;
                 this.b = 0;
@@ -305,22 +781,57 @@
                 
                 this.scale = 1;
                 this.padding = 40;
+                this.labelMargins = {
+                    top: 28,
+                    right: 16,
+                    bottom: 16,
+                    left: 64
+                };
 
                 this.init();
             }
 
             init() {
                 this.startBtn.addEventListener('click', () => this.start());
+                this.prevBtn.addEventListener('click', () => this.prev());
                 this.nextBtn.addEventListener('click', () => this.next());
                 this.resetBtn.addEventListener('click', () => this.reset());
                 this.updateCanvasSize();
-                window.addEventListener('resize', () => this.draw());
+                window.addEventListener('resize', () => this.handleResize());
+                this.updateControls();
+                this.updatePseudocode();
+                this.updateCurrentState();
+            }
+
+            updateControls() {
+                const started = this.currentStepIdx !== -1;
+                this.startBtn.disabled = started;
+                this.prevBtn.disabled = !started || (!this.isFinished && this.currentStepIdx === 0);
+                this.nextBtn.disabled = !started || this.isFinished;
+                this.numAInput.disabled = started;
+                this.numBInput.disabled = started;
             }
 
             updateCanvasSize() {
-                const containerWidth = this.canvas.parentElement.clientWidth - 40;
-                this.canvas.width = containerWidth;
-                this.canvas.height = 400;
+                const area = this.canvas.parentElement;
+                const styles = window.getComputedStyle(area);
+                const horizontalPadding = parseFloat(styles.paddingLeft) + parseFloat(styles.paddingRight);
+                const verticalPadding = parseFloat(styles.paddingTop) + parseFloat(styles.paddingBottom);
+                const gap = parseFloat(styles.gap) || 0;
+                const noteHeight = this.formulaNote ? this.formulaNote.offsetHeight : 0;
+                const canvasWidth = Math.max(area.clientWidth - horizontalPadding, 320);
+                const canvasHeight = Math.max(area.clientHeight - verticalPadding - noteHeight - gap, 220);
+                this.canvas.width = canvasWidth;
+                this.canvas.height = canvasHeight;
+            }
+
+            handleResize() {
+                this.updateCanvasSize();
+                if (this.currentStepIdx === -1) {
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    return;
+                }
+                this.draw();
             }
 
             start() {
@@ -348,14 +859,13 @@
                 this.currentStepIdx = 0;
                 this.isFinished = false;
 
-                this.startBtn.disabled = true;
-                this.nextBtn.disabled = false;
-                this.numAInput.disabled = true;
-                this.numBInput.disabled = true;
-                this.historySection.style.display = 'block';
+                this.historySection.style.display = 'flex';
                 this.historyList.innerHTML = '';
 
+                this.updateControls();
                 this.updateStepInfo();
+                this.updatePseudocode();
+                this.updateCurrentState();
                 this.draw();
             }
 
@@ -388,28 +898,89 @@
                     
                     if (this.currentStepIdx >= this.steps.length) {
                         this.isFinished = true;
-                        this.nextBtn.disabled = true;
                     }
                     
+                    this.updateControls();
                     this.updateStepInfo();
+                    this.updatePseudocode();
+                    this.updateCurrentState();
                     this.draw();
                 }
             }
 
+            prev() {
+                if (this.currentStepIdx === -1 || (!this.isFinished && this.currentStepIdx === 0)) {
+                    return;
+                }
+
+                if (this.historyList.lastElementChild) {
+                    this.historyList.removeChild(this.historyList.lastElementChild);
+                }
+
+                if (this.isFinished) {
+                    this.isFinished = false;
+                    this.currentStepIdx = this.steps.length - 1;
+                } else {
+                    this.currentStepIdx--;
+                }
+
+                this.updateControls();
+                this.updateStepInfo();
+                this.updatePseudocode();
+                this.updateCurrentState();
+                this.draw();
+            }
+
             reset() {
-                this.startBtn.disabled = false;
-                this.nextBtn.disabled = true;
-                this.numAInput.disabled = false;
-                this.numBInput.disabled = false;
                 this.historySection.style.display = 'none';
                 this.historyList.innerHTML = '';
                 this.currentStepIdx = -1;
                 this.isFinished = false;
                 this.stepTitle.textContent = '準備完了';
                 this.stepDesc.textContent = '数値を入力して「開始」を押してください。';
+                this.updateControls();
+                this.updatePseudocode();
+                this.updateCurrentState();
                 
                 this.updateCanvasSize();
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            }
+
+            updatePseudocode() {
+                let activeLines = [1];
+
+                if (this.currentStepIdx === -1) {
+                    activeLines = [1];
+                } else if (this.isFinished) {
+                    activeLines = [6];
+                } else {
+                    activeLines = [3, 4, 5];
+                }
+
+                this.codeLines.forEach((line) => {
+                    const lineNo = parseInt(line.dataset.line, 10);
+                    line.classList.toggle('is-active', activeLines.includes(lineNo));
+                });
+            }
+
+            updateCurrentState() {
+                let currentA = '-';
+                let currentB = '-';
+
+                if (this.currentStepIdx !== -1 && this.steps.length > 0) {
+                    if (this.isFinished) {
+                        const lastStep = this.steps[this.steps.length - 1];
+                        currentA = lastStep.b;
+                        currentB = 0;
+                    } else {
+                        const step = this.steps[this.currentStepIdx];
+                        currentA = step.a;
+                        currentB = step.b;
+                    }
+                }
+
+                this.currentAValue.textContent = currentA;
+                this.currentBValue.textContent = currentB;
             }
 
             updateStepInfo() {
@@ -422,7 +993,7 @@
                 } else {
                     const step = this.steps[this.currentStepIdx];
                     this.stepTitle.textContent = `手順 ${this.currentStepIdx + 1}`;
-                    this.stepDesc.textContent = `${step.a} から ${step.b} を切り落とします（${step.q}回分）。`;
+                    this.stepDesc.textContent = `${step.a} から ${step.b} を切り落とします（${step.q}回分）。青い点線の長方形が現在の a = ${step.a}, b = ${step.b} です。`;
                 }
             }
 
@@ -431,6 +1002,24 @@
                 li.className = 'history-item';
                 li.textContent = `${step.a} = ${step.b} × ${step.q} + ${step.r}`;
                 this.historyList.appendChild(li);
+            }
+
+            drawRectLabels(x, y, width, height, aValue, bValue, horizontal, color) {
+                const ctx = this.ctx;
+                ctx.save();
+                ctx.fillStyle = color;
+                ctx.font = 'bold 14px Arial';
+                ctx.textBaseline = 'middle';
+
+                const topLabel = horizontal ? `a = ${aValue}` : `b = ${bValue}`;
+                const leftLabel = horizontal ? `b = ${bValue}` : `a = ${aValue}`;
+
+                ctx.textAlign = 'center';
+                ctx.fillText(topLabel, x + width / 2, y - 12);
+                ctx.textAlign = 'right';
+                ctx.fillText(leftLabel, x - 10, y + height / 2);
+
+                ctx.restore();
             }
 
             draw() {
@@ -443,14 +1032,14 @@
                 ctx.clearRect(0, 0, w, h);
 
                 // スケール計算
-                const availableW = w - this.padding * 2;
-                const availableH = h - this.padding * 2;
+                const availableW = w - this.padding * 2 - this.labelMargins.left - this.labelMargins.right;
+                const availableH = h - this.padding * 2 - this.labelMargins.top - this.labelMargins.bottom;
                 const scaleX = availableW / this.originalA;
                 const scaleY = availableH / this.originalB;
                 this.scale = Math.min(scaleX, scaleY);
 
-                const startX = (w - this.originalA * this.scale) / 2;
-                const startY = (h - this.originalB * this.scale) / 2;
+                const startX = this.padding + this.labelMargins.left + (availableW - this.originalA * this.scale) / 2;
+                const startY = this.padding + this.labelMargins.top + (availableH - this.originalB * this.scale) / 2;
 
                 // 全体の枠
                 ctx.strokeStyle = '#cbd5e0';
@@ -458,12 +1047,16 @@
                 ctx.strokeRect(startX, startY, this.originalA * this.scale, this.originalB * this.scale);
 
                 // ラベル（最初だけ）
-                ctx.fillStyle = '#718096';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(this.originalA, startX + (this.originalA * this.scale) / 2, startY - 10);
-                ctx.textAlign = 'right';
-                ctx.fillText(this.originalB, startX - 10, startY + (this.originalB * this.scale) / 2);
+                this.drawRectLabels(
+                    startX,
+                    startY,
+                    this.originalA * this.scale,
+                    this.originalB * this.scale,
+                    this.originalA,
+                    this.originalB,
+                    true,
+                    '#718096'
+                );
 
                 // 描画の状態管理
                 let curX = startX;
@@ -517,6 +1110,17 @@
                     } else {
                         ctx.fillRect(curX, curY, size, size);
                     }
+
+                    this.drawRectLabels(
+                        curX,
+                        curY,
+                        curA * this.scale,
+                        curB * this.scale,
+                        nextStep.a,
+                        nextStep.b,
+                        horizontal,
+                        '#2b6cb0'
+                    );
                 }
             }
 
