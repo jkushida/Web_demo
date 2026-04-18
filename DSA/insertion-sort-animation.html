@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>挿入ソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --accent: #2563eb;
+        --compare: #f7e5d3;
+        --swap: #ff4d2d;
+        --sorted: #fff200;
+        --compare-text: #0b72d0;
+        --panel: #f8fafc;
+        --label-col-w: 82px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      header {
+        padding: 8px 14px 6px;
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        gap: 2px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+      }
+
+      main {
+        padding: 8px 12px 10px;
+        display: grid;
+        gap: 8px;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .panel {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      .controls label,
+      .small {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      button,
+      input[type="text"],
+      input[type="range"] {
+        font: inherit;
+      }
+
+      button,
+      input[type="text"] {
+        background: #fff;
+        color: var(--fg);
+        border: 1px solid #d1d5db;
+        padding: 5px 7px;
+        border-radius: 6px;
+        font-size: 11px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover,
+      input[type="text"]:hover {
+        background: #f9fafb;
+        border-color: #cbd5e1;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+        font-weight: 700;
+      }
+
+      input[type="range"] {
+        accent-color: var(--accent);
+      }
+
+      .array-input {
+        width: 210px;
+        max-width: 100%;
+      }
+
+      .viz {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(230px, 0.72fr);
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .chart-panel,
+      .controls-panel,
+      .code-panel {
+        padding: 8px;
+      }
+
+      .side-stack {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 8px;
+        min-height: 0;
+      }
+
+      .controls-panel {
+        display: grid;
+        gap: 6px;
+        align-content: start;
+      }
+
+      .controls.compact {
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .chart-wrap {
+        max-height: min(64vh, 540px);
+        background: linear-gradient(180deg, #ffffff, var(--panel));
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        overflow: auto;
+      }
+
+      .pass-title {
+        margin: 0;
+        text-align: center;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .pass-title-note {
+        color: #ff1e12;
+        font-size: 12px;
+        font-weight: 800;
+        margin-left: 10px;
+      }
+
+      .focus-board {
+        margin-top: 8px;
+        padding: 5px 0 4px 8px;
+        border: 1px solid #dbe7f3;
+        border-radius: 8px;
+        background: #f8fbff;
+      }
+
+      .focus-row,
+      .snapshot-row {
+        display: grid;
+        grid-template-columns: var(--label-col-w) 1fr;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .focus-caption,
+      .snapshot-label {
+        margin: 0;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: normal;
+        line-height: 1.15;
+        padding-top: 14px;
+        text-align: left;
+      }
+
+      .snapshot-list {
+        display: grid;
+        gap: 6px;
+      }
+
+      .snapshot-row {
+        padding: 1px 0 4px 8px;
+        border-bottom: 1px solid #eef2f7;
+      }
+
+      .snapshot-row:last-child {
+        border-bottom: 0;
+      }
+
+      .label-main {
+        white-space: nowrap;
+      }
+
+      .focus-main,
+      .snapshot-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        position: relative;
+        width: 100%;
+        padding-right: 230px;
+      }
+
+      .focus-track {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+
+      .cursor-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 2px;
+      }
+
+      .cursor-slot {
+        width: 36px;
+        height: 12px;
+        display: flex;
+        align-items: end;
+        justify-content: center;
+      }
+
+      .cursor-mark {
+        color: #0b5fc7;
+        font-size: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        line-height: 1;
+      }
+
+      .cells {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-items: flex-start;
+      }
+
+      .cell-wrap {
+        width: 36px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        line-height: 1;
+      }
+
+      .cell-index {
+        font-size: 11px;
+        color: var(--compare-text);
+        font-style: italic;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 3px;
+      }
+
+      .cell {
+        width: 36px;
+        height: 25px;
+        border: 2px solid #111111;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .cell.fixed {
+        background: var(--sorted);
+      }
+
+      .cell.compare {
+        background: var(--compare);
+      }
+
+      .compare-note {
+        margin: 26px 0 0;
+        color: var(--compare-text);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .step-metrics {
+        margin: 0;
+        color: #111827;
+        font-size: 12px;
+        position: absolute;
+        top: 8px;
+        right: 0;
+        width: 220px;
+        line-height: 1.35;
+      }
+
+      .step-metrics-title {
+        display: block;
+        margin-bottom: 3px;
+        font-weight: 700;
+      }
+
+      .action-bubble {
+        position: absolute;
+        padding: 3px 8px;
+        border: 2px solid var(--swap);
+        border-radius: 999px;
+        background: #fff4f4;
+        color: var(--swap);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        pointer-events: none;
+        transform: translate(-50%, 0);
+        animation: action-pop 760ms ease forwards;
+        box-shadow: 0 4px 10px rgba(255, 77, 45, 0.16);
+        z-index: 3;
+      }
+
+      @keyframes action-pop {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, 8px) scale(0.82);
+        }
+        18% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1.06);
+        }
+        70% {
+          opacity: 1;
+          transform: translate(-50%, -6px) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -14px) scale(0.96);
+        }
+      }
+
+      .code-panel h2 {
+        margin: 0 0 6px;
+        font-size: 13px;
+      }
+
+      .code-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 3px;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 6px;
+        padding: 5px 6px;
+        border-radius: 7px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        background: #fff;
+      }
+
+      .code-line.active {
+        background: #dbeafe;
+      }
+
+      .code-line .ln {
+        color: var(--muted);
+        text-align: right;
+      }
+
+      .code-text {
+        white-space: nowrap;
+      }
+
+      .code-kw {
+        color: #7c3aed;
+        font-weight: 800;
+      }
+
+      .code-fn {
+        color: #0f766e;
+        font-weight: 800;
+      }
+
+      .code-var {
+        color: #1d4ed8;
+        font-weight: 700;
+      }
+
+      .code-num {
+        color: #b45309;
+        font-weight: 800;
+      }
+
+      .code-op {
+        color: #111827;
+        font-weight: 700;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        margin-top: 6px;
+        font-size: 14px;
+      }
+
+      .status-row strong {
+        color: var(--fg);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 6px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+
+      @media (max-width: 960px) {
+        body {
+          grid-template-rows: auto 1fr;
+        }
+
+        main {
+          overflow: auto;
+        }
+
+        .viz {
+          grid-template-columns: minmax(700px, 1fr) 280px;
+          min-width: 980px;
+        }
+
+        .chart-wrap {
+          max-height: 320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="margin: 0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>挿入ソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="viz">
+        <section class="panel chart-panel">
+          <div id="chartWrap" class="chart-wrap"></div>
+          <div class="status-row small">
+            <span>i <strong id="iValue">-</strong></span>
+            <span>j <strong id="jValue">-</strong></span>
+            <span>比較回数 <strong id="compareValue">0</strong></span>
+            <span>交換回数 <strong id="swapValue">0</strong></span>
+            <span>残りステップ <strong id="remainValue">0</strong></span>
+          </div>
+          <div class="legend" aria-label="legend">
+            <div><i style="background:#ffffff; border:1px solid #111;"></i>通常</div>
+            <div><i style="background:#f7e5d3"></i>比較中</div>
+            <div><i style="background:#fff200"></i>整列済み</div>
+            <div style="color:#0b72d0; font-weight:700;">青: 比較</div>
+            <div style="color:#ff4d2d; font-weight:700;">赤: 交換</div>
+          </div>
+        </section>
+
+        <section class="side-stack">
+          <section class="panel controls-panel" aria-label="controls">
+            <div class="controls compact">
+              <div class="control-row">
+                <label>配列 <input id="arrayInput" class="array-input" type="text" value="4, 2, 6, 5, 1, 3" /></label>
+              </div>
+              <div class="control-row">
+                <button id="randomBtn">乱数生成</button>
+                <button id="prevBtn">1ステップ戻る</button>
+                <button id="stepBtn">1ステップ進む</button>
+              </div>
+              <div class="control-row">
+                <label>速度 <input id="speedInput" type="range" min="0.5" max="10" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+                <button id="playBtn" class="primary">再生</button>
+                <button id="pauseBtn" disabled>一時停止</button>
+                <button id="resetBtn">リセット</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel code-panel">
+            <h2>挿入ソート（昇順）のコード</h2>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">insertion_sort</span>(<span class="code-var">a</span>):</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">n</span> <span class="code-op">=</span> <span class="code-fn">len</span>(<span class="code-var">a</span>)</span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">i</span> <span class="code-kw">in</span> <span class="code-fn">range</span>(<span class="code-num">1</span>, <span class="code-var">n</span>):</span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">j</span> <span class="code-op">=</span> <span class="code-var">i</span></span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-kw">while</span> <span class="code-var">j</span> <span class="code-op">&gt;=</span> <span class="code-num">1</span> <span class="code-kw">and</span> <span class="code-var">a</span>[<span class="code-var">j</span> <span class="code-op">-</span> <span class="code-num">1</span>] <span class="code-op">&gt;</span> <span class="code-var">a</span>[<span class="code-var">j</span>]:</span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">a</span>[<span class="code-var">j</span> <span class="code-op">-</span> <span class="code-num">1</span>], <span class="code-var">a</span>[<span class="code-var">j</span>] <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">j</span>], <span class="code-var">a</span>[<span class="code-var">j</span> <span class="code-op">-</span> <span class="code-num">1</span>]</span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">j</span> <span class="code-op">-=</span> <span class="code-num">1</span></span></li>
+            </ol>
+            <div class="status-row small">
+              <span><strong id="messageValue">初期状態</strong></span>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const arrayInput = document.getElementById('arrayInput');
+      const speedInput = document.getElementById('speedInput');
+      const speedLabel = document.getElementById('speedLabel');
+      const randomBtn = document.getElementById('randomBtn');
+      const stepBtn = document.getElementById('stepBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const chartWrap = document.getElementById('chartWrap');
+      const iValue = document.getElementById('iValue');
+      const jValue = document.getElementById('jValue');
+      const compareValue = document.getElementById('compareValue');
+      const swapValue = document.getElementById('swapValue');
+      const remainValue = document.getElementById('remainValue');
+      const messageValue = document.getElementById('messageValue');
+
+      const codeLines = new Map();
+      for (let line = 1; line <= 7; line++) {
+        codeLines.set(line, document.getElementById(`line-${line}`));
+      }
+
+      let initialItems = [];
+      let items = [];
+      let steps = [];
+      let stepIndex = 0;
+      let compareCount = 0;
+      let swapCount = 0;
+      let passCompareCount = 0;
+      let passSwapCount = 0;
+      let currentPass = null;
+      let currentJ = null;
+      let currentStepType = null;
+      let currentCompareRightIndex = null;
+      let currentNote = '';
+      let sortedPrefix = 0;
+      let passSnapshots = [];
+      let playing = false;
+      let timer = null;
+
+      function parseArrayText(text) {
+        const values = text
+          .split(/[,\s]+/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map(Number)
+          .filter((value) => Number.isFinite(value));
+        return values.slice(0, 14);
+      }
+
+      function makeItems(values) {
+        return values.map((value, index) => ({ id: `item-${index}-${value}`, value }));
+      }
+
+      function randomValues() {
+        return Array.from({ length: 6 }, () => 1 + Math.floor(Math.random() * 9));
+      }
+
+      function resetState(values) {
+        initialItems = makeItems(values);
+        steps = buildSteps(initialItems.map((item) => item.value));
+        resetExecutionState();
+      }
+
+      function resetExecutionState() {
+        items = initialItems.map((item) => ({ ...item }));
+        stepIndex = 0;
+        compareCount = 0;
+        swapCount = 0;
+        passCompareCount = 0;
+        passSwapCount = 0;
+        currentPass = null;
+        currentJ = null;
+        currentStepType = null;
+        currentCompareRightIndex = null;
+        currentNote = '';
+        sortedPrefix = items.length > 0 ? 1 : 0;
+        passSnapshots = [];
+        clearTimer();
+        playing = false;
+        updateButtons();
+        clearHighlights();
+        renderPassFigure();
+        updateStatus('初期状態');
+      }
+
+      function buildSteps(values) {
+        const work = values.slice();
+        const built = [];
+        const n = work.length;
+        if (n > 0) {
+          built.push({ type: 'setup', line: 2, sortedCount: 1, message: `n = ${n} を設定` });
+        }
+
+        for (let i = 1; i < n; i++) {
+          built.push({ type: 'pass-start', line: 3, pass: i, sortedCount: i, message: `${i}巡目を開始` });
+
+          let j = i;
+          built.push({ type: 'set-j', line: 4, pass: i, j, sortedCount: i, message: `j = ${j} を設定` });
+
+          while (j >= 1) {
+            const left = work[j - 1];
+            const right = work[j];
+            built.push({ type: 'compare', line: 5, pass: i, j, sortedCount: i, message: `a[${j - 1}] と a[${j}] を比較` });
+            if (!(left > right)) {
+              break;
+            }
+
+            [work[j - 1], work[j]] = [work[j], work[j - 1]];
+            built.push({ type: 'swap', line: 6, pass: i, j, swap: [j - 1, j], sortedCount: i, message: `${right} を ${left} の前に挿入（交換）` });
+            j -= 1;
+            built.push({ type: 'decrement-j', line: 7, pass: i, j, sortedCount: i, message: `j を ${j} に更新` });
+          }
+
+          const nextMessage = i < n - 1
+            ? `a[0] から a[${i}] まで整列済み ⇨ ${i + 1}巡目開始`
+            : `a[0] から a[${i}] まで整列済み ⇨ i=${n}`;
+          built.push({ type: 'mark-sorted', line: 3, pass: i, sortedCount: i + 1, message: nextMessage });
+        }
+
+        built.push({ type: 'done', line: 1, markAllSorted: true, message: `i=${n} となり外側ループ終了（ソート完了）` });
+        return built;
+      }
+
+      function renderPassFigure() {
+        const n = items.length;
+        const isDone = currentStepType === 'done';
+        const isAfterPassEnd = currentStepType === 'mark-sorted' && currentPass != null && currentPass < n - 1;
+        const isAfterFinalPassEnd = currentStepType === 'mark-sorted' && currentPass === n - 1;
+        const displayPass = currentPass == null ? 1 : (isAfterPassEnd ? currentPass + 1 : currentPass);
+
+        const title = document.createElement('h3');
+        title.className = 'pass-title';
+        const titleLabel = isDone
+          ? `挿入ソートの手順 : i=${n} となり外側ループ終了（ソート完了）`
+          : isAfterFinalPassEnd
+            ? `挿入ソートの手順 : i=${n}`
+            : `挿入ソートの手順 : n=${n}, ${displayPass}巡目(i=${displayPass})`;
+        title.innerHTML = `${titleLabel}<span class="pass-title-note">昇順：整列済み部分へ未整列要素を挿入（交換）</span>`;
+
+        const snapshotList = document.createElement('div');
+        snapshotList.className = 'snapshot-list';
+        passSnapshots.forEach((snapshot) => {
+          const row = document.createElement('div');
+          row.className = 'snapshot-row';
+
+          const label = document.createElement('div');
+          label.className = 'snapshot-label';
+          label.innerHTML = `<span class="label-main">${snapshot.pass}巡目(i=${snapshot.pass})</span><br>終了`;
+          row.appendChild(label);
+
+          const main = document.createElement('div');
+          main.className = 'snapshot-main';
+
+          const cells = renderCells(snapshot.values, snapshot.fixedCount, null);
+          main.appendChild(cells);
+
+          const metrics = document.createElement('p');
+          metrics.className = 'step-metrics';
+          metrics.innerHTML = `${snapshot.pass === 1 ? '<span class="step-metrics-title">各巡目の小計</span>' : ''}比較 ${snapshot.passCompareCount}、交換 ${snapshot.passSwapCount}`;
+          main.appendChild(metrics);
+
+          row.appendChild(main);
+          snapshotList.appendChild(row);
+        });
+
+        const focusBoard = document.createElement('div');
+        focusBoard.className = 'focus-board';
+        const focusRow = document.createElement('div');
+        focusRow.className = 'focus-row';
+
+        const focusCaption = document.createElement('p');
+        focusCaption.className = 'focus-caption';
+        if (isDone) {
+          focusCaption.innerHTML = `<span class="label-main">i=${n}</span><br>外側ループ<br>終了`;
+        } else if (isAfterFinalPassEnd) {
+          focusCaption.innerHTML = `<span class="label-main">i=${n}</span>`;
+        } else {
+          const label = `${displayPass}巡目(i=${displayPass})`;
+          const state = isAfterPassEnd ? '開始' : '処理中';
+          focusCaption.innerHTML = `<span class="label-main">${label}</span><br>${state}`;
+        }
+        focusRow.appendChild(focusCaption);
+
+        const focusMain = document.createElement('div');
+        focusMain.className = 'focus-main';
+
+        const focusTrack = document.createElement('div');
+        focusTrack.className = 'focus-track';
+        focusTrack.appendChild(renderCursorRow(items.length, currentCompareRightIndex));
+        focusTrack.appendChild(renderCells(
+          items.map((item) => item.value),
+          sortedPrefix,
+          currentCompareRightIndex
+        ));
+        focusMain.appendChild(focusTrack);
+
+        const compareNote = document.createElement('p');
+        compareNote.className = 'compare-note';
+        compareNote.textContent = currentNote || (stepIndex === 0 ? 'j-1 と j の比較位置をここに表示' : '');
+        focusMain.appendChild(compareNote);
+
+        const focusMetrics = document.createElement('p');
+        focusMetrics.className = 'step-metrics';
+        if (isDone || isAfterFinalPassEnd) {
+          focusMetrics.textContent = '';
+        } else {
+          const displayCompare = isAfterPassEnd ? 0 : passCompareCount;
+          const displaySwap = isAfterPassEnd ? 0 : passSwapCount;
+          focusMetrics.innerHTML = `${passSnapshots.length === 0 ? '<span class="step-metrics-title">各巡目の小計</span>' : ''}比較 ${displayCompare}、交換 ${displaySwap}`;
+        }
+        focusMain.appendChild(focusMetrics);
+
+        focusRow.appendChild(focusMain);
+        focusBoard.appendChild(focusRow);
+
+        chartWrap.innerHTML = '';
+        chartWrap.appendChild(title);
+        chartWrap.appendChild(snapshotList);
+        chartWrap.appendChild(focusBoard);
+      }
+
+      function renderCursorRow(length, compareRightIndex) {
+        const cursorRow = document.createElement('div');
+        cursorRow.className = 'cursor-row';
+        for (let index = 0; index < length; index++) {
+          const slot = document.createElement('div');
+          slot.className = 'cursor-slot';
+          if (compareRightIndex != null && (index === compareRightIndex - 1 || index === compareRightIndex)) {
+            const mark = document.createElement('div');
+            mark.className = 'cursor-mark';
+            mark.textContent = index === compareRightIndex ? 'j' : 'j-1';
+            slot.appendChild(mark);
+          }
+          cursorRow.appendChild(slot);
+        }
+        return cursorRow;
+      }
+
+      function renderCells(values, fixedCount, compareRightIndex) {
+        const cells = document.createElement('div');
+        cells.className = 'cells';
+
+        values.forEach((value, index) => {
+          const wrap = document.createElement('div');
+          wrap.className = 'cell-wrap';
+          wrap.dataset.focusIndex = String(index);
+
+          const idx = document.createElement('div');
+          idx.className = 'cell-index';
+          idx.textContent = `a[${index}]`;
+          wrap.appendChild(idx);
+
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          if (index < fixedCount) cell.classList.add('fixed');
+          if (compareRightIndex != null && (index === compareRightIndex - 1 || index === compareRightIndex)) {
+            cell.classList.add('compare');
+          }
+          cell.textContent = value;
+          wrap.appendChild(cell);
+
+          cells.appendChild(wrap);
+        });
+
+        return cells;
+      }
+
+      function showActionBubble(kind, indices) {
+        const focusMain = chartWrap.querySelector('.focus-main');
+        if (!focusMain || !indices || indices.length === 0) return;
+
+        const wraps = indices
+          .map((index) => focusMain.querySelector(`[data-focus-index="${index}"]`))
+          .filter(Boolean);
+        if (wraps.length === 0) return;
+
+        const rects = wraps
+          .map((wrap) => wrap.querySelector('.cell'))
+          .filter(Boolean)
+          .map((cell) => cell.getBoundingClientRect());
+        if (rects.length === 0) return;
+
+        const bubble = document.createElement('div');
+        bubble.className = 'action-bubble';
+        bubble.textContent = '交換';
+
+        const focusRect = focusMain.getBoundingClientRect();
+        const left = Math.min(...rects.map((rect) => rect.left));
+        const right = Math.max(...rects.map((rect) => rect.right));
+        const top = Math.min(...rects.map((rect) => rect.top));
+
+        bubble.style.left = `${((left + right) / 2) - focusRect.left}px`;
+        bubble.style.top = `${top - focusRect.top - 6}px`;
+        focusMain.appendChild(bubble);
+
+        window.setTimeout(() => {
+          bubble.remove();
+        }, 820);
+      }
+
+      function clearHighlights() {
+        codeLines.forEach((line) => line.classList.remove('active'));
+      }
+
+      function highlightLine(lineNumber) {
+        clearHighlights();
+        const line = codeLines.get(lineNumber);
+        if (line) line.classList.add('active');
+      }
+
+      function updateStatus(message) {
+        const n = items.length;
+        const isDone = currentStepType === 'done';
+        const isAfterPassEnd = currentStepType === 'mark-sorted' && currentPass != null && currentPass < n - 1;
+        const isAfterFinalPassEnd = currentStepType === 'mark-sorted' && currentPass === n - 1;
+
+        let displayI = null;
+        if (currentPass != null) {
+          if (isDone || isAfterFinalPassEnd) {
+            displayI = n;
+          } else if (isAfterPassEnd) {
+            displayI = currentPass + 1;
+          } else {
+            displayI = currentPass;
+          }
+        }
+
+        iValue.textContent = displayI == null ? '-' : String(displayI);
+        jValue.textContent = (isDone || isAfterFinalPassEnd || currentJ == null) ? '-' : String(currentJ);
+        compareValue.textContent = String(compareCount);
+        swapValue.textContent = String(swapCount);
+        remainValue.textContent = String(Math.max(steps.length - stepIndex, 0));
+        messageValue.textContent = message;
+      }
+
+      function clearTimer() {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function updateButtons() {
+        prevBtn.disabled = playing || stepIndex <= 0;
+        playBtn.disabled = playing || stepIndex >= steps.length;
+        pauseBtn.disabled = !playing;
+      }
+
+      function applyStep(step) {
+        currentPass = step.pass ?? currentPass;
+        currentStepType = step.type;
+        highlightLine(step.line);
+
+        if (step.sortedCount != null) {
+          sortedPrefix = step.sortedCount;
+        }
+
+        if (step.type === 'pass-start') {
+          passCompareCount = 0;
+          passSwapCount = 0;
+          currentJ = null;
+          currentCompareRightIndex = null;
+          currentNote = '';
+        }
+
+        if (step.type === 'set-j') {
+          currentJ = step.j;
+          currentCompareRightIndex = null;
+          currentNote = '';
+        }
+
+        if (step.type === 'compare') {
+          compareCount += 1;
+          passCompareCount += 1;
+          currentJ = step.j;
+          currentCompareRightIndex = step.j;
+          currentNote = `a[${step.j - 1}] と a[${step.j}] を比較`;
+        }
+
+        if (step.type === 'swap') {
+          swapCount += 1;
+          passSwapCount += 1;
+          const [a, b] = step.swap;
+          [items[a].value, items[b].value] = [items[b].value, items[a].value];
+          currentJ = step.j;
+          currentCompareRightIndex = step.j;
+          currentNote = step.message;
+        }
+
+        if (step.type === 'decrement-j') {
+          currentJ = step.j;
+          currentCompareRightIndex = null;
+          currentNote = '';
+        }
+
+        if (step.type === 'mark-sorted') {
+          currentJ = null;
+          currentCompareRightIndex = null;
+          currentNote = '';
+          passSnapshots.push({
+            pass: step.pass,
+            values: items.map((item) => item.value),
+            fixedCount: step.sortedCount,
+            passCompareCount,
+            passSwapCount
+          });
+        }
+
+        if (step.type === 'done') {
+          currentJ = null;
+          currentCompareRightIndex = null;
+          currentNote = '';
+          sortedPrefix = items.length;
+        }
+
+        renderPassFigure();
+        updateStatus(step.message);
+
+        if (step.type === 'swap') {
+          showActionBubble('swap', step.swap);
+        }
+      }
+
+      function finishPlayback() {
+        playing = false;
+        clearTimer();
+        updateButtons();
+      }
+
+      function isHiddenDisplayStep(step) {
+        return step && (step.type === 'pass-start' || step.type === 'set-j' || step.type === 'decrement-j');
+      }
+
+      function nextStep() {
+        if (stepIndex >= steps.length) {
+          finishPlayback();
+          return;
+        }
+
+        let step = steps[stepIndex];
+        stepIndex += 1;
+        applyStep(step);
+
+        while (isHiddenDisplayStep(step) && stepIndex < steps.length) {
+          step = steps[stepIndex];
+          stepIndex += 1;
+          applyStep(step);
+        }
+
+        updateButtons();
+      }
+
+      function scheduleNext() {
+        if (!playing) return;
+        if (stepIndex >= steps.length) {
+          finishPlayback();
+          return;
+        }
+        const delay = 520 / parseFloat(speedInput.value);
+        timer = setTimeout(() => {
+          nextStep();
+          if (playing) scheduleNext();
+        }, delay);
+      }
+
+      function restoreToStep(targetStepIndex) {
+        const clamped = Math.max(0, Math.min(targetStepIndex, steps.length));
+        clearTimer();
+        playing = false;
+        resetExecutionState();
+        for (let idx = 0; idx < clamped; idx++) {
+          stepIndex = idx + 1;
+          applyStep(steps[idx]);
+        }
+        updateButtons();
+      }
+
+      function getPreviousVisibleStepIndex() {
+        let target = Math.max(0, stepIndex - 1);
+        while (target > 0 && isHiddenDisplayStep(steps[target - 1])) {
+          target -= 1;
+        }
+        return target;
+      }
+
+      function loadFromInput() {
+        const values = parseArrayText(arrayInput.value);
+        if (values.length < 2) {
+          const fallback = [5, 2, 4, 6, 1, 3];
+          arrayInput.value = fallback.join(', ');
+          resetState(fallback);
+          return;
+        }
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      }
+
+      randomBtn.addEventListener('click', () => {
+        const values = randomValues();
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      });
+
+      resetBtn.addEventListener('click', loadFromInput);
+      stepBtn.addEventListener('click', () => {
+        finishPlayback();
+        nextStep();
+      });
+      prevBtn.addEventListener('click', () => {
+        finishPlayback();
+        if (stepIndex <= 0) return;
+        restoreToStep(getPreviousVisibleStepIndex());
+      });
+
+      playBtn.addEventListener('click', () => {
+        if (stepIndex >= steps.length) return;
+        playing = true;
+        updateButtons();
+        scheduleNext();
+      });
+
+      pauseBtn.addEventListener('click', () => {
+        finishPlayback();
+      });
+
+      speedInput.addEventListener('input', () => {
+        speedLabel.textContent = `${parseFloat(speedInput.value).toFixed(2)}x`;
+      });
+      arrayInput.addEventListener('change', loadFromInput);
+      window.addEventListener('resize', () => renderPassFigure());
+
+      speedLabel.textContent = `${parseFloat(speedInput.value).toFixed(2)}x`;
+      loadFromInput();
+    </script>
+  </body>
+</html>

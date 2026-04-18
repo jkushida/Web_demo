@@ -1,0 +1,1555 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ヒープソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #111827;
+        --muted: #6b7280;
+        --accent: #2563eb;
+        --warn: #f59e0b;
+        --err: #f43f5e;
+        --ok: #16a34a;
+        --line: #e5e7eb;
+        --tree-h: clamp(320px, 50vh, 520px);
+        --log-h: clamp(140px, 24vh, 220px);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      header {
+        padding: 14px 20px 12px;
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        gap: 4px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .lead {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      main {
+        padding: 14px 20px 20px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .panel {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      .controls {
+        padding: 10px 12px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .controls-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+        align-items: center;
+      }
+
+      .toolbar-row {
+        justify-content: space-between;
+      }
+
+      .toolbar-group,
+      .compact-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 10px;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .compact-group {
+        flex: 0 1 auto;
+      }
+
+      .toolbar-action {
+        width: 180px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .toolbar-progress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        flex: 0 0 auto;
+        margin-left: auto;
+      }
+
+      .toolbar-progress input[type="range"] {
+        width: 220px;
+        max-width: 100%;
+        flex: 0 0 220px;
+      }
+
+      .toolbar-step {
+        width: 120px;
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      .controls label,
+      .small {
+        color: var(--muted);
+        font-size: 11px;
+        white-space: nowrap;
+      }
+
+      button,
+      select,
+      input[type="text"] {
+        background: #ffffff;
+        color: var(--fg);
+        border: 1px solid #d1d5db;
+        padding: 7px 10px;
+        border-radius: 8px;
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover,
+      select:hover,
+      input[type="text"]:hover {
+        background: #f9fafb;
+        border-color: #cbd5e1;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .primary {
+        background: var(--accent);
+        color: #ffffff;
+        border-color: var(--accent);
+        font-weight: 700;
+      }
+
+      .speed-label {
+        min-width: 38px;
+        display: inline-block;
+        text-align: right;
+      }
+
+      .speed-select {
+        min-width: 132px;
+      }
+
+      .array-input {
+        width: 260px;
+        min-width: 220px;
+        max-width: 100%;
+        flex: 0 0 260px;
+      }
+
+      input[type="range"] {
+        accent-color: var(--accent);
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        font-size: 15px;
+      }
+
+      .status-row strong {
+        color: var(--fg);
+        font-size: 16px;
+      }
+
+      .status-row .compare-stat,
+      .status-row .compare-stat strong {
+        color: #b45309;
+      }
+
+      .status-row .swap-stat,
+      .status-row .swap-stat strong {
+        color: var(--err);
+      }
+
+      .status-row .fixed-stat,
+      .status-row .fixed-stat strong {
+        color: #15803d;
+      }
+
+      .viz-row {
+        display: grid;
+        grid-template-columns: 440px minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .explain {
+        width: auto;
+        padding: 12px;
+        display: grid;
+        gap: 12px;
+        align-content: start;
+        transition: background-color 160ms ease;
+      }
+
+      .explain.phase-intro {
+        background: #f8fafc;
+      }
+
+      .explain.phase-build {
+        background: #eff6ff;
+      }
+
+      .explain.phase-extract {
+        background: #fff7ed;
+      }
+
+      .explain.phase-rebuild {
+        background: #fffbeb;
+      }
+
+      .explain.phase-done {
+        background: #f0fdf4;
+      }
+
+      .viz-side {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+        align-content: start;
+      }
+
+      .explain h2,
+      .subheading {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .caption {
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .caption-swap {
+        color: var(--err);
+        font-weight: 700;
+      }
+
+      .caption-compare {
+        color: var(--warn);
+        font-weight: 700;
+      }
+
+      .mini-status {
+        display: grid;
+        width: 100%;
+        height: 120px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(2, 56px);
+        gap: 8px;
+      }
+
+      .mini-status div {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 6px 10px;
+        background: #f9fafb;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        min-width: 0;
+      }
+
+      .mini-status span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin-bottom: 1px;
+        white-space: nowrap;
+      }
+
+      .mini-status strong {
+        font-size: 14px;
+        line-height: 1.15;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .pseudo {
+        display: grid;
+        gap: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .pseudo-line {
+        padding: 7px 8px;
+        border-radius: 8px;
+        background: #f9fafb;
+        color: #64748b;
+        border: 1px solid var(--line);
+        white-space: pre-wrap;
+      }
+
+      .pseudo-line.active {
+        background: #dbeafe;
+        border-color: #93c5fd;
+        color: var(--fg);
+      }
+
+      .hint-box {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .tree-wrap {
+        height: var(--tree-h);
+        padding: 0;
+      }
+
+      .tree-panel {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+        padding: 12px;
+      }
+
+      .tree-panel .legend {
+        justify-content: flex-end;
+      }
+
+      #heapTree {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .edge {
+        stroke: #cbd5e1;
+        stroke-width: 2;
+      }
+
+      .edge.active {
+        stroke-width: 3;
+      }
+
+      .node {
+        fill: #e5e7eb;
+        stroke: #94a3b8;
+        stroke-width: 1.4;
+      }
+
+      .node.active {
+        fill: var(--accent);
+        stroke: var(--accent);
+      }
+
+      .node.compare {
+        fill: var(--warn);
+        stroke: var(--warn);
+      }
+
+      .node.swap {
+        fill: var(--err);
+        stroke: var(--err);
+      }
+
+      .node.fixed {
+        fill: #dcfce7;
+        stroke: #86efac;
+      }
+
+      .node-label {
+        font-size: 14px;
+        fill: #111827;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+        font-weight: 700;
+      }
+
+      .node-label.invert {
+        fill: #ffffff;
+      }
+
+      .node-label.fixed {
+        fill: #166534;
+      }
+
+      .idx-label {
+        font-size: 11px;
+        fill: #6b7280;
+        text-anchor: middle;
+        dominant-baseline: hanging;
+        pointer-events: none;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 16px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+
+      .array-wrap,
+      .sorted-wrap,
+      .log-wrap {
+        padding: 12px;
+      }
+
+      .row-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .row-header strong {
+        font-size: 14px;
+      }
+
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .chip {
+        min-width: 48px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+        background: #f3f4f6;
+        color: var(--fg);
+        text-align: center;
+      }
+
+      .chip strong {
+        display: block;
+        font-size: 16px;
+        line-height: 1.1;
+      }
+
+      .chip small {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+
+      .chip.active {
+        background: #dbeafe;
+        border-color: #93c5fd;
+      }
+
+      .chip.compare {
+        background: #fef3c7;
+        border-color: #fcd34d;
+      }
+
+      .chip.swap {
+        background: #fee2e2;
+        border-color: #fda4af;
+      }
+
+      .chip.fixed {
+        background: #dcfce7;
+        border-color: #86efac;
+      }
+
+      .log-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+      }
+
+      .log-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .log-actions label {
+        font-size: 12px;
+        color: #374151;
+      }
+
+      .log-list {
+        max-height: var(--log-h);
+        overflow: auto;
+        font-size: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 6px;
+        background: #ffffff;
+      }
+
+      .entry {
+        display: flex;
+        gap: 8px;
+        padding: 5px 0;
+        align-items: baseline;
+        border-bottom: 1px dashed #f3f4f6;
+      }
+
+      .entry:last-child {
+        border-bottom: none;
+      }
+
+      .tag {
+        font-weight: 600;
+        padding: 2px 6px;
+        border-radius: 6px;
+        white-space: nowrap;
+      }
+
+      .tag.compare {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      .tag.swap {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .tag.heap {
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+
+      .tag.phase {
+        background: #e5e7eb;
+        color: #111827;
+      }
+
+      @media (max-width: 960px) {
+        .viz-row {
+          grid-template-columns: 1fr;
+        }
+
+        .explain {
+          width: auto;
+        }
+
+        .viz-side {
+          width: auto;
+        }
+
+        .mini-status {
+          width: auto;
+          height: auto;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: auto;
+          gap: 8px;
+        }
+
+        .mini-status div {
+          border-radius: 8px;
+          padding: 8px;
+        }
+
+        .mini-status span {
+          font-size: 11px;
+          margin-bottom: 2px;
+        }
+
+        .mini-status strong {
+          font-size: 15px;
+          line-height: 1.4;
+        }
+
+        .tree-wrap {
+          height: clamp(320px, 44vh, 420px);
+        }
+
+        .toolbar-row {
+          justify-content: flex-start;
+        }
+      }
+
+      @media (max-width: 640px) {
+        header,
+        main {
+          padding-left: 12px;
+          padding-right: 12px;
+        }
+
+        .controls,
+        .explain,
+        .array-wrap,
+        .sorted-wrap,
+        .log-wrap {
+          padding: 10px;
+        }
+
+        .toolbar-group,
+        .compact-group {
+          width: 100%;
+        }
+
+        .mini-status {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .array-input,
+        input[type="text"] {
+          width: 100%;
+        }
+
+        .tree-wrap {
+          height: 300px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>ヒープソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="controls panel" aria-label="controls">
+        <div class="controls-row toolbar-row">
+          <div class="toolbar-group">
+            <button id="prevBtn">◀ 戻る</button>
+            <button id="playBtn" class="primary">▶ 再生</button>
+            <button id="nextBtn">次へ ▶</button>
+            <button id="resetBtn">↺ 最初から</button>
+            <button id="sampleBtn">例を切り替え</button>
+            <label for="speedSelect">再生速度</label>
+            <select id="speedSelect" class="speed-select">
+              <option value="0.75">ゆっくり</option>
+              <option value="1" selected>ふつう</option>
+              <option value="1.6">速い</option>
+            </select>
+            <span class="small speed-label" id="speedLabel">1.0x</span>
+          </div>
+          <div class="compact-group">
+            <label for="nodeCountSelect">ノード数</label>
+            <select id="nodeCountSelect">
+              <option value="8" selected>8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+            <label for="arrayInput">入力配列</label>
+            <input id="arrayInput" class="array-input" type="text" value="4, 2, 5, 7, 1, 8, 6, 3" aria-label="配列入力" />
+          </div>
+          <div class="toolbar-progress">
+            <span id="stepLabel" class="toolbar-step">Step 1 / 1</span>
+            <input id="progressInput" type="range" min="0" max="0" value="0" />
+            <span id="actionLabel" class="toolbar-action">準備中</span>
+          </div>
+        </div>
+        <div class="status-row">
+          <span class="small">フェーズ: <strong id="phaseLabel">導入</strong></span>
+          <span class="small">ヒープサイズ: <strong id="heapSizeLabel">-</strong></span>
+          <span class="small">根の値: <strong id="rootLabel">-</strong></span>
+          <span class="small">対象の親: <strong id="parentLabel">なし</strong></span>
+          <span class="small compare-stat">比較回数: <strong id="compareCountLabel">0</strong></span>
+          <span class="small swap-stat">交換回数: <strong id="swapCountLabel">0</strong></span>
+          <span class="small fixed-stat">確定済み: <strong id="sortedCountLabel">0</strong></span>
+        </div>
+      </section>
+
+      <section class="viz-row">
+        <aside id="explainPanel" class="explain panel phase-intro" aria-label="step explanation">
+          <h2 id="explainTitle">いま何をしている？</h2>
+          <div class="caption" id="captionBox"></div>
+          <div class="mini-status">
+            <div>
+              <span>フェーズ</span>
+              <strong id="miniPhase">導入</strong>
+            </div>
+            <div>
+              <span>操作</span>
+              <strong id="miniAction">準備中</strong>
+            </div>
+            <div>
+              <span>ヒープ範囲</span>
+              <strong id="miniHeapRange">0..7</strong>
+            </div>
+            <div>
+              <span>Step</span>
+              <strong id="miniStep">1 / 1</strong>
+            </div>
+          </div>
+          <div>
+            <div class="subheading">擬似コード</div>
+            <div class="pseudo" id="pseudoBox"></div>
+          </div>
+          <div class="hint-box">
+            比較は黄、交換は赤、ソート確定済みは緑です。<br />
+            ヒープ構築 → 根と末尾を交換 → 残りを再ヒープ化、を繰り返します。
+          </div>
+        </aside>
+
+        <div class="viz-side">
+          <div class="tree-panel panel">
+            <section class="legend" aria-label="legend">
+              <div><i style="background:#e5e7eb; border:1px solid #94a3b8"></i>通常</div>
+              <div><i style="background:#2563eb"></i>注目</div>
+              <div><i style="background:#f59e0b"></i>比較</div>
+              <div><i style="background:#f43f5e"></i>交換</div>
+              <div><i style="background:#16a34a"></i>確定済み</div>
+            </section>
+            <section class="tree-wrap" aria-label="heap tree">
+              <svg id="heapTree" role="img" aria-label="heap tree"></svg>
+            </section>
+          </div>
+
+          <section class="array-wrap panel" aria-label="current array">
+            <div class="row-header">
+              <strong>現在の配列</strong>
+              <span class="small">ヒープ内と確定済みを同時表示</span>
+            </div>
+            <div id="currentArray" class="chip-list"></div>
+          </section>
+
+        </div>
+      </section>
+
+      <section class="sorted-wrap panel" aria-label="sorted outputs">
+        <div class="row-header">
+          <strong>確定した値</strong>
+          <span class="small">右端から順に確定していきます</span>
+        </div>
+        <div id="sortedList" class="chip-list"></div>
+      </section>
+
+      <section class="log-wrap panel" aria-label="operation log">
+        <div class="log-header">
+          <strong>操作ログ</strong>
+          <div class="log-actions">
+            <label><input id="autoScroll" type="checkbox" checked /> 自動スクロール</label>
+            <button id="clearLogBtn">先頭へ戻る</button>
+          </div>
+        </div>
+        <div id="logList" class="log-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      const pseudoLines = [
+        '1. buildMaxHeap(A)',
+        '2. for end = n - 1 down to 1:',
+        '3.   swap(A[0], A[end])',
+        '4.   siftDown(A, start = 0, end)',
+        '5. done'
+      ];
+
+      const presetsByCount = {
+        8: [
+          [4, 2, 5, 7, 1, 8, 6, 3],
+          [9, 4, 7, 1, 3, 6, 2, 8],
+          [12, 11, 5, 6, 7, 3, 1, 4]
+        ],
+        9: [
+          [4, 2, 5, 7, 1, 8, 6, 3, 9],
+          [9, 4, 7, 1, 3, 6, 2, 8, 5],
+          [12, 11, 5, 6, 7, 3, 1, 4, 9]
+        ],
+        10: [
+          [4, 2, 5, 7, 1, 8, 6, 3, 9, 10],
+          [10, 4, 7, 1, 9, 6, 2, 8, 5, 3],
+          [12, 11, 5, 6, 7, 3, 1, 4, 9, 10]
+        ],
+        11: [
+          [4, 2, 5, 7, 1, 8, 6, 3, 9, 10, 11],
+          [10, 4, 7, 1, 9, 6, 2, 8, 5, 3, 11],
+          [12, 11, 5, 6, 7, 3, 1, 4, 9, 10, 8]
+        ],
+        12: [
+          [4, 2, 5, 7, 1, 8, 6, 3, 9, 10, 11, 12],
+          [10, 4, 7, 1, 9, 6, 2, 8, 5, 3, 12, 11],
+          [12, 11, 5, 6, 7, 3, 1, 4, 9, 10, 8, 2]
+        ]
+      };
+
+      const state = {
+        items: [],
+        steps: [],
+        stepIndex: 0,
+        timer: null,
+        playing: false,
+        speed: 1,
+        presetIndex: 0,
+        nodeCount: 8
+      };
+
+      const heapTree = document.getElementById('heapTree');
+      const captionBox = document.getElementById('captionBox');
+      const explainPanel = document.getElementById('explainPanel');
+      const explainTitle = document.getElementById('explainTitle');
+      const pseudoBox = document.getElementById('pseudoBox');
+      const phaseLabel = document.getElementById('phaseLabel');
+      const heapSizeLabel = document.getElementById('heapSizeLabel');
+      const rootLabel = document.getElementById('rootLabel');
+      const parentLabel = document.getElementById('parentLabel');
+      const compareCountLabel = document.getElementById('compareCountLabel');
+      const swapCountLabel = document.getElementById('swapCountLabel');
+      const sortedCountLabel = document.getElementById('sortedCountLabel');
+      const miniPhase = document.getElementById('miniPhase');
+      const miniAction = document.getElementById('miniAction');
+      const miniHeapRange = document.getElementById('miniHeapRange');
+      const miniStep = document.getElementById('miniStep');
+      const currentArray = document.getElementById('currentArray');
+      const sortedList = document.getElementById('sortedList');
+      const logList = document.getElementById('logList');
+      const autoScroll = document.getElementById('autoScroll');
+      const clearLogBtn = document.getElementById('clearLogBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const sampleBtn = document.getElementById('sampleBtn');
+      const speedSelect = document.getElementById('speedSelect');
+      const speedLabel = document.getElementById('speedLabel');
+      const nodeCountSelect = document.getElementById('nodeCountSelect');
+      const arrayInput = document.getElementById('arrayInput');
+      const progressInput = document.getElementById('progressInput');
+      const stepLabel = document.getElementById('stepLabel');
+      const actionLabel = document.getElementById('actionLabel');
+
+      function setupPseudo() {
+        pseudoBox.innerHTML = '';
+        pseudoLines.forEach((line) => {
+          const div = document.createElement('div');
+          div.className = 'pseudo-line';
+          div.textContent = line;
+          pseudoBox.appendChild(div);
+        });
+      }
+
+      function cloneOrder(order) {
+        return order.slice();
+      }
+
+      function getStepCountDelta(step) {
+        const compareDelta = step.action === '左右の子を比較' || step.action === '親と大きい子を比較' ? 1 : 0;
+        const swapDelta = step.action === '親子を交換' || step.action === '最大値を確定' ? 1 : 0;
+        return { compareDelta, swapDelta };
+      }
+
+      function addStep(steps, step) {
+        const previousStep = steps[steps.length - 1];
+        const { compareDelta, swapDelta } = getStepCountDelta(step);
+        steps.push({
+          order: cloneOrder(step.order),
+          heapSize: step.heapSize,
+          caption: step.caption,
+          phase: step.phase,
+          line: step.line,
+          action: step.action,
+          active: step.active ? [...step.active] : [],
+          compare: step.compare ? [...step.compare] : [],
+          swap: step.swap ? [...step.swap] : [],
+          compareCount: (previousStep?.compareCount ?? 0) + compareDelta,
+          swapCount: (previousStep?.swapCount ?? 0) + swapDelta
+        });
+      }
+
+      function makeItems(values) {
+        return values.map((value, index) => ({
+          id: `item-${index}-${value}`,
+          value
+        }));
+      }
+
+      function getValueById(id) {
+        return state.items.find((item) => item.id === id).value;
+      }
+
+      function getStepValues(step) {
+        return step.order.map((id) => getValueById(id));
+      }
+
+      function getCurrentParentIndex(step) {
+        if (step.active.length > 0) {
+          return step.active[0];
+        }
+        if (step.compare.length > 0) {
+          return step.compare[0];
+        }
+        if (step.swap.length > 0) {
+          return step.swap[0];
+        }
+        return null;
+      }
+
+      function formatCaptionText(text) {
+        return text
+          .replaceAll('交換', '<span class="caption-swap">交換</span>')
+          .replaceAll('比較', '<span class="caption-compare">比較</span>');
+      }
+
+      function getPhaseThemeClass(phase) {
+        if (phase === '導入') {
+          return 'phase-intro';
+        }
+        if (phase.includes('ヒープ構築')) {
+          return 'phase-build';
+        }
+        if (phase === '最大値を末尾へ') {
+          return 'phase-extract';
+        }
+        if (phase === 'ヒープ再構築') {
+          return 'phase-rebuild';
+        }
+        if (phase === '完了') {
+          return 'phase-done';
+        }
+        return 'phase-intro';
+      }
+
+      function chooseLargerChild(order, heapSize, index) {
+        const left = index * 2 + 1;
+        const right = left + 1;
+        if (right >= heapSize) {
+          return left;
+        }
+        return getValueById(order[right]) > getValueById(order[left]) ? right : left;
+      }
+
+      function siftDown(order, heapSize, startIndex, phase, steps) {
+        let root = startIndex;
+
+        addStep(steps, {
+          order,
+          heapSize,
+          phase,
+          line: phase === 'ヒープ構築' ? 1 : 4,
+          action: '部分木を見る',
+          active: [root],
+          caption: phase === 'ヒープ構築'
+            ? `添字 ${root} を根とする部分木を見ます。親より大きい子があれば、親を下へ沈めます。`
+            : '交換後に根へ別の値が来たので、最大ヒープの形を回復します。'
+        });
+
+        while (true) {
+          const left = root * 2 + 1;
+          if (left >= heapSize) {
+            addStep(steps, {
+              order,
+              heapSize,
+              phase,
+              line: phase === 'ヒープ構築' ? 1 : 4,
+              action: '葉に到達',
+              active: [root],
+              caption: `添字 ${root} は葉なので、これ以上は移動しません。`
+            });
+            break;
+          }
+
+          const right = left + 1;
+          if (right < heapSize) {
+            addStep(steps, {
+              order,
+              heapSize,
+              phase,
+              line: phase === 'ヒープ構築' ? 1 : 4,
+              action: '左右の子を比較',
+              active: [root],
+              compare: [left, right],
+              caption: `左右の子 ${getValueById(order[left])} と ${getValueById(order[right])} を比較して、大きい子を選びます。`
+            });
+          }
+
+          const candidate = chooseLargerChild(order, heapSize, root);
+
+          addStep(steps, {
+            order,
+            heapSize,
+            phase,
+            line: phase === 'ヒープ構築' ? 1 : 4,
+            action: '親と大きい子を比較',
+            compare: [root, candidate],
+            caption: `親 ${getValueById(order[root])} と大きい子 ${getValueById(order[candidate])} を比較します。`
+          });
+
+          if (getValueById(order[root]) >= getValueById(order[candidate])) {
+            addStep(steps, {
+              order,
+              heapSize,
+              phase,
+              line: phase === 'ヒープ構築' ? 1 : 4,
+              action: 'ヒープ条件OK',
+              active: [root],
+              caption: `親 ${getValueById(order[root])} のほうが大きいので、この部分木は最大ヒープです。`
+            });
+            break;
+          }
+
+          [order[root], order[candidate]] = [order[candidate], order[root]];
+          addStep(steps, {
+            order,
+            heapSize,
+            phase,
+            line: phase === 'ヒープ構築' ? 1 : 4,
+            action: '親子を交換',
+            swap: [root, candidate],
+            caption: `親が小さいので、${getValueById(order[candidate])} を上へ持ってくるために親子を交換します。`
+          });
+          root = candidate;
+        }
+      }
+
+      function buildSteps(values) {
+        state.items = makeItems(values);
+        const order = state.items.map((item) => item.id);
+        const steps = [];
+        const n = order.length;
+
+        addStep(steps, {
+          order,
+          heapSize: n,
+          phase: '導入',
+          line: 1,
+          action: '未整列の配列',
+          caption: 'まずは普通の配列です。ここから最大ヒープを作り、最大値を先頭に集めます。'
+        });
+
+        for (let start = Math.floor(n / 2) - 1; start >= 0; start -= 1) {
+          addStep(steps, {
+            order,
+            heapSize: n,
+            phase: 'ヒープ構築',
+            line: 1,
+            action: `heapify(${start}) を開始`,
+            active: [start],
+            caption: `最後の親から逆順に見ます。添字 ${start} を根とする部分木を最大ヒープにします。`
+          });
+          siftDown(order, n, start, 'ヒープ構築', steps);
+        }
+
+        addStep(steps, {
+          order,
+          heapSize: n,
+          phase: 'ヒープ構築完了',
+          line: 2,
+          action: '最大ヒープ完成',
+          active: [0],
+          caption: `最大ヒープができました。先頭 ${getValueById(order[0])} が全体の最大値です。`
+        });
+
+        for (let end = n - 1; end > 0; end -= 1) {
+          addStep(steps, {
+            order,
+            heapSize: end + 1,
+            phase: '最大値を末尾へ',
+            line: 3,
+            action: `root と ${end} を交換準備`,
+            compare: [0, end],
+            caption: `先頭の最大値 ${getValueById(order[0])} を未確定部分の最後へ送ります。`
+          });
+
+          [order[0], order[end]] = [order[end], order[0]];
+          addStep(steps, {
+            order,
+            heapSize: end,
+            phase: '最大値を末尾へ',
+            line: 3,
+            action: '最大値を確定',
+            swap: [0, end],
+            caption: `最大値が末尾へ移動しました。添字 ${end} 以降はソート済みです。`
+          });
+
+          if (end > 1) {
+            addStep(steps, {
+              order,
+              heapSize: end,
+              phase: 'ヒープ再構築',
+              line: 4,
+              action: '根から再ヒープ化',
+              active: [0],
+              caption: `先頭に別の値が来たので、残り ${end} 個だけで最大ヒープを作り直します。`
+            });
+            siftDown(order, end, 0, 'ヒープ再構築', steps);
+          }
+        }
+
+        addStep(steps, {
+          order,
+          heapSize: 0,
+          phase: '完了',
+          line: 5,
+          action: 'ソート完了',
+          caption: 'すべて確定しました。ヒープソートは最大値を後ろへ送り続けて整列します。'
+        });
+
+        return steps;
+      }
+
+      function getNodeClass(step, index) {
+        if (index >= step.heapSize) {
+          return 'node fixed';
+        }
+        if (step.swap.includes(index)) {
+          return 'node swap';
+        }
+        if (step.compare.includes(index)) {
+          return 'node compare';
+        }
+        if (step.active.includes(index)) {
+          return 'node active';
+        }
+        return 'node';
+      }
+
+      function renderTree(step) {
+        const values = getStepValues(step);
+        const heapSize = step.heapSize;
+        const width = heapTree.clientWidth || 900;
+        const height = heapTree.clientHeight || 420;
+        const totalLevels = values.length > 0 ? Math.floor(Math.log2(values.length)) + 1 : 1;
+        const marginTop = 18;
+        const baseBottom = 42;
+        let yGap = (height - marginTop - baseBottom) / totalLevels;
+        let radius = Math.max(18, Math.min(28, yGap * 0.34));
+        const marginBottom = Math.max(baseBottom, Math.ceil(radius + 18));
+        yGap = (height - marginTop - marginBottom) / totalLevels;
+        radius = Math.max(18, Math.min(28, yGap * 0.36));
+        const horizontalMargin = Math.max(28, Math.round(width * 0.06));
+
+        const xFor = (level, idx) => {
+          const count = 2 ** level;
+          const span = Math.max(0, width - horizontalMargin * 2);
+          return horizontalMargin + Math.round(((idx + 1) / (count + 1)) * span);
+        };
+        const yFor = (level) => Math.round(marginTop + (level + 0.55) * yGap);
+
+        heapTree.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        heapTree.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+        heapTree.innerHTML = '';
+
+        for (let i = 0; i < values.length; i += 1) {
+          const level = Math.floor(Math.log2(i + 1));
+          const idx = i - (2 ** level - 1);
+          const x1 = xFor(level, idx);
+          const y1 = yFor(level);
+          const left = i * 2 + 1;
+          const right = i * 2 + 2;
+
+          [left, right].forEach((child) => {
+            if (child >= heapSize) {
+              return;
+            }
+            const childLevel = Math.floor(Math.log2(child + 1));
+            const childIdx = child - (2 ** childLevel - 1);
+            const x2 = xFor(childLevel, childIdx);
+            const y2 = yFor(childLevel);
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', x1);
+            line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2);
+            line.setAttribute('y2', y2);
+            line.setAttribute('class', 'edge');
+            if ((step.compare.includes(i) && step.compare.includes(child)) || (step.swap.includes(i) && step.swap.includes(child))) {
+              line.classList.add('active');
+              line.setAttribute('stroke', step.swap.includes(i) && step.swap.includes(child) ? '#f43f5e' : '#f59e0b');
+            }
+            heapTree.appendChild(line);
+          });
+        }
+
+        values.forEach((value, index) => {
+          const level = Math.floor(Math.log2(index + 1));
+          const idx = index - (2 ** level - 1);
+          const cx = xFor(level, idx);
+          const cy = yFor(level);
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', cx);
+          circle.setAttribute('cy', cy);
+          circle.setAttribute('r', radius);
+          circle.setAttribute('class', getNodeClass(step, index));
+          heapTree.appendChild(circle);
+
+          const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          label.setAttribute('x', cx);
+          label.setAttribute('y', cy + 1);
+          const isFixed = index >= heapSize;
+          const isInvert = !isFixed && (step.active.includes(index) || step.swap.includes(index));
+          label.setAttribute('class', `node-label${isInvert ? ' invert' : ''}${isFixed ? ' fixed' : ''}`);
+          label.textContent = String(value);
+          heapTree.appendChild(label);
+
+          const idxLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          idxLabel.setAttribute('x', cx);
+          idxLabel.setAttribute('y', cy + radius + 6);
+          idxLabel.setAttribute('class', 'idx-label');
+          idxLabel.textContent = `[${index}]`;
+          heapTree.appendChild(idxLabel);
+        });
+      }
+
+      function renderPseudo(lineNumber) {
+        [...pseudoBox.children].forEach((line, index) => {
+          line.classList.toggle('active', index === lineNumber - 1);
+        });
+      }
+
+      function renderCurrentArray(step) {
+        const values = getStepValues(step);
+        currentArray.innerHTML = '';
+
+        values.forEach((value, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          if (index >= step.heapSize) {
+            chip.classList.add('fixed');
+          }
+          if (step.active.includes(index)) {
+            chip.classList.add('active');
+          }
+          if (step.compare.includes(index)) {
+            chip.classList.add('compare');
+          }
+          if (step.swap.includes(index)) {
+            chip.classList.add('swap');
+          }
+          chip.innerHTML = `<strong>${value}</strong><small>idx ${index}</small>`;
+          currentArray.appendChild(chip);
+        });
+      }
+
+      function renderSorted(step) {
+        const values = getStepValues(step);
+        const fixedValues = values.slice(step.heapSize);
+        sortedList.innerHTML = '';
+
+        if (fixedValues.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'small';
+          empty.textContent = 'まだ確定した値はありません。';
+          sortedList.appendChild(empty);
+          return;
+        }
+
+        fixedValues.forEach((value, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip fixed';
+          if (index === 0) {
+            chip.classList.add('active');
+          }
+          chip.innerHTML = `<strong>${value}</strong><small>sorted</small>`;
+          sortedList.appendChild(chip);
+        });
+      }
+
+      function getLogType(step) {
+        if (step.swap.length > 0) {
+          return 'swap';
+        }
+        if (step.compare.length > 0) {
+          return 'compare';
+        }
+        if (step.phase === '完了' || step.phase.includes('構築') || step.phase.includes('再構築')) {
+          return 'heap';
+        }
+        return 'phase';
+      }
+
+      function getLogTag(type) {
+        if (type === 'swap') {
+          return 'SWAP';
+        }
+        if (type === 'compare') {
+          return 'COMPARE';
+        }
+        if (type === 'heap') {
+          return 'HEAP';
+        }
+        return 'PHASE';
+      }
+
+      function renderLog(currentIndex) {
+        const start = Math.max(0, currentIndex - 11);
+        logList.innerHTML = '';
+
+        state.steps.slice(start, currentIndex + 1).forEach((step, offset) => {
+          const index = start + offset;
+          const entry = document.createElement('div');
+          entry.className = 'entry';
+
+          const tag = document.createElement('span');
+          const type = getLogType(step);
+          tag.className = `tag ${type}`;
+          tag.textContent = getLogTag(type);
+
+          const text = document.createElement('span');
+          text.textContent = `Step ${index + 1}: ${step.action} — ${step.caption}`;
+
+          entry.append(tag, text);
+          logList.appendChild(entry);
+        });
+
+        if (autoScroll.checked) {
+          logList.scrollTop = logList.scrollHeight;
+        }
+      }
+
+      function renderStep(index) {
+        const step = state.steps[index];
+        if (!step) {
+          return;
+        }
+
+        const values = getStepValues(step);
+        state.stepIndex = index;
+
+        renderTree(step);
+        renderPseudo(step.line);
+        renderCurrentArray(step);
+        renderSorted(step);
+        renderLog(index);
+
+        explainPanel.className = `explain panel ${getPhaseThemeClass(step.phase)}`;
+        explainTitle.textContent = step.action;
+        captionBox.innerHTML = formatCaptionText(step.caption);
+        phaseLabel.textContent = step.phase;
+        heapSizeLabel.textContent = String(step.heapSize);
+        rootLabel.textContent = step.heapSize > 0 ? String(values[0]) : '-';
+        const parentIndex = getCurrentParentIndex(step);
+        parentLabel.textContent = parentIndex != null && parentIndex < step.heapSize
+          ? `idx ${parentIndex} (${values[parentIndex]})`
+          : 'なし';
+        compareCountLabel.textContent = String(step.compareCount);
+        swapCountLabel.textContent = String(step.swapCount);
+        sortedCountLabel.textContent = String(values.length - step.heapSize);
+        miniPhase.textContent = step.phase;
+        miniAction.textContent = step.action;
+        miniHeapRange.textContent = step.heapSize > 0 ? `0..${step.heapSize - 1}` : 'なし';
+        miniStep.textContent = `${index + 1} / ${state.steps.length}`;
+        stepLabel.textContent = `Step ${index + 1} / ${state.steps.length}`;
+        actionLabel.textContent = step.action;
+
+        progressInput.max = String(state.steps.length - 1);
+        progressInput.value = String(index);
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === state.steps.length - 1;
+      }
+
+      function stopPlayback() {
+        if (state.timer) {
+          clearTimeout(state.timer);
+          state.timer = null;
+        }
+        state.playing = false;
+        playBtn.textContent = '▶ 再生';
+      }
+
+      function scheduleNextFrame() {
+        if (!state.playing) {
+          return;
+        }
+        if (state.stepIndex >= state.steps.length - 1) {
+          stopPlayback();
+          return;
+        }
+
+        const delay = Math.max(240, 760 / state.speed);
+        state.timer = setTimeout(() => {
+          renderStep(state.stepIndex + 1);
+          scheduleNextFrame();
+        }, delay);
+      }
+
+      function togglePlayback() {
+        if (state.playing) {
+          stopPlayback();
+          return;
+        }
+        if (state.stepIndex >= state.steps.length - 1) {
+          renderStep(0);
+        }
+        state.playing = true;
+        playBtn.textContent = '⏸ 一時停止';
+        scheduleNextFrame();
+      }
+
+      function parseInputArray(text) {
+        const values = text
+          .split(/[\s,、]+/)
+          .map((token) => token.trim())
+          .filter(Boolean)
+          .map((token) => Number(token));
+
+        if (values.length < 8 || values.length > 12) {
+          return null;
+        }
+        if (values.some((value) => !Number.isInteger(value) || value < 0 || value > 99)) {
+          return null;
+        }
+        return values;
+      }
+
+      function getPresets(count) {
+        return presetsByCount[count] || presetsByCount[8];
+      }
+
+      function getExampleValues(count) {
+        return getPresets(count)[0];
+      }
+
+      function loadValues(values, presetIndex = -1) {
+        stopPlayback();
+        state.presetIndex = presetIndex;
+        state.nodeCount = values.length;
+        nodeCountSelect.value = String(values.length);
+        arrayInput.value = values.join(', ');
+        state.steps = buildSteps(values);
+        renderStep(0);
+      }
+
+      function loadPreset(presetIndex, nodeCount = state.nodeCount) {
+        const presets = getPresets(nodeCount);
+        const nextIndex = ((presetIndex % presets.length) + presets.length) % presets.length;
+        loadValues(presets[nextIndex], nextIndex);
+      }
+
+      function applyInputArray() {
+        const values = parseInputArray(arrayInput.value);
+        const selectedCount = Number(nodeCountSelect.value);
+        if (!values || values.length !== selectedCount) {
+          window.alert(`配列は ${selectedCount} 個の整数で入力してください。例: ${getExampleValues(selectedCount).join(', ')}`);
+          return;
+        }
+        loadValues(values, -1);
+      }
+
+      prevBtn.addEventListener('click', () => {
+        stopPlayback();
+        renderStep(Math.max(0, state.stepIndex - 1));
+      });
+
+      nextBtn.addEventListener('click', () => {
+        stopPlayback();
+        renderStep(Math.min(state.steps.length - 1, state.stepIndex + 1));
+      });
+
+      resetBtn.addEventListener('click', () => {
+        stopPlayback();
+        renderStep(0);
+      });
+
+      playBtn.addEventListener('click', togglePlayback);
+
+      sampleBtn.addEventListener('click', () => {
+        loadPreset(state.presetIndex + 1);
+      });
+
+      speedSelect.addEventListener('change', (event) => {
+        state.speed = Number(event.target.value);
+        speedLabel.textContent = `${state.speed.toFixed(1)}x`;
+        if (state.playing) {
+          clearTimeout(state.timer);
+          scheduleNextFrame();
+        }
+      });
+
+      nodeCountSelect.addEventListener('change', (event) => {
+        loadPreset(0, Number(event.target.value));
+      });
+
+      arrayInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          applyInputArray();
+        }
+      });
+
+      progressInput.addEventListener('input', (event) => {
+        stopPlayback();
+        renderStep(Number(event.target.value));
+      });
+
+      clearLogBtn.addEventListener('click', () => {
+        stopPlayback();
+        renderStep(0);
+      });
+
+      window.addEventListener('resize', () => {
+        renderStep(state.stepIndex);
+      });
+
+      document.addEventListener('keydown', (event) => {
+        const tagName = document.activeElement?.tagName;
+        if (tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA') {
+          return;
+        }
+        if (event.key === ' ') {
+          event.preventDefault();
+          togglePlayback();
+        } else if (event.key === 'ArrowRight') {
+          event.preventDefault();
+          stopPlayback();
+          renderStep(Math.min(state.steps.length - 1, state.stepIndex + 1));
+        } else if (event.key === 'ArrowLeft') {
+          event.preventDefault();
+          stopPlayback();
+          renderStep(Math.max(0, state.stepIndex - 1));
+        } else if (event.key === 'Home') {
+          event.preventDefault();
+          stopPlayback();
+          renderStep(0);
+        }
+      });
+
+      setupPseudo();
+      speedLabel.textContent = '1.0x';
+      loadPreset(0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BST / AVL Rotation Visualizer</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #cbd5e1;
+      --primary: #2563eb;
+      --accent: #059669;
+      --warn: #f59e0b;
+      --danger: #dc2626;
+      --bst-fill: #e2e8f0;
+      --avl-fill: #dbeafe;
+      --path-fill: #fef3c7;
+      --rotation-fill: #fecaca;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { display: flex; flex-direction: column; }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 16px;
+    }
+    header h1 { margin: 0; font-size: 1.18rem; }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 0.88rem; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    main {
+      flex: 1;
+      min-height: 0;
+      padding: 12px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+    .controls {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px;
+    }
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      align-items: end;
+    }
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      min-width: 150px;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 0.95rem;
+    }
+    button {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.primary { background: var(--primary); border-color: transparent; color: #fff; }
+    button.accent { background: var(--accent); border-color: transparent; color: #fff; }
+    button.warn { background: var(--warn); border-color: transparent; color: #111827; }
+    button:hover { filter: brightness(0.98); }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      padding: 0 12px 8px;
+    }
+    .status-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 8px 10px;
+    }
+    .status-item .label { color: var(--muted); font-size: 0.74rem; }
+    .status-item .value { margin-top: 2px; font-size: 0.96rem; font-weight: 700; }
+    .viewer-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 8px 10px 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .panel-head h2 { margin: 0; font-size: 0.98rem; }
+    .panel-head small { color: var(--muted); font-size: 0.78rem; }
+    .canvas-wrap {
+      padding: 8px;
+    }
+    svg {
+      width: 100%;
+      height: min(34vh, 360px);
+      display: block;
+      background: #fff;
+      border-radius: 12px;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 0 10px 8px;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      margin-right: 6px;
+      vertical-align: -1px;
+      border: 1px solid rgba(15, 23, 42, 0.2);
+    }
+    .legend .bst::before { background: var(--bst-fill); }
+    .legend .avl::before { background: var(--avl-fill); }
+    .legend .path::before { background: var(--path-fill); }
+    .legend .rot::before { background: var(--rotation-fill); }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      min-height: 0;
+    }
+    .info-block {
+      padding: 10px 12px;
+    }
+    .info-block h3 {
+      margin: 0 0 8px;
+      font-size: 0.94rem;
+    }
+    .info-block ul {
+      margin: 0;
+      padding-left: 20px;
+      line-height: 1.45;
+      font-size: 0.88rem;
+    }
+    .log-list {
+      max-height: min(18vh, 150px);
+      overflow: auto;
+      padding: 0 12px 10px;
+      font-size: 0.84rem;
+      line-height: 1.4;
+    }
+    .log-entry {
+      padding: 6px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .log-entry:last-child { border-bottom: none; }
+    .chip {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 2px 8px;
+      margin-right: 8px;
+      vertical-align: 1px;
+    }
+    .chip.insert { background: #dbeafe; color: #1d4ed8; }
+    .chip.rotate { background: #fee2e2; color: #b91c1c; }
+    .chip.note { background: #ecfccb; color: #3f6212; }
+    .help {
+      color: var(--muted);
+      font-size: 0.76rem;
+      margin: 0;
+      padding: 0 12px 2px;
+    }
+    .edge {
+      stroke: #94a3b8;
+      stroke-width: 2;
+    }
+    .node {
+      stroke: #475569;
+      stroke-width: 1.5;
+    }
+    .node.bst { fill: var(--bst-fill); }
+    .node.avl { fill: var(--avl-fill); }
+    .node.path { fill: var(--path-fill); }
+    .node.rotation { fill: var(--rotation-fill); }
+    .node-label {
+      font-size: 16px;
+      font-weight: 700;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      fill: #0f172a;
+      pointer-events: none;
+    }
+    .meta-label {
+      font-size: 11px;
+      text-anchor: middle;
+      fill: var(--muted);
+      pointer-events: none;
+    }
+    @media (max-width: 980px) {
+      main {
+        grid-template-rows: auto auto auto;
+        overflow: visible;
+      }
+      .viewer-grid, .info-grid, .status-grid { grid-template-columns: 1fr; }
+      svg { height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p style="margin:0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+    <h1>BST / AVL Rotation Visualizer</h1>
+    <p>同じ入力列を BST と AVL に同時に挿入し、木の形、高さ、回転の発生を比較します。</p>
+  </header>
+
+  <main>
+    <section class="card controls" aria-label="controls">
+      <div class="controls-row">
+        <label>
+          プリセット
+          <select id="preset">
+            <option value="ll">LL 回転 (30,20,10)</option>
+            <option value="rr">RR 回転 (10,20,30)</option>
+            <option value="lr">LR 回転 (30,10,20)</option>
+            <option value="rl">RL 回転 (10,30,20)</option>
+            <option value="mixed">混合例 (30,20,40,10,25,22)</option>
+            <option value="custom">カスタム入力</option>
+          </select>
+        </label>
+        <label style="flex:1 1 420px; min-width:320px;">
+          挿入列（カンマ区切り）
+          <input id="sequence" type="text" value="30,20,10" />
+        </label>
+      </div>
+      <div class="controls-row">
+        <button id="loadPreset">プリセット読込</button>
+        <button id="insertNext" class="primary">次を挿入</button>
+        <button id="runAll" class="accent">最後まで挿入</button>
+        <button id="resetTree">リセット</button>
+        <button id="clearLog" class="warn">ログ消去</button>
+      </div>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="label">次に挿入する値</div>
+          <div class="value" id="nextValue">30</div>
+        </div>
+        <div class="status-item">
+          <div class="label">挿入済み</div>
+          <div class="value" id="insertedValues">-</div>
+        </div>
+        <div class="status-item">
+          <div class="label">直近の回転</div>
+          <div class="value" id="lastRotation">なし</div>
+        </div>
+        <div class="status-item">
+          <div class="label">AVL の高さ</div>
+          <div class="value" id="avlHeight">0</div>
+        </div>
+      </div>
+      <p class="help">重複値は挿入しません。ノード下の小さい文字は `h=高さ / bf=平衡係数` です。</p>
+    </section>
+
+    <section class="viewer-grid">
+      <article class="card" id="bstPanel">
+        <div class="panel-head">
+          <h2>BST</h2>
+          <small>平衡化なし</small>
+        </div>
+        <div class="canvas-wrap"><svg id="bstSvg" viewBox="0 0 640 460"></svg></div>
+        <div class="legend">
+          <span class="bst" data-kind="normal">通常</span>
+          <span class="path" data-kind="path">今回の探索経路</span>
+        </div>
+      </article>
+
+      <article class="card" id="avlPanel">
+        <div class="panel-head">
+          <h2>AVL</h2>
+          <small>不均衡なら回転</small>
+        </div>
+        <div class="canvas-wrap"><svg id="avlSvg" viewBox="0 0 640 460"></svg></div>
+        <div class="legend">
+          <span class="avl" data-kind="normal">通常</span>
+          <span class="path" data-kind="path">今回の探索経路</span>
+          <span class="rot" data-kind="rotation">回転に関わる節点</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="info-grid">
+      <article class="card info-block">
+        <h3>見どころ</h3>
+        <ul>
+          <li>BST は挿入順によって簡単に片寄る。</li>
+          <li>AVL は各節点の平衡係数を見て、必要なら回転で高さを抑える。</li>
+          <li>同じ入力列でも、最終的な木の高さが変わる。</li>
+          <li>LL / RR / LR / RL のどれが起きたかをログで確認できる。</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <div class="info-block" style="padding-bottom:8px;">
+          <h3>操作ログ</h3>
+        </div>
+        <div id="logList" class="log-list" aria-live="polite"></div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const presets = {
+      ll: [30, 20, 10],
+      rr: [10, 20, 30],
+      lr: [30, 10, 20],
+      rl: [10, 30, 20],
+      mixed: [30, 20, 40, 10, 25, 22],
+    };
+
+    const bstSvg = document.getElementById("bstSvg");
+    const avlSvg = document.getElementById("avlSvg");
+    const presetEl = document.getElementById("preset");
+    const sequenceEl = document.getElementById("sequence");
+    const nextValueEl = document.getElementById("nextValue");
+    const insertedValuesEl = document.getElementById("insertedValues");
+    const lastRotationEl = document.getElementById("lastRotation");
+    const avlHeightEl = document.getElementById("avlHeight");
+    const logList = document.getElementById("logList");
+
+    let bstRoot = null;
+    let avlRoot = null;
+    let sequence = [];
+    let cursor = 0;
+    let inserted = [];
+    let bstPath = [];
+    let avlPath = [];
+    let rotationNodes = [];
+    let lastRotation = "なし";
+
+    function node(value) {
+      return { value, left: null, right: null, height: 1 };
+    }
+
+    function height(n) { return n ? n.height : 0; }
+    function balance(n) { return n ? height(n.left) - height(n.right) : 0; }
+    function updateHeight(n) {
+      if (n) n.height = 1 + Math.max(height(n.left), height(n.right));
+    }
+
+    function clonePath(path) { return [...path]; }
+
+    function parseSequence(text) {
+      return text
+        .split(/[\s,]+/)
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(Number)
+        .filter(v => !Number.isNaN(v));
+    }
+
+    function loadPreset() {
+      if (presetEl.value === "custom") return;
+      sequenceEl.value = presets[presetEl.value].join(",");
+      resetTrees();
+    }
+
+    function resetTrees() {
+      sequence = parseSequence(sequenceEl.value);
+      cursor = 0;
+      inserted = [];
+      bstRoot = null;
+      avlRoot = null;
+      bstPath = [];
+      avlPath = [];
+      rotationNodes = [];
+      lastRotation = "なし";
+      updateStatus();
+      renderAll();
+    }
+
+    function pushLog(kind, message) {
+      const div = document.createElement("div");
+      div.className = "log-entry";
+      const chipText = kind === "rotate" ? "回転" : kind === "insert" ? "挿入" : "注記";
+      div.innerHTML = `<span class="chip ${kind}">${chipText}</span>${message}`;
+      logList.prepend(div);
+    }
+
+    function leftRotate(z, path, logs) {
+      const y = z.right;
+      const T2 = y.left;
+      y.left = z;
+      z.right = T2;
+      updateHeight(z);
+      updateHeight(y);
+      logs.push(`節点 ${z.value} を中心に左回転`);
+      rotationNodes = [z.value, y.value, ...(T2 ? [T2.value] : [])];
+      return y;
+    }
+
+    function rightRotate(z, path, logs) {
+      const y = z.left;
+      const T3 = y.right;
+      y.right = z;
+      z.left = T3;
+      updateHeight(z);
+      updateHeight(y);
+      logs.push(`節点 ${z.value} を中心に右回転`);
+      rotationNodes = [z.value, y.value, ...(T3 ? [T3.value] : [])];
+      return y;
+    }
+
+    function bstInsert(root, value, path = []) {
+      if (!root) {
+        path.push(value);
+        return { root: node(value), inserted: true };
+      }
+      path.push(root.value);
+      if (value < root.value) {
+        const res = bstInsert(root.left, value, path);
+        root.left = res.root;
+        return { root, inserted: res.inserted };
+      }
+      if (value > root.value) {
+        const res = bstInsert(root.right, value, path);
+        root.right = res.root;
+        return { root, inserted: res.inserted };
+      }
+      return { root, inserted: false };
+    }
+
+    function avlInsert(root, value, path = [], logs = []) {
+      if (!root) {
+        path.push(value);
+        return { root: node(value), inserted: true, rotation: "なし" };
+      }
+
+      path.push(root.value);
+      let rotation = "なし";
+
+      if (value < root.value) {
+        const res = avlInsert(root.left, value, path, logs);
+        root.left = res.root;
+        if (!res.inserted) return { root, inserted: false, rotation: res.rotation };
+      } else if (value > root.value) {
+        const res = avlInsert(root.right, value, path, logs);
+        root.right = res.root;
+        if (!res.inserted) return { root, inserted: false, rotation: res.rotation };
+      } else {
+        return { root, inserted: false, rotation };
+      }
+
+      updateHeight(root);
+      const bf = balance(root);
+
+      if (bf > 1 && value < root.left.value) {
+        rotation = `LL @ ${root.value}`;
+        logs.push(`LL 回転が必要: ${root.value}`);
+        return { root: rightRotate(root, path, logs), inserted: true, rotation };
+      }
+      if (bf < -1 && value > root.right.value) {
+        rotation = `RR @ ${root.value}`;
+        logs.push(`RR 回転が必要: ${root.value}`);
+        return { root: leftRotate(root, path, logs), inserted: true, rotation };
+      }
+      if (bf > 1 && value > root.left.value) {
+        rotation = `LR @ ${root.value}`;
+        logs.push(`LR 回転が必要: ${root.value}`);
+        root.left = leftRotate(root.left, path, logs);
+        rotationNodes = [root.value, root.left.value];
+        return { root: rightRotate(root, path, logs), inserted: true, rotation };
+      }
+      if (bf < -1 && value < root.right.value) {
+        rotation = `RL @ ${root.value}`;
+        logs.push(`RL 回転が必要: ${root.value}`);
+        root.right = rightRotate(root.right, path, logs);
+        rotationNodes = [root.value, root.right.value];
+        return { root: leftRotate(root, path, logs), inserted: true, rotation };
+      }
+
+      return { root, inserted: true, rotation };
+    }
+
+    function treeHeight(root) {
+      return root ? 1 + Math.max(treeHeight(root.left), treeHeight(root.right)) : 0;
+    }
+
+    function collectNodes(root, depth = 0, out = [], parent = null) {
+      if (!root) return out;
+      collectNodes(root.left, depth + 1, out, root);
+      out.push({ node: root, depth, parent });
+      collectNodes(root.right, depth + 1, out, root);
+      return out;
+    }
+
+    function layoutTree(root, width, heightPx) {
+      const items = collectNodes(root);
+      const levels = Math.max(treeHeight(root), 1);
+      const xStep = items.length > 1 ? width / (items.length + 1) : width / 2;
+      const yStep = levels > 1 ? (heightPx - 80) / (levels - 1) : 0;
+      const pos = new Map();
+      items.forEach((item, idx) => {
+        pos.set(item.node.value, {
+          x: xStep * (idx + 1),
+          y: 52 + item.depth * yStep
+        });
+      });
+      return pos;
+    }
+
+    function clearSvg(svg) {
+      while (svg.firstChild) svg.removeChild(svg.firstChild);
+    }
+
+    function updateLegend(panelId, counts) {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      panel.querySelectorAll(".legend [data-kind]").forEach(el => {
+        const kind = el.dataset.kind;
+        el.style.display = counts[kind] > 0 ? "" : "none";
+      });
+    }
+
+    function makeSvg(tag, attrs = {}) {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    }
+
+    function renderTree(svg, root, mode) {
+      clearSvg(svg);
+      if (!root) {
+        updateLegend(mode === "bst" ? "bstPanel" : "avlPanel", { normal: 0, path: 0, rotation: 0 });
+        return;
+      }
+      const width = 640;
+      const heightPx = 460;
+      const pos = layoutTree(root, width, heightPx);
+      const pathSet = new Set((mode === "bst" ? bstPath : avlPath).map(v => Number(v)));
+      const rotationSet = new Set(mode === "avl" ? rotationNodes : []);
+      const counts = { normal: 0, path: 0, rotation: 0 };
+
+      const queue = [root];
+      while (queue.length) {
+        const cur = queue.shift();
+        const p = pos.get(cur.value);
+        for (const child of [cur.left, cur.right]) {
+          if (!child) continue;
+          const c = pos.get(child.value);
+          const line = makeSvg("line", {
+            x1: p.x, y1: p.y + 24, x2: c.x, y2: c.y - 24, class: "edge"
+          });
+          svg.appendChild(line);
+          queue.push(child);
+        }
+      }
+
+      const items = collectNodes(root);
+      for (const item of items) {
+        const value = item.node.value;
+        const { x, y } = pos.get(value);
+        const classes = ["node", mode];
+        const isPath = pathSet.has(value);
+        const isRotation = rotationSet.has(value);
+        if (isPath) {
+          classes.push("path");
+          counts.path += 1;
+        } else if (isRotation) {
+          classes.push("rotation");
+          counts.rotation += 1;
+        } else {
+          counts.normal += 1;
+        }
+        const circle = makeSvg("circle", { cx: x, cy: y, r: 24, class: classes.join(" ") });
+        svg.appendChild(circle);
+
+        const label = makeSvg("text", { x, y: y + 1, class: "node-label" });
+        label.textContent = String(value);
+        svg.appendChild(label);
+
+        const meta = makeSvg("text", { x, y: y + 40, class: "meta-label" });
+        meta.textContent = `h=${item.node.height} / bf=${balance(item.node)}`;
+        svg.appendChild(meta);
+      }
+      updateLegend(mode === "bst" ? "bstPanel" : "avlPanel", counts);
+    }
+
+    function insertNext() {
+      if (cursor >= sequence.length) return;
+      const value = sequence[cursor++];
+      rotationNodes = [];
+      const bstCurrentPath = [];
+      const avlCurrentPath = [];
+
+      const bstRes = bstInsert(bstRoot, value, bstCurrentPath);
+      const avlLogs = [];
+      const avlRes = avlInsert(avlRoot, value, avlCurrentPath, avlLogs);
+
+      if (!bstRes.inserted || !avlRes.inserted) {
+        pushLog("note", `値 ${value} は重複のため挿入しません。`);
+        updateStatus();
+        renderAll();
+        return;
+      }
+
+      bstRoot = bstRes.root;
+      avlRoot = avlRes.root;
+      bstPath = [...bstCurrentPath];
+      avlPath = [...avlCurrentPath];
+      inserted.push(value);
+      lastRotation = avlRes.rotation;
+
+      pushLog("insert", `値 ${value} を挿入。BST 経路: ${clonePath(bstCurrentPath).join(" → ")}`);
+      pushLog("insert", `AVL 経路: ${clonePath(avlCurrentPath).join(" → ")}`);
+      if (avlLogs.length) {
+        avlLogs.forEach(msg => pushLog("rotate", msg));
+      } else {
+        pushLog("note", `AVL では回転なし。`);
+      }
+
+      updateStatus();
+      renderAll();
+    }
+
+    function runAll() {
+      while (cursor < sequence.length) insertNext();
+    }
+
+    function updateStatus() {
+      nextValueEl.textContent = cursor < sequence.length ? String(sequence[cursor]) : "完了";
+      insertedValuesEl.textContent = inserted.length ? inserted.join(", ") : "-";
+      lastRotationEl.textContent = lastRotation;
+      avlHeightEl.textContent = avlRoot ? String(treeHeight(avlRoot)) : "0";
+    }
+
+    function renderAll() {
+      renderTree(bstSvg, bstRoot, "bst");
+      renderTree(avlSvg, avlRoot, "avl");
+    }
+
+    document.getElementById("loadPreset").addEventListener("click", loadPreset);
+    document.getElementById("insertNext").addEventListener("click", insertNext);
+    document.getElementById("runAll").addEventListener("click", runAll);
+    document.getElementById("resetTree").addEventListener("click", resetTrees);
+    document.getElementById("clearLog").addEventListener("click", () => { logList.innerHTML = ""; });
+    presetEl.addEventListener("change", loadPreset);
+    sequenceEl.addEventListener("change", resetTrees);
+
+    resetTrees();
+  </script>
+</body>
+</html>

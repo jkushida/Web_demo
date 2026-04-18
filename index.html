@@ -11,6 +11,7 @@
       h1 { font-size: 2rem; font-weight: 800; margin: 0 0 1rem; }
       h2 { font-size: 1.25rem; font-weight: 700; border-bottom: 1px solid #d0d7de; padding-bottom: .3rem; margin-top: 1.75rem; }
       h3 { font-size: 1.1rem; font-weight: 700; margin-top: 1.25rem; }
+      h4 { font-size: .95rem; font-weight: 700; margin: .95rem 0 .35rem 1rem; color: var(--muted); }
       p { color: var(--muted); }
       ul { padding-left: 1.5rem; }
       li { margin: .5rem 0; }
@@ -27,19 +28,41 @@
       <h2>デモ一覧</h2>
 
       <h3>データ構造とアルゴリズム</h3>
+      <h4>再帰・状態空間探索</h4>
       <ul>
         <li><a href="DSA/water-jug-problem.html">Water Jug Problem</a> - <span class="desc">4Lと3Lの水差しで2Lを作るシミュレーショ ン</span></li>
-        <li><a href="DSA/euclidean-algorithm.html">Euclidean Algorithm Visualizer</a> - <span class="desc">ユークリッドの互除法で最大公約数を求める過程を可視化</span></li>
-        <li><a href="DSA/sentinel-search.html">Sentinel Search Comparison</a> - <span class="desc">番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化</span></li>
-        <li><a href="DSA/hash-search.html">Hash Search</a> - <span class="desc">ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化</span></li>
-        <li><a href="DSA/singly-linked-list.html">Singly Linked List</a> - <span class="desc">単方向リストの挿入・削除で、next ポインタのつなぎ替えをステップごとに可視化</span></li>
         <li><a href="DSA/stairs_recursion.html">Stairs Recursion</a> - <span class="desc">再帰による階段の登り方問題のデモ</span></li>
         <li><a href="DSA/hanoi.html">Tower of Hanoi</a> - <span class="desc">ハノイの塔のインタラクティブなデモ</span></li>
         <li><a href="DSA/river-crossing.html">River Crossing</a> - <span class="desc">川渡り問題のシミュレーション</span></li>
+      </ul>
+
+      <h4>探索・数え上げ・ハッシュ</h4>
+      <ul>
+        <li><a href="DSA/euclidean-algorithm.html">Euclidean Algorithm Visualizer</a> - <span class="desc">ユークリッドの互除法で最大公約数を求める過程を可視化</span></li>
+        <li><a href="DSA/sentinel-search.html">Sentinel Search Comparison</a> - <span class="desc">番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化</span></li>
+        <li><a href="DSA/hash-search.html">Hash Search</a> - <span class="desc">ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化</span></li>
         <li><a href="DSA/maze-search.html">Maze Search (BFS/DFS)</a> - <span class="desc">幅優先/深さ優先で迷路を探索。探索木とログを動的表示</span></li>
+      </ul>
+
+      <h4>線形データ構造</h4>
+      <ul>
+        <li><a href="DSA/singly-linked-list.html">Singly Linked List</a> - <span class="desc">単方向リストの挿入・削除で、next ポインタのつなぎ替えをステップごとに可視化</span></li>
+      </ul>
+
+      <h4>木・グラフ</h4>
+      <ul>
         <li><a href="DSA/huffman-coding.html">Huffman Coding</a> - <span class="desc">出現頻度からハフマン木を構築し、符号表・平均 符号長・エントロピーHを可視化</span></li>
         <li><a href="DSA/graph-visualizer.html">Graph Visualizer</a> - <span class="desc">BFS/最短経路などの可視化</span></li>
+        <li><a href="DSA/bst-avl-rotation.html">BST / AVL Rotation Visualizer</a> - <span class="desc">同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化</span></li>
+      </ul>
+
+      <h4>ソート</h4>
+      <ul>
         <li><a href="DSA/heap-sort.html">Heap Sort Visualizer</a> - <span class="desc">最大ヒープの構築からソートまでの過程を木構造で可視化</span></li>
+        <li><a href="DSA/bubble-sort-animation.html">Bubble Sort Animation</a> - <span class="desc">配列のスワップ移動と疑似コードの対応でバブルソートを可視化</span></li>
+        <li><a href="DSA/selection-sort-animation.html">Selection Sort Animation</a> - <span class="desc">未ソート部分から最小値を探し，先頭と交換する選択ソート</span></li>
+        <li><a href="DSA/insertion-sort-animation.html">Insertion Sort Animation (Swap Ver.)</a> - <span class="desc">隣接交換で1データずつ前へ送る挿入ソート</span></li>
+        <li><a href="DSA/insertion-sort-shift-animation.html">Insertion Sort Animation (ins/cmp/temp Ver.)</a> - <span class="desc">後ろへまとめてずらして挿入する版</span></li>
       </ul>
 
       <h3>進化計算</h3>
