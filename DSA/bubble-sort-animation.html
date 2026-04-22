@@ -484,8 +484,16 @@
         font-size: 14px;
       }
 
-      .status-row strong {
+      .message-value {
         color: var(--fg);
+        font-weight: 700;
+      }
+
+      .message-list {
+        margin: 4px 0 0 1.1em;
+        padding: 0;
+        color: var(--fg);
+        font-weight: 600;
       }
 
       .legend {
@@ -595,7 +603,7 @@
               <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">a</span>[<span class="code-var">j</span> <span class="code-op">-</span> <span class="code-num">1</span>], <span class="code-var">a</span>[<span class="code-var">j</span>] <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">j</span>], <span class="code-var">a</span>[<span class="code-var">j</span> <span class="code-op">-</span> <span class="code-num">1</span>]</span></li>
             </ol>
             <div class="status-row small">
-              <span><strong id="messageValue">初期状態</strong></span>
+              <span id="messageValue" class="message-value">初期状態</span>
             </div>
           </section>
         </section>
@@ -713,7 +721,13 @@
             : `${work[i]} が左端で確定 ⇨ i=${n - 1}`;
           built.push({ type: 'mark-sorted', line: 3, pass: i, sortedIndex: i, message: nextPassMessage });
         }
-        built.push({ type: 'done', line: 1, markAllSorted: true, message: `i=${n - 1} となり外側ループ終了（ソート完了）` });
+        built.push({
+          type: 'done',
+          line: 1,
+          markAllSorted: true,
+          message: `i=${n - 1} となり外側ループ終了（ソート完了）`,
+          details: [`${n}巡目は不要`]
+        });
         return built;
       }
 
@@ -910,7 +924,16 @@
         if (line) line.classList.add('active');
       }
 
-      function updateStatus(message) {
+      function escapeHtml(text) {
+        return String(text)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function updateStatus(message, details = []) {
         const n = items.length;
         const isDone = currentStepType === 'done';
         const isAfterPassEnd = currentStepType === 'mark-sorted' && currentPass != null && currentPass < n - 2;
@@ -923,7 +946,10 @@
         compareValue.textContent = String(compareCount);
         swapValue.textContent = String(swapCount);
         remainValue.textContent = String(Math.max(steps.length - stepIndex, 0));
-        messageValue.textContent = message;
+        const detailHtml = details.length
+          ? `<ul class="message-list">${details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join('')}</ul>`
+          : '';
+        messageValue.innerHTML = `${escapeHtml(message)}${detailHtml}`;
       }
 
       function clearTimer() {
@@ -978,7 +1004,7 @@
         }
 
         renderPassFigure();
-        updateStatus(step.message);
+        updateStatus(step.message, step.details);
         if (step.type === 'swap') {
           showSwapBubble(step.swap);
         }
