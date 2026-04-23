@@ -62,7 +62,7 @@
       .controls label,
       .small {
         color: var(--muted);
-        font-size: 11px;
+        font-size: 14px;
       }
 
       button,
@@ -76,13 +76,16 @@
         background: #fff;
         color: var(--fg);
         border: 1px solid #d1d5db;
-        padding: 5px 7px;
-        border-radius: 6px;
-        font-size: 11px;
+        padding: 7px 10px;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.2;
+        min-height: 32px;
       }
 
       button {
         cursor: pointer;
+        min-width: 64px;
       }
 
       button:hover,
@@ -105,11 +108,30 @@
 
       input[type="range"] {
         accent-color: var(--accent);
+        width: 140px;
       }
 
       .array-input {
-        width: 210px;
+        width: 150px;
         max-width: 100%;
+      }
+
+      .array-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+      }
+
+      .array-label {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .array-row .array-input {
+        flex: 1 1 150px;
+        min-width: 0;
       }
 
       .viz {
@@ -551,11 +573,11 @@
         <section class="side-stack">
           <section class="panel controls-panel" aria-label="controls">
             <div class="controls compact">
-              <div class="control-row">
-                <label>配列 <input id="arrayInput" class="array-input" type="text" value="90, 34, 78, 12, 56" /></label>
+              <div class="control-row array-row">
+                <label class="array-label">配列 <input id="arrayInput" class="array-input" type="text" value="90, 34, 78, 12, 56" /></label>
+                <button id="randomBtn">乱数生成</button>
               </div>
               <div class="control-row">
-                <button id="randomBtn">乱数生成</button>
                 <button id="prevBtn">1ステップ戻る</button>
                 <button id="stepBtn">1ステップ進む</button>
               </div>
