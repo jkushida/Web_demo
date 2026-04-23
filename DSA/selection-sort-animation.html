@@ -123,8 +123,26 @@
       }
 
       .array-input {
-        width: 170px;
+        width: 150px;
         max-width: 100%;
+      }
+
+      .array-row {
+        flex-wrap: nowrap;
+        gap: 6px;
+      }
+
+      .array-label {
+        display: flex;
+        flex: 1 1 auto;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+      }
+
+      .array-row .array-input {
+        flex: 1 1 150px;
+        min-width: 0;
       }
 
       .number-input {
@@ -576,8 +594,8 @@
         <section class="side-stack">
           <section class="panel controls-panel" aria-label="controls">
             <div class="controls compact">
-              <div class="control-row">
-                <label>配列 <input id="arrayInput" class="array-input" type="text" value="4, 2, 6, 5, 1, 3" /></label>
+              <div class="control-row array-row">
+                <label class="array-label">配列 <input id="arrayInput" class="array-input" type="text" value="4, 2, 6, 5, 1, 3" /></label>
                 <button id="randomBtn">乱数生成</button>
               </div>
               <div class="control-row">
