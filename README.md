@@ -39,6 +39,7 @@
   - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
   - [Bubble Sort Animation](https://jkushida.github.io/Web_demo/DSA/bubble-sort-animation.html) - 配列のスワップ移動と疑似コードの対応でバブルソートを可視化
   - [Selection Sort Animation](https://jkushida.github.io/Web_demo/DSA/selection-sort-animation.html) - 未ソート部分から最小値を探し，a[i] と交換
+  - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 値を対応する bucket に振り分けてから順に回収する流れを可視化
   - [Insertion Sort Animation (Swap Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-animation.html) - 隣接交換で1データずつ前へ送る挿入ソート
   - [Insertion Sort Animation (ins/cmp/temp Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-shift-animation.html) - 後ろへまとめてずらして挿入する版
 
