@@ -1,0 +1,1107 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>基数ソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --line: #d1d5db;
+        --fg: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-weak: #dbeafe;
+        --accent: #d97706;
+        --accent-weak: #fef3c7;
+        --bucket: #7c3aed;
+        --bucket-weak: #f5f3ff;
+        --done: #15803d;
+        --done-weak: #dcfce7;
+        --flow-in: #ef4444;
+        --flow-out: #16a34a;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: #f8fafc;
+        color: var(--fg);
+        font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      }
+
+      header {
+        padding: 8px 14px 6px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      main {
+        padding: 10px 12px 14px;
+        overflow: auto;
+      }
+
+      .viz {
+        display: grid;
+        grid-template-columns: minmax(410px, 1fr) 410px;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      }
+
+      .chart-panel {
+        position: relative;
+        padding: 12px;
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .controls-panel,
+      .code-panel {
+        padding: 12px;
+      }
+
+      .controls.compact {
+        display: grid;
+        gap: 7px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .array-row {
+        align-items: end;
+        flex-wrap: nowrap;
+      }
+
+      .array-label {
+        flex: 0 1 280px;
+        display: grid;
+        gap: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .array-input {
+        width: min(250px, 100%);
+      }
+
+      #randomBtn {
+        margin-left: auto;
+        width: 96px;
+        line-height: 1.2;
+        text-align: center;
+      }
+
+      input[type="text"],
+      input[type="range"],
+      button {
+        font: inherit;
+      }
+
+      input[type="text"] {
+        padding: 7px 9px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      button {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--fg);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #f8fafc; }
+
+      button.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .row-head .small {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      #passLabelTop {
+        font-size: 15px;
+      }
+
+      .flow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .flow-overlay {
+        position: absolute;
+        inset: 12px;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        pointer-events: none;
+        overflow: visible;
+        z-index: 2;
+      }
+
+      .flow-line {
+        fill: none;
+        stroke-width: 3;
+        stroke-dasharray: 8 6;
+        stroke-linecap: round;
+        opacity: 0;
+        animation: flowLineIn 0.7s ease-out forwards;
+      }
+
+      @keyframes flowLineIn {
+        0% { opacity: 0; stroke-dashoffset: 48; }
+        20% { opacity: 1; }
+        100% { opacity: 0.95; stroke-dashoffset: 0; }
+      }
+
+      .row-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 8px;
+        background: #fcfcfd;
+      }
+
+      .row-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+
+      .row-title {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .done-note {
+        color: var(--done);
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-height: 42px;
+      }
+
+      .chip {
+        min-width: 58px;
+        padding: 7px 8px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: #fff;
+        text-align: center;
+        font-weight: 800;
+      }
+
+      .chip.current {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
+
+      .chip.output {
+        background: var(--done-weak);
+        border-color: var(--done);
+      }
+
+      .digit-wrap {
+        display: inline-flex;
+        gap: 0.02em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+
+      .digit {
+        min-width: 0.65em;
+        text-align: center;
+      }
+
+      .digit.ghost {
+        color: #cbd5e1;
+      }
+
+      .digit.hit {
+        color: #ef4444;
+        font-weight: 900;
+      }
+
+      .bucket-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(62px, 1fr));
+        gap: 5px;
+      }
+
+      .bucket-card {
+        border: 1px solid #ddd6fe;
+        border-radius: 10px;
+        padding: 6px;
+        background: var(--bucket-weak);
+        min-height: 78px;
+      }
+
+      .bucket-card.active {
+        border-color: var(--bucket);
+        box-shadow: inset 0 0 0 1px var(--bucket);
+      }
+
+      .bucket-head {
+        display: grid;
+        gap: 2px;
+        margin-bottom: 5px;
+      }
+
+      .bucket-count {
+        justify-self: end;
+      }
+
+      .bucket-name {
+        font-weight: 800;
+        color: #5b21b6;
+        font-size: 12px;
+      }
+
+      .bucket-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .bucket-chip {
+        min-width: 34px;
+        padding: 4px 5px;
+        border-radius: 7px;
+        border: 1px solid #c4b5fd;
+        background: #fff;
+        text-align: center;
+        font-weight: 800;
+      }
+
+      .bucket-chip.current {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
+
+      .empty {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+
+      .status-row strong { color: var(--fg); }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 7px;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 7px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      .code-panel h2 {
+        margin: 0 0 10px;
+        font-size: 17px;
+      }
+
+      .code-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        gap: 3px;
+        overflow-x: auto;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 7px;
+        align-items: baseline;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .code-line.active { background: var(--primary-weak); }
+
+      .code-text { white-space: nowrap; }
+
+      .ln {
+        color: #64748b;
+        text-align: right;
+      }
+
+      .code-kw {
+        color: #7c3aed;
+        font-weight: 700;
+      }
+
+      .code-fn { color: #0369a1; }
+      .code-var { color: #b45309; }
+      .code-num { color: #047857; }
+
+      .message-value {
+        color: var(--fg);
+        font-weight: 700;
+      }
+
+      .state-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 7px 9px;
+      }
+
+      .state-label {
+        margin-bottom: 5px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .mono-box {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #0f172a;
+      }
+
+      .program-state {
+        display: grid;
+        gap: 7px;
+        margin-top: 8px;
+      }
+
+      .hint-box {
+        margin: 8px 0;
+        padding: 7px 9px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .hint-box strong {
+        color: #111827;
+      }
+
+      .error-text {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+
+      @media (max-width: 960px) {
+        .viz {
+          grid-template-columns: minmax(470px, 1fr) 410px;
+          min-width: 900px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="margin: 0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>基数ソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="viz">
+        <section class="panel chart-panel">
+          <svg id="flowOverlay" class="flow-overlay" aria-hidden="true"></svg>
+          <div class="flow">
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">data</span>
+                <span class="small" id="passLabelTop">1の位を対象としてバケットソートを行う</span>
+              </div>
+              <div id="dataRow" class="chip-row"></div>
+            </section>
+
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">バケット</span>
+                <span class="small">0 から 9 の入れ物</span>
+              </div>
+              <div id="bucketGrid" class="bucket-grid"></div>
+            </section>
+
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">tmp</span>
+                <span id="doneNote" class="done-note" hidden>ソート完了</span>
+              </div>
+              <div id="tmpRow" class="chip-row"></div>
+            </section>
+          </div>
+
+          <div class="status-row">
+            <span>phase <strong id="phaseValue">初期化</strong></span>
+            <span>桁 <strong id="expValue">-</strong></span>
+            <span>i <strong id="iValue">-</strong></span>
+            <span>現在値 <strong id="currentValue">-</strong></span>
+            <span>digit <strong id="digitValue">-</strong></span>
+            <span>bucket <strong id="targetValue">-</strong></span>
+            <span>tmp <strong id="tmpCountValue">0</strong></span>
+            <span>残りステップ <strong id="remainValue">0</strong></span>
+          </div>
+
+          <div class="legend" aria-label="legend">
+            <div><i style="background:#ffffff; border:1px solid #111;"></i>通常</div>
+            <div><i style="background:#fef3c7;"></i>現在注目</div>
+            <div><i style="background:#f5f3ff; border:1px solid #7c3aed;"></i>対象bucket</div>
+            <div><i style="background:#dcfce7;"></i>tmpへ追加済み</div>
+            <div style="color:#ef4444; font-weight:700;">赤: 注目桁</div>
+          </div>
+        </section>
+
+        <section class="side-stack">
+          <section class="panel controls-panel" aria-label="controls">
+            <div class="controls compact">
+              <div class="control-row array-row">
+                <label class="array-label">配列：100の位までの整数を6個
+                  <input id="arrayInput" class="array-input" type="text" value="134, 43, 568, 15, 99, 227" />
+                </label>
+                <button id="randomBtn">乱数生成</button>
+              </div>
+              <div class="control-row">
+                <button id="prevBtn">1ステップ戻る</button>
+                <button id="stepBtn">1ステップ進む</button>
+              </div>
+              <div class="control-row">
+                <label>速度 <input id="speedInput" type="range" min="0.5" max="10" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+                <button id="playBtn" class="primary">再生</button>
+                <button id="pauseBtn" disabled>一時停止</button>
+                <button id="resetBtn">リセット</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel code-panel">
+            <h2>基数ソートのコード</h2>
+            <div class="hint-box"><strong>1の位 → 10の位 → 100の位</strong> の順で、前の桁で決まった順序を保ったまま並べ替えます。</div>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">radix_sort</span>(<span class="code-var">data</span>):</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">exp</span> <span class="code-kw">in</span> [<span class="code-num">1</span>, <span class="code-num">10</span>, <span class="code-num">100</span>]:</span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">buckets</span> = [ [] <span class="code-kw">for</span> _ <span class="code-kw">in</span> <span class="code-fn">range</span>(<span class="code-num">10</span>) ]</span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">x</span> <span class="code-kw">in</span> <span class="code-var">data</span>:</span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">digit</span> = (<span class="code-var">x</span> // <span class="code-var">exp</span>) % <span class="code-num">10</span></span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">buckets</span>[<span class="code-var">digit</span>].<span class="code-fn">append</span>(<span class="code-var">x</span>)</span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">tmp</span> = []</span></li>
+              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">bucket</span> <span class="code-kw">in</span> <span class="code-var">buckets</span>:</span></li>
+              <li id="line-9" class="code-line"><span class="ln">9</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">x</span> <span class="code-kw">in</span> <span class="code-var">bucket</span>:</span></li>
+              <li id="line-10" class="code-line"><span class="ln">10</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">tmp</span>.<span class="code-fn">append</span>(<span class="code-var">x</span>)</span></li>
+              <li id="line-11" class="code-line"><span class="ln">11</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">data</span> = <span class="code-var">tmp</span>[:]</span></li>
+              <li id="line-12" class="code-line"><span class="ln">12</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">return</span> <span class="code-var">data</span></span></li>
+            </ol>
+            <div class="status-row small">
+              <span id="messageValue" class="message-value">初期状態</span>
+            </div>
+            <div id="errorValue" class="small"></div>
+            <div class="program-state">
+              <section class="state-box">
+                <div class="state-label">buckets の状態</div>
+                <pre id="bucketStateBox" class="mono-box">[[], [], [], [], [], [], [], [], [], []]</pre>
+              </section>
+              <section class="state-box">
+                <div class="state-label">tmp の状態</div>
+                <pre id="tmpStateBox" class="mono-box">[]</pre>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const arrayInput = document.getElementById('arrayInput');
+      const speedInput = document.getElementById('speedInput');
+      const speedLabel = document.getElementById('speedLabel');
+      const randomBtn = document.getElementById('randomBtn');
+      const stepBtn = document.getElementById('stepBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const dataRow = document.getElementById('dataRow');
+      const bucketGrid = document.getElementById('bucketGrid');
+      const tmpRow = document.getElementById('tmpRow');
+      const flowOverlay = document.getElementById('flowOverlay');
+      const passLabelTop = document.getElementById('passLabelTop');
+      const phaseValue = document.getElementById('phaseValue');
+      const expValue = document.getElementById('expValue');
+      const iValue = document.getElementById('iValue');
+      const currentValue = document.getElementById('currentValue');
+      const digitValue = document.getElementById('digitValue');
+      const targetValue = document.getElementById('targetValue');
+      const tmpCountValue = document.getElementById('tmpCountValue');
+      const remainValue = document.getElementById('remainValue');
+      const messageValue = document.getElementById('messageValue');
+      const errorValue = document.getElementById('errorValue');
+      const bucketStateBox = document.getElementById('bucketStateBox');
+      const tmpStateBox = document.getElementById('tmpStateBox');
+      const doneNote = document.getElementById('doneNote');
+
+      const DEFAULT_VALUES = [134, 43, 568, 15, 99, 227];
+      const EXPONENTS = [1, 10, 100];
+
+      const codeLines = new Map();
+      for (let line = 1; line <= 12; line += 1) {
+        codeLines.set(line, document.getElementById(`line-${line}`));
+      }
+
+      let initialItems = [];
+      let steps = [];
+      let stepIndex = 0;
+      let playing = false;
+      let timer = null;
+
+      function passLabel(exp) {
+        if (exp === 1) return '1の位';
+        if (exp === 10) return '10の位';
+        return '100の位';
+      }
+
+      function makeItems(values) {
+        return values.map((value, index) => ({ id: `item-${index}-${value}`, value }));
+      }
+
+      function parseArrayText(text) {
+        const values = [];
+        for (const part of text.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)) {
+          if (!/^\d+$/.test(part)) continue;
+          const value = Number(part);
+          if (value < 0 || value > 999) continue;
+          values.push(value);
+          if (values.length >= 6) break;
+        }
+        return values;
+      }
+
+      function randomValues() {
+        const values = [
+          1 + Math.floor(Math.random() * 9),
+          10 + Math.floor(Math.random() * 90),
+          100 + Math.floor(Math.random() * 900)
+        ];
+        while (values.length < 5) {
+          values.push(1 + Math.floor(Math.random() * 999));
+        }
+        const duplicateSource = values[Math.floor(Math.random() * values.length)];
+        values.push(duplicateSource);
+        for (let index = values.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+        }
+        return values;
+      }
+
+      function buildSteps(items) {
+        let work = items.map((item) => ({ ...item }));
+        const built = [];
+
+        EXPONENTS.forEach((exp) => {
+          const buckets = Array.from({ length: 10 }, () => []);
+          built.push({ type: 'pass-start', line: 2, phase: '準備', exp, message: `${passLabel(exp)}のソートを開始` });
+          built.push({ type: 'setup-buckets', line: 3, phase: '準備', exp, message: '0〜9 の bucket を用意' });
+
+          work.forEach((item, index) => {
+            const digit = Math.floor(item.value / exp) % 10;
+            built.push({
+              type: 'scan',
+              line: 4,
+              phase: '配布',
+              exp,
+              inputIndex: index,
+              itemId: item.id,
+              value: item.value,
+              digit,
+              bucketIndex: digit,
+              message: `${item.value} の ${passLabel(exp)} は ${digit}`
+            });
+            built.push({
+              type: 'digit-calc',
+              line: 5,
+              phase: '配布',
+              exp,
+              inputIndex: index,
+              itemId: item.id,
+              value: item.value,
+              digit,
+              bucketIndex: digit,
+              message: `(${item.value} // ${exp}) % 10 = ${digit}`
+            });
+            built.push({
+              type: 'place',
+              line: 6,
+              phase: '配布',
+              exp,
+              inputIndex: index,
+              itemId: item.id,
+              value: item.value,
+              digit,
+              bucketIndex: digit,
+              message: `bucket[${digit}] に ${item.value} を入れる`
+            });
+            buckets[digit].push(item);
+          });
+
+          built.push({ type: 'setup-tmp', line: 7, phase: '回収', exp, message: 'tmp を空で用意' });
+
+          const nextWork = [];
+          for (let bucketIndex = 0; bucketIndex < 10; bucketIndex += 1) {
+            built.push({
+              type: 'bucket-start',
+              line: 8,
+              phase: '回収',
+              exp,
+              bucketIndex,
+              message: `bucket[${bucketIndex}] を先頭から確認`
+            });
+            for (const item of buckets[bucketIndex]) {
+              nextWork.push(item);
+              built.push({
+                type: 'emit',
+                line: 10,
+                phase: '回収',
+                exp,
+                bucketIndex,
+                itemId: item.id,
+                value: item.value,
+                digit: bucketIndex,
+                message: `${item.value} を tmp に追加`
+              });
+            }
+          }
+
+          work = nextWork.map((item) => ({ ...item }));
+          built.push({
+            type: 'pass-complete',
+            line: 11,
+            phase: '整理',
+            exp,
+            message: `${passLabel(exp)}のソート結果を data に反映`
+          });
+        });
+
+        built.push({ type: 'done', line: 12, phase: '完了', exp: 100, message: '基数ソート完了' });
+        return built;
+      }
+
+      function resetState(values) {
+        initialItems = makeItems(values);
+        steps = buildSteps(initialItems);
+        stepIndex = 0;
+        clearTimer();
+        playing = false;
+        render();
+        updateButtons();
+      }
+
+      function getStateAt(index) {
+        const state = {
+          data: initialItems.map((item) => ({ ...item })),
+          buckets: Array.from({ length: 10 }, () => []),
+          tmp: [],
+          activeStep: null,
+          phase: '初期化',
+          exp: 1,
+          currentIndex: null,
+          currentValue: null,
+          currentDigit: null,
+          currentBucketIndex: null,
+          message: '初期状態'
+        };
+
+        for (let i = 0; i < index; i += 1) {
+          const step = steps[i];
+          state.activeStep = step;
+          state.phase = step.phase || state.phase;
+          state.exp = step.exp || state.exp;
+          state.message = step.message || state.message;
+          state.currentIndex = step.inputIndex ?? null;
+          state.currentValue = step.value ?? null;
+          state.currentDigit = step.digit ?? null;
+          state.currentBucketIndex = step.bucketIndex ?? null;
+
+          if (step.type === 'pass-start') {
+            state.buckets = Array.from({ length: 10 }, () => []);
+            state.tmp = [];
+          }
+          if (step.type === 'setup-buckets') {
+            state.buckets = Array.from({ length: 10 }, () => []);
+          }
+          if (step.type === 'place') {
+            const item = state.data[step.inputIndex];
+            if (item) {
+              state.buckets[step.bucketIndex].push({ ...item });
+            }
+          }
+          if (step.type === 'setup-tmp') {
+            state.tmp = [];
+          }
+          if (step.type === 'emit') {
+            const bucketItem = state.buckets[step.bucketIndex].find((item) => item.id === step.itemId);
+            if (bucketItem) {
+              state.tmp.push({ ...bucketItem });
+            }
+          }
+          if (step.type === 'pass-complete') {
+            state.data = state.tmp.map((item) => ({ ...item }));
+          }
+        }
+
+        return state;
+      }
+
+      function formatBuckets(buckets) {
+        return `[${buckets.map((bucket) => `[${bucket.map((item) => item.value).join(', ')}]`).join(', ')}]`;
+      }
+
+      function digitMarkup(value, exp) {
+        const padded = String(value).padStart(3, '0');
+        const hitIndex = exp === 1 ? 2 : exp === 10 ? 1 : 0;
+        return `<span class="digit-wrap">${padded.split('').map((digit, index) => {
+          const classes = ['digit'];
+          if (digit === '0' && index < padded.length - String(value).length) {
+            classes.push('ghost');
+          }
+          if (index === hitIndex) {
+            classes.push('hit');
+          }
+          return `<span class="${classes.join(' ')}">${digit}</span>`;
+        }).join('')}</span>`;
+      }
+
+      function updateCodeHighlight(activeStep) {
+        codeLines.forEach((line) => line.classList.remove('active'));
+        if (activeStep && activeStep.line) {
+          codeLines.get(activeStep.line)?.classList.add('active');
+        }
+      }
+
+      function renderData(state) {
+        dataRow.innerHTML = '';
+        state.data.forEach((item, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          chip.dataset.inputIndex = String(index);
+          if (state.currentIndex === index && ['配布'].includes(state.phase)) {
+            chip.classList.add('current');
+          }
+          chip.innerHTML = digitMarkup(item.value, state.exp);
+          dataRow.appendChild(chip);
+        });
+      }
+
+      function renderBuckets(state) {
+        bucketGrid.innerHTML = '';
+        for (let bucketIndex = 0; bucketIndex < 10; bucketIndex += 1) {
+          const card = document.createElement('div');
+          card.className = 'bucket-card';
+          card.dataset.bucketIndex = String(bucketIndex);
+          if (state.currentBucketIndex === bucketIndex) {
+            card.classList.add('active');
+          }
+          const head = document.createElement('div');
+          head.className = 'bucket-head';
+          head.innerHTML = `<span class="small bucket-count">${state.buckets[bucketIndex].length} 個</span><span class="bucket-name">bucket[${bucketIndex}]</span>`;
+          card.appendChild(head);
+
+          const list = document.createElement('div');
+          list.className = 'bucket-list';
+          if (state.buckets[bucketIndex].length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'small empty';
+            empty.textContent = 'empty';
+            list.appendChild(empty);
+          } else {
+            state.buckets[bucketIndex].forEach((item) => {
+              const chip = document.createElement('div');
+              chip.className = 'bucket-chip';
+              if (state.activeStep?.itemId === item.id) {
+                chip.classList.add('current');
+              }
+              chip.innerHTML = digitMarkup(item.value, state.exp);
+              list.appendChild(chip);
+            });
+          }
+          card.appendChild(list);
+          bucketGrid.appendChild(card);
+        }
+      }
+
+      function renderTmp(state) {
+        tmpRow.innerHTML = '';
+        if (state.tmp.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'small empty';
+          empty.textContent = 'まだ出力なし';
+          tmpRow.appendChild(empty);
+          return;
+        }
+        state.tmp.forEach((item, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip output';
+          chip.dataset.tmpIndex = String(index);
+          chip.innerHTML = digitMarkup(item.value, state.exp);
+          tmpRow.appendChild(chip);
+        });
+      }
+
+      function clearFlowOverlay() {
+        flowOverlay.innerHTML = '';
+      }
+
+      function renderFlowOverlay(state) {
+        clearFlowOverlay();
+        if (!state.activeStep || !['place', 'emit'].includes(state.activeStep.type)) {
+          return;
+        }
+
+        const overlayRect = flowOverlay.getBoundingClientRect();
+        let x1;
+        let y1;
+        let x2;
+        let y2;
+        let color;
+
+        if (state.activeStep.type === 'place') {
+          const source = dataRow.querySelector(`[data-input-index="${state.activeStep.inputIndex}"]`);
+          const target = bucketGrid.querySelector(`[data-bucket-index="${state.activeStep.bucketIndex}"]`);
+          if (!source || !target) return;
+          const sourceRect = source.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          x1 = sourceRect.left + sourceRect.width / 2 - overlayRect.left;
+          y1 = sourceRect.bottom - overlayRect.top;
+          x2 = targetRect.left + targetRect.width / 2 - overlayRect.left;
+          y2 = targetRect.top + 8 - overlayRect.top;
+          color = getComputedStyle(document.documentElement).getPropertyValue('--flow-in').trim();
+        } else {
+          const source = bucketGrid.querySelector(`[data-bucket-index="${state.activeStep.bucketIndex}"]`);
+          const target = tmpRow.querySelector(`[data-tmp-index="${state.tmp.length - 1}"]`);
+          if (!source || !target) return;
+          const sourceRect = source.getBoundingClientRect();
+          const targetRect = target.getBoundingClientRect();
+          x1 = sourceRect.left + sourceRect.width / 2 - overlayRect.left;
+          y1 = sourceRect.bottom - overlayRect.top;
+          x2 = targetRect.left + targetRect.width / 2 - overlayRect.left;
+          y2 = targetRect.top + 8 - overlayRect.top;
+          color = getComputedStyle(document.documentElement).getPropertyValue('--flow-out').trim();
+        }
+
+        flowOverlay.setAttribute('viewBox', `0 0 ${overlayRect.width} ${overlayRect.height}`);
+        flowOverlay.innerHTML = `
+          <defs>
+            <marker id="flowArrowHead" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,7 L8,3.5 z" fill="${color}"></path>
+            </marker>
+          </defs>
+          <line
+            class="flow-line"
+            style="stroke:${color}"
+            x1="${x1.toFixed(1)}"
+            y1="${y1.toFixed(1)}"
+            x2="${x2.toFixed(1)}"
+            y2="${y2.toFixed(1)}"
+            marker-end="url(#flowArrowHead)"
+          ></line>
+        `;
+      }
+
+      function renderStatus(state) {
+        passLabelTop.textContent = `${passLabel(state.exp)}を対象としてバケットソートを行う`;
+        phaseValue.textContent = state.phase;
+        expValue.textContent = passLabel(state.exp);
+        iValue.textContent = state.currentIndex == null ? '-' : String(state.currentIndex);
+        currentValue.textContent = state.currentValue == null ? '-' : String(state.currentValue);
+        digitValue.textContent = state.currentDigit == null ? '-' : String(state.currentDigit);
+        targetValue.textContent = state.currentBucketIndex == null ? '-' : `bucket[${state.currentBucketIndex}]`;
+        tmpCountValue.textContent = String(state.tmp.length);
+        remainValue.textContent = String(Math.max(steps.length - stepIndex, 0));
+        messageValue.textContent = state.message;
+        bucketStateBox.textContent = formatBuckets(state.buckets);
+        tmpStateBox.textContent = `[${state.tmp.map((item) => item.value).join(', ')}]`;
+        doneNote.hidden = state.phase !== '完了';
+      }
+
+      function render() {
+        const state = getStateAt(stepIndex);
+        updateCodeHighlight(state.activeStep);
+        renderData(state);
+        renderBuckets(state);
+        renderTmp(state);
+        renderStatus(state);
+        renderFlowOverlay(state);
+      }
+
+      function updateButtons() {
+        prevBtn.disabled = playing || stepIndex <= 0;
+        stepBtn.disabled = playing || stepIndex >= steps.length;
+        playBtn.disabled = playing || stepIndex >= steps.length;
+        pauseBtn.disabled = !playing;
+      }
+
+      function clearTimer() {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function playbackDelay() {
+        return 760 / Number(speedInput.value);
+      }
+
+      function advanceStep() {
+        if (stepIndex >= steps.length) {
+          playing = false;
+          clearTimer();
+          updateButtons();
+          render();
+          return;
+        }
+        stepIndex += 1;
+        render();
+        updateButtons();
+        if (playing) {
+          timer = setTimeout(advanceStep, playbackDelay());
+        }
+      }
+
+      function startPlayback() {
+        if (stepIndex >= steps.length) return;
+        playing = true;
+        updateButtons();
+        advanceStep();
+      }
+
+      function stopPlayback() {
+        playing = false;
+        clearTimer();
+        updateButtons();
+      }
+
+      function loadFromInput() {
+        const values = parseArrayText(arrayInput.value);
+        if (values.length === 0) {
+          arrayInput.value = DEFAULT_VALUES.join(', ');
+          showError('0以上999以下の整数を1つ以上入力してください。既定値を読み込みました。');
+          resetState(DEFAULT_VALUES);
+          return;
+        }
+        showError('');
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      }
+
+      function showError(text) {
+        errorValue.textContent = text;
+        errorValue.className = text ? 'small error-text' : 'small';
+      }
+
+      speedInput.addEventListener('input', () => {
+        speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+      });
+
+      randomBtn.addEventListener('click', () => {
+        const values = randomValues();
+        arrayInput.value = values.join(', ');
+        showError('');
+        resetState(values);
+      });
+
+      resetBtn.addEventListener('click', loadFromInput);
+      stepBtn.addEventListener('click', () => {
+        if (stepIndex < steps.length) {
+          stepIndex += 1;
+          render();
+          updateButtons();
+        }
+      });
+      prevBtn.addEventListener('click', () => {
+        if (stepIndex > 0) {
+          stepIndex -= 1;
+          render();
+          updateButtons();
+        }
+      });
+      playBtn.addEventListener('click', startPlayback);
+      pauseBtn.addEventListener('click', stopPlayback);
+
+      speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+      resetState(DEFAULT_VALUES);
+    </script>
+  </body>
+</html>

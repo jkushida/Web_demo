@@ -1,0 +1,1318 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>カウントソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --line: #d1d5db;
+        --fg: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-weak: #dbeafe;
+        --accent: #d97706;
+        --accent-weak: #fef3c7;
+        --count: #7c3aed;
+        --count-weak: #f5f3ff;
+        --done: #15803d;
+        --done-weak: #dcfce7;
+        --flow-in: #ef4444;
+        --flow-out: #16a34a;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: #f8fafc;
+        color: var(--fg);
+        font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      }
+
+      header {
+        padding: 8px 14px 6px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      main {
+        padding: 10px 12px 14px;
+        overflow: auto;
+      }
+
+      .viz {
+        display: grid;
+        grid-template-columns: minmax(430px, 1fr) 410px;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      }
+
+      .chart-panel {
+        position: relative;
+        padding: 12px;
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .controls-panel,
+      .code-panel {
+        padding: 12px;
+      }
+
+      .controls.compact {
+        display: grid;
+        gap: 7px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .array-row {
+        align-items: end;
+        flex-wrap: nowrap;
+      }
+
+      .array-label {
+        flex: 0 1 280px;
+        display: grid;
+        gap: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .array-input {
+        width: min(250px, 100%);
+      }
+
+      #randomBtn {
+        margin-left: auto;
+        width: 96px;
+        line-height: 1.2;
+        text-align: center;
+      }
+
+      input[type="text"],
+      input[type="range"],
+      button {
+        font: inherit;
+      }
+
+      input[type="text"] {
+        padding: 7px 9px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      button {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--fg);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #f8fafc; }
+
+      button.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .row-head .small {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      #phaseLabelTop {
+        font-size: 15px;
+        transition: color 0.2s ease;
+      }
+
+      #phaseLabelTop.phase-collect {
+        color: #6d28d9;
+      }
+
+      #phaseLabelTop.phase-cumulative {
+        color: #1d4ed8;
+      }
+
+      #phaseLabelTop.phase-place {
+        color: #15803d;
+      }
+
+      .flow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .flow-overlay {
+        position: absolute;
+        inset: 12px;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        pointer-events: none;
+        overflow: visible;
+        z-index: 2;
+      }
+
+      .flow-line {
+        fill: none;
+        stroke-width: 3;
+        stroke-dasharray: 8 6;
+        stroke-linecap: round;
+        opacity: 0;
+        animation: flowLineIn 0.7s ease-out forwards;
+      }
+
+      @keyframes flowLineIn {
+        0% { opacity: 0; stroke-dashoffset: 48; }
+        20% { opacity: 1; }
+        100% { opacity: 0.95; stroke-dashoffset: 0; }
+      }
+
+      .row-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 8px;
+        background: #fcfcfd;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      }
+
+      .row-block.phase-collect {
+        border-color: #c4b5fd;
+        box-shadow: inset 0 0 0 1px #7c3aed;
+        background: #faf5ff;
+      }
+
+      .row-block.phase-cumulative {
+        border-color: #93c5fd;
+        box-shadow: inset 0 0 0 1px #2563eb;
+        background: #eff6ff;
+      }
+
+      .row-block.phase-place {
+        border-color: #86efac;
+        box-shadow: inset 0 0 0 1px #16a34a;
+        background: #f0fdf4;
+      }
+
+      .row-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+        margin-bottom: 8px;
+      }
+
+      .row-title {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .done-note {
+        color: var(--done);
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        min-height: 42px;
+      }
+
+      .indexed-row {
+        align-items: flex-start;
+        gap: 4px;
+        min-height: 62px;
+      }
+
+      .indexed-chip-wrap {
+        display: grid;
+        justify-items: center;
+        gap: 2px;
+      }
+
+      .chip-index {
+        min-height: 16px;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .chip {
+        min-width: 58px;
+        padding: 7px 8px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: #fff;
+        text-align: center;
+        font-weight: 800;
+      }
+
+      .chip.current {
+        background: var(--accent-weak);
+        border-color: var(--accent);
+      }
+
+      .chip.output {
+        background: var(--done-weak);
+        border-color: var(--done);
+      }
+
+      .digit-wrap {
+        display: inline-flex;
+        gap: 0.02em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+
+      .digit {
+        min-width: 0.65em;
+        text-align: center;
+      }
+
+      .digit.hit {
+        color: #ef4444;
+        font-weight: 900;
+      }
+
+      .count-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(60px, 1fr));
+        gap: 5px;
+      }
+
+      .count-card {
+        border: 1px solid #ddd6fe;
+        border-radius: 10px;
+        padding: 6px;
+        background: var(--count-weak);
+        min-height: 82px;
+      }
+
+      .count-card.active {
+        border-color: var(--count);
+        box-shadow: inset 0 0 0 1px var(--count);
+      }
+
+      .count-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 6px;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+
+      .count-index {
+        color: #5b21b6;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .count-tag {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .count-value {
+        font-size: 28px;
+        font-weight: 900;
+        text-align: center;
+        line-height: 1.2;
+      }
+
+      .count-value.hit {
+        color: #ef4444;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+
+      .status-row strong { color: var(--fg); }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 7px;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 7px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      .code-panel h2 {
+        margin: 0 0 10px;
+        font-size: 17px;
+      }
+
+      .code-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        gap: 3px;
+        overflow-x: auto;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 7px;
+        align-items: baseline;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .code-line.active { background: var(--primary-weak); }
+
+      .code-text { white-space: nowrap; }
+
+      .ln {
+        color: #64748b;
+        text-align: right;
+      }
+
+      .code-kw {
+        color: #7c3aed;
+        font-weight: 700;
+      }
+
+      .code-fn { color: #0369a1; }
+      .code-var { color: #b45309; }
+      .code-num { color: #047857; }
+
+      .message-value {
+        color: var(--fg);
+        font-weight: 700;
+      }
+
+      .state-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 7px 9px;
+      }
+
+      .state-label {
+        margin-bottom: 5px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .mono-box {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #0f172a;
+      }
+
+      .program-state {
+        display: grid;
+        gap: 7px;
+        margin-top: 8px;
+      }
+
+      .hint-box {
+        margin: 8px 0;
+        padding: 7px 9px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .hint-box strong {
+        color: #111827;
+      }
+
+      .error-text {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+
+      @media (max-width: 960px) {
+        .viz {
+          grid-template-columns: minmax(470px, 1fr) 410px;
+          min-width: 900px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="margin: 0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>カウントソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="viz">
+        <section class="panel chart-panel">
+          <svg id="flowOverlay" class="flow-overlay" aria-hidden="true"></svg>
+          <div class="flow">
+            <section id="dataBlock" class="row-block">
+              <div class="row-head">
+                <span class="row-title">data</span>
+                <span class="small" id="phaseLabelTop">左から順に出現回数を数える</span>
+              </div>
+              <div id="dataRow" class="chip-row"></div>
+            </section>
+
+            <section id="countsBlock" class="row-block">
+              <div class="row-head">
+                <span class="row-title">counts</span>
+                <span class="small">値ごとの出現頻度</span>
+              </div>
+              <div id="countGrid" class="count-grid"></div>
+            </section>
+
+            <section id="cumulativeBlock" class="row-block">
+              <div class="row-head">
+                <span class="row-title">累積counts</span>
+                <span class="small">左から順に加算した累積和</span>
+              </div>
+              <div id="cumulativeGrid" class="count-grid"></div>
+            </section>
+
+            <section id="outputBlock" class="row-block">
+              <div class="row-head">
+                <span class="row-title">tmp</span>
+                <span id="doneNote" class="done-note" hidden>ソート完了</span>
+              </div>
+              <div id="outputRow" class="chip-row indexed-row"></div>
+            </section>
+          </div>
+
+          <div class="status-row">
+            <span>phase <strong id="phaseValue">初期化</strong></span>
+            <span>i <strong id="iValue">-</strong></span>
+            <span>現在値 <strong id="currentValue">-</strong></span>
+            <span>counts対象 <strong id="targetValue">-</strong></span>
+            <span>出現回数 <strong id="countValue">0</strong></span>
+            <span>累積値 <strong id="cumulativeValue">0</strong></span>
+            <span>配置先 <strong id="outputIndexValue">-</strong></span>
+            <span>配置済み <strong id="outputCountValue">0</strong></span>
+            <span>残りステップ <strong id="remainValue">0</strong></span>
+          </div>
+
+          <div class="legend" aria-label="legend">
+            <div><i style="background:#ffffff; border:1px solid #111;"></i>通常</div>
+            <div><i style="background:#fef3c7;"></i>現在注目</div>
+            <div><i style="background:#f5f3ff; border:1px solid #7c3aed;"></i>対象counts</div>
+            <div><i style="background:#dcfce7;"></i>tmpに配置済み</div>
+            <div style="color:#ef4444; font-weight:700;">赤: 更新された値</div>
+          </div>
+        </section>
+
+        <section class="side-stack">
+          <section class="panel controls-panel" aria-label="controls">
+            <div class="controls compact">
+              <div class="control-row array-row">
+                <label class="array-label">配列：対象は 1以上4以下の整数を6個
+                  <input id="arrayInput" class="array-input" type="text" value="3, 2, 4, 3, 4, 1" />
+                </label>
+                <button id="randomBtn">乱数生成</button>
+              </div>
+              <div class="control-row">
+                <button id="prevBtn">1ステップ戻る</button>
+                <button id="stepBtn">1ステップ進む</button>
+              </div>
+              <div class="control-row">
+                <label>速度 <input id="speedInput" type="range" min="0.5" max="10" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+                <button id="playBtn" class="primary">再生</button>
+                <button id="pauseBtn" disabled>一時停止</button>
+                <button id="resetBtn">リセット</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel code-panel">
+            <h2>カウントソートのコード</h2>
+            <div class="hint-box"><strong>1回目</strong> に counts へ出現回数を集計し、<strong>2回目</strong> に累積和へ変換し、<strong>3回目</strong> に data を後ろから見て tmp を作ります。</div>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">count_sort</span>(<span class="code-var">data</span>):</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">counts</span> = [<span class="code-num">0</span> <span class="code-kw">for</span> _ <span class="code-kw">in</span> <span class="code-fn">range</span>(<span class="code-num">5</span>)]</span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">x</span> <span class="code-kw">in</span> <span class="code-var">data</span>:</span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">counts</span>[<span class="code-var">x</span>] += <span class="code-num">1</span></span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">cumulative</span> = <span class="code-var">counts</span>[:]</span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">value</span> <span class="code-kw">in</span> <span class="code-fn">range</span>(<span class="code-num">1</span>, <span class="code-num">5</span>):</span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">cumulative</span>[<span class="code-var">value</span>] += <span class="code-var">cumulative</span>[<span class="code-var">value</span> - <span class="code-num">1</span>]</span></li>
+              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">tmp</span> = [<span class="code-kw">None</span>] * <span class="code-fn">len</span>(<span class="code-var">data</span>)</span></li>
+              <li id="line-9" class="code-line"><span class="ln">9</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">for</span> <span class="code-var">x</span> <span class="code-kw">in</span> <span class="code-fn">reversed</span>(<span class="code-var">data</span>):</span></li>
+              <li id="line-10" class="code-line"><span class="ln">10</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">cumulative</span>[<span class="code-var">x</span>] -= <span class="code-num">1</span></span></li>
+              <li id="line-11" class="code-line"><span class="ln">11</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-var">tmp</span>[<span class="code-var">cumulative</span>[<span class="code-var">x</span>]] = <span class="code-var">x</span></span></li>
+              <li id="line-12" class="code-line"><span class="ln">12</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">return</span> <span class="code-var">tmp</span></span></li>
+            </ol>
+            <div class="status-row small">
+              <span id="messageValue" class="message-value">初期状態</span>
+            </div>
+            <div id="errorValue" class="small"></div>
+            <div class="program-state">
+              <section class="state-box">
+                <div class="state-label">counts の状態</div>
+                <pre id="countStateBox" class="mono-box">[0, 0, 0, 0, 0]</pre>
+              </section>
+              <section class="state-box">
+                <div class="state-label">累積counts の状態</div>
+                <pre id="cumulativeStateBox" class="mono-box">[0, 0, 0, 0, 0]</pre>
+              </section>
+              <section class="state-box">
+                <div class="state-label">tmp の状態</div>
+                <pre id="outputStateBox" class="mono-box">[_, _, _, _, _, _]</pre>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const arrayInput = document.getElementById('arrayInput');
+      const speedInput = document.getElementById('speedInput');
+      const speedLabel = document.getElementById('speedLabel');
+      const randomBtn = document.getElementById('randomBtn');
+      const stepBtn = document.getElementById('stepBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const dataRow = document.getElementById('dataRow');
+      const countGrid = document.getElementById('countGrid');
+      const cumulativeGrid = document.getElementById('cumulativeGrid');
+      const outputRow = document.getElementById('outputRow');
+      const dataBlock = document.getElementById('dataBlock');
+      const countsBlock = document.getElementById('countsBlock');
+      const cumulativeBlock = document.getElementById('cumulativeBlock');
+      const outputBlock = document.getElementById('outputBlock');
+      const chartPanel = document.querySelector('.chart-panel');
+      const flowOverlay = document.getElementById('flowOverlay');
+      const phaseLabelTop = document.getElementById('phaseLabelTop');
+      const phaseValue = document.getElementById('phaseValue');
+      const iValue = document.getElementById('iValue');
+      const currentValue = document.getElementById('currentValue');
+      const targetValue = document.getElementById('targetValue');
+      const countValue = document.getElementById('countValue');
+      const cumulativeValue = document.getElementById('cumulativeValue');
+      const outputIndexValue = document.getElementById('outputIndexValue');
+      const outputCountValue = document.getElementById('outputCountValue');
+      const remainValue = document.getElementById('remainValue');
+      const messageValue = document.getElementById('messageValue');
+      const errorValue = document.getElementById('errorValue');
+      const countStateBox = document.getElementById('countStateBox');
+      const cumulativeStateBox = document.getElementById('cumulativeStateBox');
+      const outputStateBox = document.getElementById('outputStateBox');
+      const doneNote = document.getElementById('doneNote');
+
+      const DEFAULT_VALUES = [3, 2, 4, 3, 4, 1];
+      const MIN_VALUE = 1;
+      const MAX_VALUE = 4;
+      const ARRAY_LENGTH = 6;
+      const COUNTS_LENGTH = MAX_VALUE + 1;
+
+      const codeLines = new Map();
+      for (let line = 1; line <= 12; line += 1) {
+        codeLines.set(line, document.getElementById(`line-${line}`));
+      }
+
+      let initialItems = [];
+      let steps = [];
+      let stepIndex = 0;
+      let playing = false;
+      let timer = null;
+      let overlayRefreshPending = false;
+
+      function makeItems(values) {
+        return values.map((value, index) => ({ id: `item-${index}-${value}`, value }));
+      }
+
+      function parseArrayText(text) {
+        const values = [];
+        for (const part of text.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)) {
+          if (!/^\d+$/.test(part)) continue;
+          const value = Number(part);
+          if (value < MIN_VALUE || value > MAX_VALUE) continue;
+          values.push(value);
+          if (values.length >= ARRAY_LENGTH) break;
+        }
+        return values;
+      }
+
+      function randomValues() {
+        const values = Array.from({ length: ARRAY_LENGTH }, () => MIN_VALUE + Math.floor(Math.random() * MAX_VALUE));
+        if (new Set(values).size === values.length) {
+          values[values.length - 1] = values[0];
+        }
+        return values;
+      }
+
+      function buildSteps(items) {
+        const built = [];
+        const counts = Array(COUNTS_LENGTH).fill(0);
+        const cumulative = Array(COUNTS_LENGTH).fill(0);
+
+        built.push({ type: 'setup-counts', line: 2, phase: '集計', message: 'counts を 0 で初期化' });
+
+        items.forEach((item, index) => {
+          built.push({
+            type: 'scan',
+            line: 3,
+            phase: '集計',
+            inputIndex: index,
+            value: item.value,
+            countIndex: item.value,
+            message: `data[${index}] = ${item.value} を確認`
+          });
+          built.push({
+            type: 'increment',
+            line: 4,
+            phase: '集計',
+            inputIndex: index,
+            value: item.value,
+            countIndex: item.value,
+            message: `counts[${item.value}] を 1 増やす`
+          });
+          counts[item.value] += 1;
+        });
+
+        built.push({ type: 'setup-cumulative', line: 5, phase: '累積', message: 'counts をコピーして累積counts を作る' });
+        for (let value = MIN_VALUE; value <= MAX_VALUE; value += 1) {
+          cumulative[value] = counts[value];
+        }
+
+        for (let value = MIN_VALUE; value <= MAX_VALUE; value += 1) {
+          built.push({
+            type: 'cumulative-start',
+            line: 6,
+            phase: '累積',
+            value,
+            countIndex: value,
+            message: `累積counts[${value}] を確認`
+          });
+          built.push({
+            type: 'cumulative-add',
+            line: 7,
+            phase: '累積',
+            value,
+            countIndex: value,
+            message: `累積counts[${value}] に累積counts[${value - 1}] を足す`
+          });
+          cumulative[value] += cumulative[value - 1];
+        }
+
+        built.push({ type: 'setup-output', line: 8, phase: '配置', message: 'tmp を空で用意' });
+
+        for (let index = items.length - 1; index >= 0; index -= 1) {
+          const item = items[index];
+          built.push({
+            type: 'scan-output',
+            line: 9,
+            phase: '配置',
+            inputIndex: index,
+            value: item.value,
+            countIndex: item.value,
+            message: `data[${index}] = ${item.value} を末尾側から確認`
+          });
+          cumulative[item.value] -= 1;
+          built.push({
+            type: 'decrement-cumulative',
+            line: 10,
+            phase: '配置',
+            inputIndex: index,
+            value: item.value,
+            countIndex: item.value,
+            outputIndex: cumulative[item.value],
+            message: `累積counts[${item.value}] を 1 減らして配置先を決める`
+          });
+          built.push({
+            type: 'place-output',
+            line: 11,
+            phase: '配置',
+            inputIndex: index,
+            value: item.value,
+            countIndex: item.value,
+            outputIndex: cumulative[item.value],
+            message: `tmp[${cumulative[item.value]}] に ${item.value} を入れる`
+          });
+        }
+
+        built.push({ type: 'done', line: 12, phase: '完了', message: 'カウントソート完了' });
+        return built;
+      }
+
+      function resetState(values) {
+        initialItems = makeItems(values);
+        steps = buildSteps(initialItems);
+        stepIndex = 0;
+        clearTimer();
+        playing = false;
+        render();
+        updateButtons();
+      }
+
+      function getStateAt(index) {
+        const state = {
+          data: initialItems.map((item) => ({ ...item })),
+          counts: Array(COUNTS_LENGTH).fill(0),
+          cumulative: Array(COUNTS_LENGTH).fill(0),
+          output: Array(ARRAY_LENGTH).fill(null),
+          activeStep: null,
+          phase: '初期化',
+          currentIndex: null,
+          currentValue: null,
+          currentCountIndex: null,
+          currentCountValue: 0,
+          currentCumulativeValue: 0,
+          currentOutputIndex: null,
+          message: '初期状態'
+        };
+
+        for (let i = 0; i < index; i += 1) {
+          const step = steps[i];
+          state.activeStep = step;
+          state.phase = step.phase || state.phase;
+          state.message = step.message || state.message;
+          state.currentIndex = step.inputIndex ?? null;
+          state.currentValue = step.value ?? null;
+          state.currentCountIndex = step.countIndex ?? null;
+          state.currentOutputIndex = step.outputIndex ?? null;
+
+          if (step.type === 'setup-counts') {
+            state.counts = Array(COUNTS_LENGTH).fill(0);
+          }
+          if (step.type === 'increment') {
+            state.counts[step.countIndex] += 1;
+          }
+          if (step.type === 'setup-cumulative') {
+            state.cumulative = [...state.counts];
+          }
+          if (step.type === 'cumulative-add') {
+            state.cumulative[step.countIndex] += state.cumulative[step.countIndex - 1];
+          }
+          if (step.type === 'setup-output') {
+            state.output = Array(ARRAY_LENGTH).fill(null);
+          }
+          if (step.type === 'decrement-cumulative') {
+            state.cumulative[step.countIndex] -= 1;
+            state.currentOutputIndex = state.cumulative[step.countIndex];
+          }
+          if (step.type === 'place-output') {
+            state.output[step.outputIndex] = step.value;
+          }
+
+          state.currentCountValue = state.currentCountIndex !== null ? state.counts[state.currentCountIndex] : 0;
+          state.currentCumulativeValue = state.currentCountIndex !== null ? state.cumulative[state.currentCountIndex] : 0;
+        }
+
+        return state;
+      }
+
+      function valueMarkup(value, hit = false) {
+        return `<span class="digit-wrap"><span class="digit${hit ? ' hit' : ''}">${value}</span></span>`;
+      }
+
+      function updateCodeHighlight(activeStep) {
+        codeLines.forEach((line) => line.classList.remove('active'));
+        if (activeStep && activeStep.line) {
+          codeLines.get(activeStep.line)?.classList.add('active');
+        }
+      }
+
+      function renderData(state) {
+        dataRow.innerHTML = '';
+        state.data.forEach((item, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          chip.dataset.inputIndex = String(index);
+          if (state.currentIndex === index) {
+            chip.classList.add('current');
+          }
+          chip.innerHTML = valueMarkup(item.value, state.currentIndex === index);
+          dataRow.appendChild(chip);
+        });
+      }
+
+      function renderCounts(state) {
+        countGrid.innerHTML = '';
+        for (let index = 0; index < COUNTS_LENGTH; index += 1) {
+          const card = document.createElement('div');
+          card.className = 'count-card';
+          card.dataset.countIndex = String(index);
+          if (state.currentCountIndex === index && state.phase === '集計') {
+            card.classList.add('active');
+          }
+
+          const head = document.createElement('div');
+          head.className = 'count-head';
+          head.innerHTML = `<span class="count-index">counts[${index}]</span><span class="count-tag">${index === 0 ? '未使用' : `値${index}`}</span>`;
+
+          const count = document.createElement('div');
+          count.className = 'count-value';
+          if (state.currentCountIndex === index && state.phase === '集計') {
+            count.classList.add('hit');
+          }
+          count.textContent = String(state.counts[index]);
+
+          card.append(head, count);
+          countGrid.appendChild(card);
+        }
+      }
+
+      function renderCumulative(state) {
+        cumulativeGrid.innerHTML = '';
+        for (let index = 0; index < COUNTS_LENGTH; index += 1) {
+          const card = document.createElement('div');
+          card.className = 'count-card';
+          card.dataset.cumulativeIndex = String(index);
+          if (state.currentCountIndex === index && ['累積', '配置'].includes(state.phase)) {
+            card.classList.add('active');
+          }
+
+          const head = document.createElement('div');
+          head.className = 'count-head';
+          head.innerHTML = `<span class="count-index">cum[${index}]</span><span class="count-tag">${index === 0 ? '先頭' : `値${index}まで`}</span>`;
+
+          const count = document.createElement('div');
+          count.className = 'count-value';
+          if (state.currentCountIndex === index && ['累積', '配置'].includes(state.phase)) {
+            count.classList.add('hit');
+          }
+          count.textContent = String(state.cumulative[index]);
+
+          card.append(head, count);
+          cumulativeGrid.appendChild(card);
+        }
+      }
+
+      function renderOutput(state) {
+        outputRow.innerHTML = '';
+        state.output.forEach((value, index) => {
+          const wrap = document.createElement('div');
+          wrap.className = 'indexed-chip-wrap';
+
+          const indexLabel = document.createElement('div');
+          indexLabel.className = 'chip-index';
+          indexLabel.textContent = String(index);
+
+          const chip = document.createElement('div');
+          chip.className = `chip${value !== null ? ' output' : ''}`;
+          chip.dataset.outputIndex = String(index);
+          if (state.currentOutputIndex === index && state.phase === '配置') {
+            chip.classList.add('current');
+          }
+          chip.innerHTML = value !== null ? valueMarkup(value) : '&nbsp;';
+
+          wrap.append(indexLabel, chip);
+          outputRow.appendChild(wrap);
+        });
+      }
+
+      function formatCounts(counts) {
+        return `[${counts.join(', ')}]`;
+      }
+
+      function formatOutput(output) {
+        return `[${output.map((value) => value === null ? '_' : value).join(', ')}]`;
+      }
+
+      function renderFlowOverlay(state) {
+        flowOverlay.innerHTML = `
+          <defs>
+            <marker id="flowArrowIn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"></path>
+            </marker>
+            <marker id="flowArrowOut" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"></path>
+            </marker>
+          </defs>
+        `;
+        const activeStep = state.activeStep;
+        if (!activeStep) return;
+
+        const pointForRect = (rect, overlayRect, anchor) => {
+          if (anchor === 'top') {
+            return {
+              x: rect.left + rect.width / 2 - overlayRect.left,
+              y: rect.top - overlayRect.top
+            };
+          }
+          if (anchor === 'bottom') {
+            return {
+              x: rect.left + rect.width / 2 - overlayRect.left,
+              y: rect.bottom - overlayRect.top
+            };
+          }
+          if (anchor === 'left') {
+            return {
+              x: rect.left - overlayRect.left,
+              y: rect.top + rect.height / 2 - overlayRect.top
+            };
+          }
+          if (anchor === 'right') {
+            return {
+              x: rect.right - overlayRect.left,
+              y: rect.top + rect.height / 2 - overlayRect.top
+            };
+          }
+          return {
+            x: rect.left + rect.width / 2 - overlayRect.left,
+            y: rect.top + rect.height / 2 - overlayRect.top
+          };
+        };
+
+        const drawFlowLine = (fromElement, toElement, color, markerId, fromAnchor = 'center', toAnchor = 'center') => {
+          if (!fromElement || !toElement || !color || !markerId) return;
+
+          const overlayRect = flowOverlay.getBoundingClientRect();
+          const fromRect = fromElement.getBoundingClientRect();
+          const toRect = toElement.getBoundingClientRect();
+
+          const start = pointForRect(fromRect, overlayRect, fromAnchor);
+          const end = pointForRect(toRect, overlayRect, toAnchor);
+          const x1 = start.x;
+          const y1 = start.y;
+          const rawX2 = end.x;
+          const rawY2 = end.y;
+          const dx = rawX2 - x1;
+          const dy = rawY2 - y1;
+          const distance = Math.max(Math.hypot(dx, dy), 1);
+          const trim = 8;
+          const x2 = rawX2 - (dx / distance) * trim;
+          const y2 = rawY2 - (dy / distance) * trim;
+
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', x1);
+          line.setAttribute('y1', y1);
+          line.setAttribute('x2', x2);
+          line.setAttribute('y2', y2);
+          line.setAttribute('stroke', color);
+          line.setAttribute('marker-end', `url(#${markerId})`);
+          line.setAttribute('class', 'flow-line');
+          flowOverlay.appendChild(line);
+        };
+
+        const drawFlowPath = (points, color, markerId) => {
+          if (!points || points.length < 2 || !color || !markerId) return;
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          const d = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+          path.setAttribute('d', d);
+          path.setAttribute('stroke', color);
+          path.setAttribute('marker-end', `url(#${markerId})`);
+          path.setAttribute('class', 'flow-line');
+          flowOverlay.appendChild(path);
+        };
+
+        if (activeStep.type === 'increment') {
+          const fromElement = dataRow.querySelector(`[data-input-index="${activeStep.inputIndex}"]`);
+          const toElement = countGrid.querySelector(`[data-count-index="${activeStep.countIndex}"]`);
+          drawFlowLine(fromElement, toElement, 'var(--flow-in)', 'flowArrowIn', 'bottom', 'top');
+        }
+
+        if (activeStep.type === 'cumulative-add') {
+          const countSource = countGrid.querySelector(`[data-count-index="${activeStep.countIndex}"]`);
+          const cumulativePrev = cumulativeGrid.querySelector(`[data-cumulative-index="${activeStep.countIndex - 1}"]`);
+          const cumulativeTarget = cumulativeGrid.querySelector(`[data-cumulative-index="${activeStep.countIndex}"]`);
+          const overlayRect = flowOverlay.getBoundingClientRect();
+
+          if (countSource && cumulativeTarget) {
+            const countRect = countSource.getBoundingClientRect();
+            const targetRect = cumulativeTarget.getBoundingClientRect();
+            const countCenter = pointForRect(countRect, overlayRect, 'center');
+            const start = { x: countCenter.x, y: countCenter.y + 12 };
+            const targetCenter = pointForRect(targetRect, overlayRect, 'center');
+            const end = { x: targetCenter.x, y: targetCenter.y - 12 };
+            drawFlowPath([start, end], 'var(--flow-in)', 'flowArrowIn');
+          }
+
+          if (cumulativePrev && cumulativeTarget) {
+            const prevRect = cumulativePrev.getBoundingClientRect();
+            const targetRect = cumulativeTarget.getBoundingClientRect();
+            const prevCenter = pointForRect(prevRect, overlayRect, 'center');
+            const start = { x: prevCenter.x + 18, y: prevCenter.y };
+            const targetCenter = pointForRect(targetRect, overlayRect, 'center');
+            const end = { x: targetCenter.x - 14, y: targetCenter.y };
+            drawFlowPath([start, end], 'var(--flow-in)', 'flowArrowIn');
+          }
+        }
+
+        if (activeStep.type === 'place-output') {
+          const fromElement = cumulativeGrid.querySelector(`[data-cumulative-index="${activeStep.countIndex}"]`);
+          const toElement = outputRow.querySelector(`[data-output-index="${activeStep.outputIndex}"]`);
+          drawFlowLine(fromElement, toElement, 'var(--flow-out)', 'flowArrowOut', 'bottom', 'top');
+        }
+      }
+
+      function updatePhaseHighlight(state) {
+        dataBlock.classList.remove('phase-collect', 'phase-cumulative', 'phase-place');
+        countsBlock.classList.remove('phase-collect', 'phase-cumulative', 'phase-place');
+        cumulativeBlock.classList.remove('phase-collect', 'phase-cumulative', 'phase-place');
+        outputBlock.classList.remove('phase-collect', 'phase-cumulative', 'phase-place');
+        phaseLabelTop.classList.remove('phase-collect', 'phase-cumulative', 'phase-place');
+
+        if (state.phase === '集計') {
+          countsBlock.classList.add('phase-collect');
+          phaseLabelTop.classList.add('phase-collect');
+        } else if (state.phase === '累積') {
+          cumulativeBlock.classList.add('phase-cumulative');
+          phaseLabelTop.classList.add('phase-cumulative');
+        } else if (state.phase === '配置' || state.phase === '完了') {
+          outputBlock.classList.add('phase-place');
+          phaseLabelTop.classList.add('phase-place');
+        }
+      }
+
+      function updateStatus(state) {
+        const activeStep = state.activeStep;
+        phaseValue.textContent = state.phase;
+        iValue.textContent = state.currentIndex !== null ? String(state.currentIndex) : '-';
+        currentValue.textContent = state.currentValue !== null ? String(state.currentValue) : '-';
+        if (state.currentCountIndex === null) {
+          targetValue.textContent = '-';
+        } else if (['累積', '配置'].includes(state.phase)) {
+          targetValue.textContent = `cum[${state.currentCountIndex}]`;
+        } else {
+          targetValue.textContent = `counts[${state.currentCountIndex}]`;
+        }
+        countValue.textContent = String(state.currentCountValue);
+        cumulativeValue.textContent = String(state.currentCumulativeValue);
+        outputIndexValue.textContent = state.currentOutputIndex !== null ? String(state.currentOutputIndex) : '-';
+        outputCountValue.textContent = String(state.output.filter((value) => value !== null).length);
+        remainValue.textContent = String(Math.max(steps.length - stepIndex, 0));
+        messageValue.textContent = state.message;
+        countStateBox.textContent = formatCounts(state.counts);
+        cumulativeStateBox.textContent = formatCounts(state.cumulative);
+        outputStateBox.textContent = formatOutput(state.output);
+        doneNote.hidden = state.phase !== '完了';
+
+        if (!activeStep || state.phase === '初期化') {
+          phaseLabelTop.textContent = '左から順に出現回数を数える';
+        } else if (state.phase === '集計') {
+          phaseLabelTop.textContent = '左から順に出現回数を数える';
+        } else if (state.phase === '累積') {
+          phaseLabelTop.textContent = 'counts を累積和へ変換する';
+        } else if (state.phase === '配置') {
+          phaseLabelTop.textContent = 'data を末尾から見て tmp に配置する';
+        } else {
+          phaseLabelTop.textContent = 'counts を使って整列完了';
+        }
+
+        updatePhaseHighlight(state);
+      }
+
+      function render() {
+        const state = getStateAt(stepIndex);
+        renderData(state);
+        renderCounts(state);
+        renderCumulative(state);
+        renderOutput(state);
+        renderFlowOverlay(state);
+        updateCodeHighlight(state.activeStep);
+        updateStatus(state);
+      }
+
+      function refreshOverlay() {
+        const state = getStateAt(stepIndex);
+        renderFlowOverlay(state);
+      }
+
+      function scheduleOverlayRefresh() {
+        if (overlayRefreshPending) return;
+        overlayRefreshPending = true;
+        window.requestAnimationFrame(() => {
+          overlayRefreshPending = false;
+          refreshOverlay();
+        });
+      }
+
+      function updateButtons() {
+        prevBtn.disabled = stepIndex === 0;
+        stepBtn.disabled = stepIndex >= steps.length;
+        playBtn.disabled = playing || stepIndex >= steps.length;
+        pauseBtn.disabled = !playing;
+      }
+
+      function clearTimer() {
+        if (timer) {
+          window.clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function getDelay() {
+        return 1000 / Number(speedInput.value);
+      }
+
+      function advanceStep() {
+        if (stepIndex >= steps.length) {
+          clearTimer();
+          playing = false;
+          updateButtons();
+          return;
+        }
+        stepIndex += 1;
+        render();
+        updateButtons();
+      }
+
+      function scheduleNext() {
+        if (!playing) return;
+        if (stepIndex >= steps.length) {
+          playing = false;
+          updateButtons();
+          return;
+        }
+        timer = window.setTimeout(() => {
+          advanceStep();
+          scheduleNext();
+        }, getDelay());
+      }
+
+      function startPlay() {
+        if (playing || stepIndex >= steps.length) return;
+        playing = true;
+        updateButtons();
+        scheduleNext();
+      }
+
+      function stopPlay() {
+        playing = false;
+        clearTimer();
+        updateButtons();
+      }
+
+      speedInput.addEventListener('input', () => {
+        speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+        if (playing) {
+          clearTimer();
+          scheduleNext();
+        }
+      });
+
+      stepBtn.addEventListener('click', () => {
+        stopPlay();
+        advanceStep();
+      });
+
+      prevBtn.addEventListener('click', () => {
+        stopPlay();
+        if (stepIndex > 0) {
+          stepIndex -= 1;
+          render();
+          updateButtons();
+        }
+      });
+
+      playBtn.addEventListener('click', startPlay);
+      pauseBtn.addEventListener('click', stopPlay);
+
+      resetBtn.addEventListener('click', () => {
+        stopPlay();
+        const values = parseArrayText(arrayInput.value);
+        if (values.length !== ARRAY_LENGTH) {
+          arrayInput.value = DEFAULT_VALUES.join(', ');
+          errorValue.textContent = `1以上4以下の整数を ${ARRAY_LENGTH} 個入力してください。`;
+          resetState(DEFAULT_VALUES);
+        } else {
+          errorValue.textContent = '';
+          resetState(values);
+        }
+      });
+
+      randomBtn.addEventListener('click', () => {
+        stopPlay();
+        const values = randomValues();
+        arrayInput.value = values.join(', ');
+        errorValue.textContent = '';
+        resetState(values);
+      });
+
+      arrayInput.addEventListener('change', () => {
+        const values = parseArrayText(arrayInput.value);
+        if (values.length !== ARRAY_LENGTH) return;
+        stopPlay();
+        errorValue.textContent = '';
+        resetState(values);
+      });
+
+      window.addEventListener('resize', scheduleOverlayRefresh);
+
+      const overlayObserver = new ResizeObserver(() => {
+        scheduleOverlayRefresh();
+      });
+      [chartPanel, dataRow, countGrid, cumulativeGrid, outputRow].forEach((element) => {
+        if (element) {
+          overlayObserver.observe(element);
+        }
+      });
+
+      resetState(DEFAULT_VALUES);
+      speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+    </script>
+  </body>
+</html>
