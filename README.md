@@ -36,14 +36,17 @@
   - [BST / AVL Rotation Visualizer](https://jkushida.github.io/Web_demo/DSA/bst-avl-rotation.html) - 同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化
 
 - **ソート**
-  - [Bubble Sort Animation](https://jkushida.github.io/Web_demo/DSA/bubble-sort-animation.html) - 配列のスワップ移動と疑似コードの対応でバブルソートを可視化
-  - [Selection Sort Animation](https://jkushida.github.io/Web_demo/DSA/selection-sort-animation.html) - 未ソート部分から最小値を探し，a[i] と交換
-  - [Insertion Sort Animation (ins/cmp/temp Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-shift-animation.html) - 後ろへまとめてずらして挿入する版
-  - [Insertion Sort Animation (Swap Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-animation.html) - 隣接交換で1データずつ前へ送る挿入ソート
-  - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
-  - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 比較によらず、値を対応する bucket に振り分けてから順に回収する流れを可視化
-  - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 比較によらず、1の位から100の位まで安定に桁ごとの並べ替えを可視化
-  - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - 比較によらず、counts と累積和を使って tmp を作る流れを可視化
+  - 比較によるソート
+    - [Bubble Sort Animation](https://jkushida.github.io/Web_demo/DSA/bubble-sort-animation.html) - 配列のスワップ移動と疑似コードの対応でバブルソートを可視化
+    - [Selection Sort Animation](https://jkushida.github.io/Web_demo/DSA/selection-sort-animation.html) - 未ソート部分から最小値を探し，a[i] と交換
+    - [Insertion Sort Animation (ins/cmp/temp Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-shift-animation.html) - 後ろへまとめてずらして挿入する版
+    - [Insertion Sort Animation (Swap Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-animation.html) - 隣接交換で1データずつ前へ送る挿入ソート
+    - [Quick Sort Animation](https://jkushida.github.io/Web_demo/DSA/quick-sort-animation.html) - 中央の要素を pivot として、pl/pr で分割を繰り返すクイックソートを可視化
+    - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
+  - 比較によらないソート
+    - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 比較によらず、値を対応する bucket に振り分けてから順に回収する流れを可視化
+    - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 比較によらず、1の位から100の位まで安定に桁ごとの並べ替えを可視化
+    - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - 比較によらず、counts と累積和を使って tmp を作る流れを可視化
 
 ### 進化計算 <a id="ec"></a>
 - [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ

@@ -1,0 +1,1345 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>クイックソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --line: #d1d5db;
+        --fg: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-weak: #dbeafe;
+        --range: #eff6ff;
+        --pivot: #ede9fe;
+        --pivot-line: #7c3aed;
+        --done: #fce7d6;
+        --done-line: #c2410c;
+        --pending: #f8fafc;
+        --pending-line: #cbd5e1;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: #f8fafc;
+        color: var(--fg);
+        font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      }
+
+      header {
+        padding: 8px 14px 6px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      main {
+        padding: 10px 12px 14px;
+        overflow: auto;
+      }
+
+      .viz {
+        display: grid;
+        grid-template-columns: minmax(470px, 1fr) 410px;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      }
+
+      .chart-panel {
+        padding: 12px;
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .controls-panel,
+      .code-panel {
+        padding: 12px;
+      }
+
+      .controls.compact {
+        display: grid;
+        gap: 7px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .array-row {
+        align-items: end;
+        flex-wrap: nowrap;
+      }
+
+      .array-label {
+        flex: 0 1 290px;
+        display: grid;
+        gap: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .array-input {
+        width: min(260px, 100%);
+      }
+
+      #randomBtn {
+        margin-left: auto;
+      }
+
+      input[type="text"],
+      input[type="range"],
+      button {
+        font: inherit;
+      }
+
+      input[type="text"] {
+        padding: 7px 9px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      button {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--fg);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #f8fafc; }
+
+      button.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .flow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 4px 8px 6px;
+        background: #fcfcfd;
+      }
+
+      .row-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+        margin-bottom: 5px;
+      }
+
+      .row-title {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .row-head .small {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .tree-block .row-head {
+        margin-bottom: 1px;
+      }
+
+      #callLabelTop {
+        font-size: 15px;
+      }
+
+      .full-array {
+        display: grid;
+        gap: 2px;
+        justify-content: center;
+        overflow-x: auto;
+      }
+
+      .index-row,
+      .value-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 46px;
+        gap: 4px;
+        width: max-content;
+      }
+
+      .index-chip {
+        text-align: center;
+        color: #0b72d0;
+        font-size: 13px;
+        font-style: italic;
+        font-weight: 800;
+      }
+
+      .value-chip {
+        min-height: 32px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #111827;
+        background: #fff;
+        font-size: 17px;
+        font-weight: 500;
+      }
+
+      .value-chip.active {
+        background: var(--range);
+        border-color: #3b82f6;
+      }
+
+      .tree-wrap {
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+        padding: 0;
+      }
+
+      .tree-branch {
+        display: grid;
+        justify-items: center;
+        align-items: start;
+        gap: 4px;
+        min-width: 80px;
+        transition: transform 0.18s ease;
+      }
+
+      .tree-branch.child {
+        position: relative;
+      }
+
+      .tree-branch.child::before {
+        content: "";
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        width: 0;
+        height: 10px;
+        border-left: 2px solid #cbd5e1;
+        transform: translateX(-50%);
+      }
+
+      .tree-children {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 10px;
+        position: relative;
+        padding-top: 10px;
+        min-width: max-content;
+      }
+
+      .tree-children::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12px;
+        right: 12px;
+        border-top: 2px solid #cbd5e1;
+      }
+
+      .tree-drop {
+        width: 0;
+        height: 10px;
+        border-left: 2px solid #cbd5e1;
+      }
+
+      @keyframes dashFlowY {
+        from { background-position: 0 0; }
+        to { background-position: 0 16px; }
+      }
+
+      @keyframes dashFlowLeft {
+        from { background-position: 0 0; }
+        to { background-position: -16px 0; }
+      }
+
+      @keyframes dashFlowRight {
+        from { background-position: 0 0; }
+        to { background-position: 16px 0; }
+      }
+
+      .tree-drop.current-split {
+        width: 2px;
+        border-left: none;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          #94a3b8 0 5px,
+          transparent 5px 10px
+        );
+        animation: dashFlowY 0.8s linear infinite;
+      }
+
+      .tree-children.current-split::before {
+        display: none;
+      }
+
+      .tree-branch.child.current-split-child::before {
+        border-left: none;
+        width: 2px;
+        background-image: repeating-linear-gradient(
+          to bottom,
+          #94a3b8 0 5px,
+          transparent 5px 10px
+        );
+        animation: dashFlowY 0.8s linear infinite;
+      }
+
+      .tree-split-line {
+        position: absolute;
+        top: 0;
+        height: 2px;
+        background: #cbd5e1;
+      }
+
+      .tree-split-line.left {
+        left: 50%;
+        width: 0;
+      }
+
+      .tree-split-line.right {
+        left: 50%;
+        width: 0;
+      }
+
+      .tree-split-line.left.current-split {
+        background-image: repeating-linear-gradient(
+          to right,
+          #94a3b8 0 5px,
+          transparent 5px 10px
+        );
+        animation: dashFlowLeft 0.8s linear infinite;
+      }
+
+      .tree-split-line.right.current-split {
+        background-image: repeating-linear-gradient(
+          to right,
+          #94a3b8 0 5px,
+          transparent 5px 10px
+        );
+        animation: dashFlowRight 0.8s linear infinite;
+      }
+
+      .node {
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+        transition: transform 0.18s ease;
+      }
+
+      .node.active {
+        transform: translateY(-2px);
+      }
+
+      .node-label {
+        color: #92400e;
+        font-size: 13px;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.35;
+      }
+
+      .node.pending .node-label {
+        color: #64748b;
+      }
+
+      .node-array {
+        display: flex;
+        gap: 0;
+        justify-content: center;
+        flex-wrap: nowrap;
+      }
+
+      .node-cell {
+        min-width: 32px;
+        min-height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #111827;
+        background: #fff;
+        font-size: 17px;
+        font-weight: 500;
+      }
+
+      .node.call .node-array {
+        box-shadow: 0 0 0 1px transparent;
+      }
+
+      .node.active .node-array {
+        box-shadow: 0 0 0 2px #93c5fd;
+      }
+
+      .node.before-split .node-array {
+        box-shadow: 0 0 0 2px #93c5fd;
+      }
+
+      .node.after-split .node-array {
+        box-shadow: 0 0 0 2px #86efac;
+      }
+
+      .node.after-split .node-label {
+        color: #166534;
+      }
+
+      .node.pending .node-cell {
+        background: var(--pending);
+        border-color: var(--pending-line);
+      }
+
+      .node.leaf .node-cell {
+        background: var(--done);
+        border-color: var(--done-line);
+      }
+
+      .node.active .node-cell.pivot {
+        background: var(--pivot);
+        border-color: var(--pivot-line);
+      }
+
+      .node.after-split .node-cell {
+        background: #f0fdf4;
+        border-color: #16a34a;
+      }
+
+      .node.after-split .node-cell.pivot {
+        background: var(--pivot);
+        border-color: var(--pivot-line);
+      }
+
+      .path-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .path-chip {
+        padding: 4px 7px;
+        border-radius: 999px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+      }
+
+      .path-chip.current {
+        border-color: #2563eb;
+        background: var(--primary-weak);
+        color: #1d4ed8;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+
+      .status-row strong { color: var(--fg); }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 7px;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 7px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      .code-panel h2 {
+        margin: 0 0 10px;
+        font-size: 17px;
+      }
+
+      .code-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        gap: 3px;
+        overflow-x: auto;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 7px;
+        align-items: baseline;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .code-line.active { background: var(--primary-weak); }
+
+      .code-text { white-space: nowrap; }
+
+      .ln {
+        color: #64748b;
+        text-align: right;
+      }
+
+      .code-kw {
+        color: #7c3aed;
+        font-weight: 700;
+      }
+
+      .code-fn { color: #0369a1; }
+      .code-var { color: #b45309; }
+      .code-num { color: #047857; }
+
+      .message-value {
+        color: var(--fg);
+        font-weight: 700;
+      }
+
+      .state-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 7px 9px;
+      }
+
+      .state-label {
+        margin-bottom: 5px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .mono-box {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #0f172a;
+      }
+
+      .program-state {
+        display: grid;
+        gap: 7px;
+        margin-top: 8px;
+      }
+
+      .hint-box {
+        margin: 8px 0;
+        padding: 7px 9px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .hint-box strong {
+        color: #111827;
+      }
+
+      .error-text {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+
+      .empty {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 960px) {
+        .viz {
+          grid-template-columns: minmax(520px, 1fr) 410px;
+          min-width: 940px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="margin: 0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>クイックソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="viz">
+        <section class="panel chart-panel">
+          <div class="flow">
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">data</span>
+                <span class="small" id="callLabelTop">partition(a, 0, 8), pivot=6</span>
+              </div>
+              <div class="full-array">
+                <div id="indexRow" class="index-row"></div>
+                <div id="valueRow" class="value-row"></div>
+              </div>
+            </section>
+
+            <section class="row-block tree-block">
+              <div class="row-head">
+                <span class="row-title">ソートが完了するまでの手順</span>
+                <span id="doneNote" class="small" style="color:#15803d;font-weight:800;" hidden>ソート完了</span>
+              </div>
+              <div id="treeWrap" class="tree-wrap"></div>
+            </section>
+
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">再帰経路</span>
+                <span class="small">現在分割中の範囲</span>
+              </div>
+              <div id="pathRow" class="path-row"></div>
+            </section>
+          </div>
+
+          <div class="status-row">
+            <span>phase <strong id="phaseValue">初期化</strong></span>
+            <span>範囲 <strong id="rangeValue">-</strong></span>
+            <span>pivot <strong id="pivotValue">-</strong></span>
+            <span>枢軸以下 <strong id="leftValue">-</strong></span>
+            <span>枢軸と等しい <strong id="equalValue">-</strong></span>
+            <span>枢軸以上 <strong id="rightValue">-</strong></span>
+            <span>比較回数 <strong id="compValue">0</strong></span>
+            <span>交換回数 <strong id="swapValue">0</strong></span>
+            <span>残りステップ <strong id="remainValue">0</strong></span>
+          </div>
+
+          <div class="legend" aria-label="legend">
+            <div><i style="background:#ffffff; border:1px solid #111;"></i>通常</div>
+            <div><i style="background:#eff6ff; border:1px solid #3b82f6;"></i>現在の範囲</div>
+            <div><i style="background:#ede9fe; border:1px solid #7c3aed;"></i>pivot</div>
+            <div><i style="background:#f8fafc; border:1px solid #cbd5e1;"></i>次に分割する配列</div>
+            <div><i style="background:#f0fdf4; border:1px solid #16a34a;"></i>分割完了した配列</div>
+            <div><i style="background:#fce7d6; border:1px solid #c2410c;"></i>確定した要素</div>
+          </div>
+        </section>
+
+        <section class="side-stack">
+          <section class="panel controls-panel" aria-label="controls">
+            <div class="controls compact">
+              <div class="control-row array-row">
+                <label class="array-label">配列：スライド例は 9 個
+                  <input id="arrayInput" class="array-input" type="text" value="5, 7, 1, 4, 6, 2, 3, 9, 8" />
+                </label>
+                <button id="randomBtn">乱数生成</button>
+              </div>
+              <div class="control-row">
+                <button id="prevBtn">1ステップ戻る</button>
+                <button id="stepBtn">1ステップ進む</button>
+              </div>
+              <div class="control-row">
+                <label>速度 <input id="speedInput" type="range" min="0.5" max="10" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+                <button id="playBtn" class="primary">再生</button>
+                <button id="pauseBtn" disabled>一時停止</button>
+                <button id="resetBtn">リセット</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel code-panel">
+            <h2>クイックソートのコード</h2>
+            <div class="hint-box"><strong>中央の要素を pivot</strong> とし、分割後の左側と右側を再帰的に同じように処理します。</div>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">quick_sort</span>(<span class="code-var">a</span>, <span class="code-var">left</span>, <span class="code-var">right</span>):</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">pivot</span> = <span class="code-var">a</span>[(<span class="code-var">left</span> + <span class="code-var">right</span>) // <span class="code-num">2</span>]</span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">pl</span>, <span class="code-var">pr</span> = <span class="code-fn">partition</span>(<span class="code-var">a</span>, <span class="code-var">left</span>, <span class="code-var">right</span>, <span class="code-var">pivot</span>)</span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">if</span> <span class="code-var">left</span> &lt; <span class="code-var">pr</span>:<br />&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-fn">quick_sort</span>(<span class="code-var">a</span>, <span class="code-var">left</span>, <span class="code-var">pr</span>)</span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">if</span> <span class="code-var">pl</span> &lt; <span class="code-var">right</span>:<br />&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-fn">quick_sort</span>(<span class="code-var">a</span>, <span class="code-var">pl</span>, <span class="code-var">right</span>)</span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">return</span> <span class="code-var">a</span></span></li>
+            </ol>
+            <div class="status-row small">
+              <span id="messageValue" class="message-value">初期状態</span>
+            </div>
+            <div id="errorValue" class="small"></div>
+            <div class="program-state">
+              <section class="state-box">
+                <div class="state-label">現在の再帰経路</div>
+                <pre id="pathStateBox" class="mono-box">[0, 8]</pre>
+              </section>
+              <section class="state-box">
+                <div class="state-label">現在の配列</div>
+                <pre id="arrayStateBox" class="mono-box">[5, 7, 1, 4, 6, 2, 3, 9, 8]</pre>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const arrayInput = document.getElementById('arrayInput');
+      const speedInput = document.getElementById('speedInput');
+      const speedLabel = document.getElementById('speedLabel');
+      const randomBtn = document.getElementById('randomBtn');
+      const stepBtn = document.getElementById('stepBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const indexRow = document.getElementById('indexRow');
+      const valueRow = document.getElementById('valueRow');
+      const treeWrap = document.getElementById('treeWrap');
+      const pathRow = document.getElementById('pathRow');
+      const callLabelTop = document.getElementById('callLabelTop');
+      const doneNote = document.getElementById('doneNote');
+      const phaseValue = document.getElementById('phaseValue');
+      const rangeValue = document.getElementById('rangeValue');
+      const pivotValue = document.getElementById('pivotValue');
+      const leftValue = document.getElementById('leftValue');
+      const rightValue = document.getElementById('rightValue');
+      const equalValue = document.getElementById('equalValue');
+      const compValue = document.getElementById('compValue');
+      const swapValue = document.getElementById('swapValue');
+      const remainValue = document.getElementById('remainValue');
+      const messageValue = document.getElementById('messageValue');
+      const errorValue = document.getElementById('errorValue');
+      const pathStateBox = document.getElementById('pathStateBox');
+      const arrayStateBox = document.getElementById('arrayStateBox');
+
+      const DEFAULT_VALUES = [5, 7, 1, 4, 6, 2, 3, 9, 8];
+
+      const codeLines = new Map();
+      for (let line = 1; line <= 6; line += 1) {
+        codeLines.set(line, document.getElementById(`line-${line}`));
+      }
+
+      let steps = [];
+      let stepIndex = 0;
+      let playing = false;
+      let timer = null;
+
+      function parseArrayText(text) {
+        const values = [];
+        for (const part of text.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)) {
+          if (!/^-?\d+$/.test(part)) continue;
+          values.push(Number(part));
+          if (values.length >= 9) break;
+        }
+        return values;
+      }
+
+      function randomValues() {
+        const values = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+        for (let index = values.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+        }
+        return values;
+      }
+
+      function formatRange(left, right) {
+        return `[${left}, ${right}]`;
+      }
+
+      function formatArray(values) {
+        return `[${values.join(', ')}]`;
+      }
+
+      function cloneNodes(nodes) {
+        return nodes.map((node) => ({
+          ...node,
+          values: [...node.values]
+        }));
+      }
+
+      function buildSteps(values) {
+        const items = [...values];
+        const nodes = [];
+        const built = [];
+        const path = [];
+        let nextNodeId = 1;
+        let comparisons = 0;
+        let swaps = 0;
+
+        function pushStep({
+          line,
+          phase,
+          message,
+          activeNodeId = null,
+          left = null,
+          right = null,
+          pivot = null,
+          nextLeft = null,
+          nextEqual = null,
+          nextRight = null,
+          activeCall = ''
+        }) {
+          built.push({
+            line,
+            phase,
+            message,
+            array: [...items],
+            nodes: cloneNodes(nodes),
+            path: [...path],
+            activeNodeId,
+            left,
+            right,
+            pivot,
+            nextLeft,
+            nextEqual,
+            nextRight,
+            activeCall,
+            comparisons,
+            swaps
+          });
+        }
+
+        function makeNode(left, right, depth, parentId, kind, status) {
+          const node = {
+            id: nextNodeId += 1,
+            left,
+            right,
+            depth,
+            parentId,
+            kind,
+            status,
+            pivot: kind === 'call' ? items[Math.floor((left + right) / 2)] : items[left],
+            values: items.slice(left, right + 1)
+          };
+          nodes.push(node);
+          return node;
+        }
+
+        function quickSort(left, right, depth, parentId = null, existingNodeId = null) {
+          if (left > right) return;
+
+          if (left === right) {
+            let leaf = nodes.find((node) => node.id === existingNodeId);
+            if (!leaf) {
+              leaf = makeNode(left, right, depth, parentId, 'leaf', 'leaf');
+            } else {
+              leaf.status = 'leaf';
+              leaf.values = items.slice(left, right + 1);
+              leaf.pivot = items[left];
+            }
+            pushStep({
+              line: 6,
+              phase: '確定',
+              message: `a[${left}] = ${items[left]} が確定`,
+              activeNodeId: leaf.id,
+              left,
+              right,
+              pivot: items[left],
+              activeCall: `a[${left}] が確定`
+            });
+            return;
+          }
+
+          let node = nodes.find((entry) => entry.id === existingNodeId);
+          if (!node) {
+            node = makeNode(left, right, depth, parentId, 'call', 'active');
+          } else {
+            node.kind = 'call';
+            node.status = 'active';
+            node.values = items.slice(left, right + 1);
+            node.pivot = items[Math.floor((left + right) / 2)];
+          }
+
+          const pivot = items[Math.floor((left + right) / 2)];
+          node.pivot = pivot;
+          node.values = items.slice(left, right + 1);
+          const callText = `partition(a, ${left}, ${right}), pivot=${pivot}`;
+          path.push(formatRange(left, right));
+
+          let pl = left;
+          let pr = right;
+
+          while (pl <= pr) {
+            while (items[pl] < pivot) {
+              comparisons += 1;
+              pl += 1;
+            }
+            comparisons += 1;
+
+            while (items[pr] > pivot) {
+              comparisons += 1;
+              pr -= 1;
+            }
+            comparisons += 1;
+
+            if (pl <= pr) {
+              if (pl !== pr) {
+                swaps += 1;
+              }
+              [items[pl], items[pr]] = [items[pr], items[pl]];
+              pl += 1;
+              pr -= 1;
+            }
+          }
+
+          node.status = 'done';
+          node.values = items.slice(left, right + 1);
+
+          const children = [];
+          if (left <= pr) {
+            const childKind = left === pr ? 'leaf' : 'call';
+            const childStatus = left === pr ? 'leaf' : 'pending';
+            children.push(makeNode(left, pr, depth + 1, node.id, childKind, childStatus));
+          }
+
+          const middleStart = pr + 1;
+          const middleEnd = pl - 1;
+          for (let index = middleStart; index <= middleEnd; index += 1) {
+            children.push(makeNode(index, index, depth + 1, node.id, 'leaf', 'leaf'));
+          }
+
+          if (pl <= right) {
+            const childKind = pl === right ? 'leaf' : 'call';
+            const childStatus = pl === right ? 'leaf' : 'pending';
+            children.push(makeNode(pl, right, depth + 1, node.id, childKind, childStatus));
+          }
+
+          pushStep({
+            line: 3,
+            phase: '分割完了',
+            message: `枢軸以下 ${left <= pr ? `${left}..${pr}` : 'なし'} / 枢軸と等しい ${middleStart <= middleEnd ? `${middleStart}..${middleEnd}` : 'なし'} / 枢軸以上 ${pl <= right ? `${pl}..${right}` : 'なし'}`,
+            activeNodeId: node.id,
+            left,
+            right,
+            pivot,
+            nextLeft: left <= pr ? formatRange(left, pr) : '-',
+            nextEqual: middleStart <= middleEnd ? formatRange(middleStart, middleEnd) : '-',
+            nextRight: pl <= right ? formatRange(pl, right) : '-',
+            activeCall: callText
+          });
+
+          const leftChild = children.find((child) => child.left === left && child.right === pr && child.kind === 'call');
+          const rightChild = children.find((child) => child.left === pl && child.right === right && child.kind === 'call');
+
+          if (leftChild) {
+            pushStep({
+              line: 4,
+              phase: '左再帰',
+              message: `${formatRange(leftChild.left, leftChild.right)} を再帰的に処理`,
+              activeNodeId: leftChild.id,
+              left: leftChild.left,
+              right: leftChild.right,
+              pivot: leftChild.pivot,
+              activeCall: leftChild.kind === 'leaf'
+                ? `a[${leftChild.left}] を確定`
+                : `partition(a, ${leftChild.left}, ${leftChild.right}), pivot=${leftChild.pivot}`
+            });
+            quickSort(leftChild.left, leftChild.right, depth + 1, node.id, leftChild.id);
+          }
+
+          if (rightChild) {
+            pushStep({
+              line: 5,
+              phase: '右再帰',
+              message: `${formatRange(rightChild.left, rightChild.right)} を再帰的に処理`,
+              activeNodeId: rightChild.id,
+              left: rightChild.left,
+              right: rightChild.right,
+              pivot: rightChild.pivot,
+              activeCall: rightChild.kind === 'leaf'
+                ? `a[${rightChild.left}] を確定`
+                : `partition(a, ${rightChild.left}, ${rightChild.right}), pivot=${rightChild.pivot}`
+            });
+            quickSort(rightChild.left, rightChild.right, depth + 1, node.id, rightChild.id);
+          }
+
+          path.pop();
+        }
+
+        pushStep({
+          line: 1,
+          phase: '初期化',
+          message: 'クイックソートを開始',
+          left: 0,
+          right: items.length - 1,
+          activeCall: 'ソート開始'
+        });
+
+        nextNodeId = 0;
+        quickSort(0, items.length - 1, 0);
+
+        pushStep({
+          line: 6,
+          phase: '完了',
+          message: 'クイックソート完了',
+          left: 0,
+          right: items.length - 1,
+          activeCall: 'sort complete'
+        });
+
+        return built;
+      }
+
+      function updateCodeHighlight(step) {
+        codeLines.forEach((line) => line.classList.remove('active'));
+        if (step && step.line) {
+          codeLines.get(step.line)?.classList.add('active');
+        }
+      }
+
+      function renderTopArray(step) {
+        indexRow.innerHTML = '';
+        valueRow.innerHTML = '';
+        for (let index = 0; index < step.array.length; index += 1) {
+          const idx = document.createElement('div');
+          idx.className = 'index-chip';
+          idx.textContent = String(index);
+          indexRow.appendChild(idx);
+
+          const value = document.createElement('div');
+          value.className = 'value-chip';
+          if (step.left != null && step.right != null && index >= step.left && index <= step.right) {
+            value.classList.add('active');
+          }
+          value.textContent = String(step.array[index]);
+          valueRow.appendChild(value);
+        }
+      }
+
+      function renderTree(step) {
+        treeWrap.innerHTML = '';
+        if (!step.nodes.length) {
+          const empty = document.createElement('div');
+          empty.className = 'small empty';
+          empty.textContent = 'まだ分割は始まっていません。';
+          treeWrap.appendChild(empty);
+          return;
+        }
+
+        const childrenByParent = new Map();
+        for (const node of step.nodes) {
+          const key = node.parentId ?? 'root';
+          if (!childrenByParent.has(key)) {
+            childrenByParent.set(key, []);
+          }
+          childrenByParent.get(key).push(node);
+        }
+        childrenByParent.forEach((nodes) => nodes.sort((a, b) => a.left - b.left));
+
+        function buildBranch(node, isChild = false, animateIncoming = false) {
+          const branch = document.createElement('div');
+          branch.className = `tree-branch${isChild ? ' child' : ''}`;
+          branch.dataset.branchId = String(node.id);
+          if (animateIncoming && isChild) {
+            branch.classList.add('current-split-child');
+          }
+
+          const el = document.createElement('div');
+          el.className = `node ${node.kind}`;
+          if (node.status === 'pending') {
+            el.classList.add('pending');
+          }
+          if (node.id === step.activeNodeId) {
+            el.classList.add('active');
+            if (step.phase === '分割完了') {
+              el.classList.add('after-split');
+            } else {
+              el.classList.add('before-split');
+            }
+          }
+
+          const label = node.kind === 'leaf'
+            ? ''
+            : `partition(a, ${node.left}, ${node.right}), pivot=${node.pivot}`;
+
+          let pivotMarked = false;
+          const values = node.values.map((value) => {
+            const shouldMarkPivot = node.kind === 'call'
+              && node.id === step.activeNodeId
+              && !pivotMarked
+              && value === node.pivot;
+            if (shouldMarkPivot) {
+              pivotMarked = true;
+            }
+            return `<div class="node-cell${shouldMarkPivot ? ' pivot' : ''}">${value}</div>`;
+          }).join('');
+
+          el.innerHTML = `
+            <div class="node-label">${label || '&nbsp;'}</div>
+            <div class="node-array">${values}</div>
+          `;
+          branch.appendChild(el);
+
+          const children = childrenByParent.get(node.id) || [];
+          if (children.length > 0) {
+            const drop = document.createElement('div');
+            drop.className = 'tree-drop';
+            const animateSplit = node.id === step.activeNodeId && step.phase === '分割完了';
+            if (animateSplit) {
+              drop.classList.add('current-split');
+            }
+            branch.appendChild(drop);
+
+            const childWrap = document.createElement('div');
+            childWrap.className = 'tree-children';
+            childWrap.dataset.parentBranchId = String(node.id);
+            const leftSplitLine = document.createElement('div');
+            leftSplitLine.className = `tree-split-line left${animateSplit ? ' current-split' : ''}`;
+            const rightSplitLine = document.createElement('div');
+            rightSplitLine.className = `tree-split-line right${animateSplit ? ' current-split' : ''}`;
+            childWrap.appendChild(leftSplitLine);
+            childWrap.appendChild(rightSplitLine);
+            children.forEach((child) => {
+              childWrap.appendChild(buildBranch(child, true, animateSplit));
+            });
+            branch.appendChild(childWrap);
+          }
+
+          return branch;
+        }
+
+        const roots = childrenByParent.get('root') || [];
+        if (roots.length === 0) {
+          const empty = document.createElement('div');
+          empty.className = 'small empty';
+          empty.textContent = 'まだ分割は始まっていません。';
+          treeWrap.appendChild(empty);
+          return;
+        }
+
+        roots.forEach((rootNode) => {
+          treeWrap.appendChild(buildBranch(rootNode, false));
+        });
+
+        requestAnimationFrame(() => {
+          treeWrap.querySelectorAll('.tree-children').forEach((childWrap) => {
+            const childBranches = [...childWrap.querySelectorAll(':scope > .tree-branch.child')];
+            if (childBranches.length === 0) return;
+
+            const wrapRect = childWrap.getBoundingClientRect();
+            const parentId = childWrap.dataset.parentBranchId;
+            const parentBranch = treeWrap.querySelector(`.tree-branch[data-branch-id="${parentId}"]`);
+            if (!parentBranch) return;
+
+            const parentNodeArray = parentBranch.querySelector(':scope > .node > .node-array');
+            if (!parentNodeArray) return;
+            const parentRect = parentNodeArray.getBoundingClientRect();
+            const centerX = parentRect.left + (parentRect.width / 2) - wrapRect.left;
+
+            const firstNodeArray = childBranches[0].querySelector(':scope > .node > .node-array');
+            const lastNodeArray = childBranches[childBranches.length - 1].querySelector(':scope > .node > .node-array');
+            if (!firstNodeArray || !lastNodeArray) return;
+
+            const firstRect = firstNodeArray.getBoundingClientRect();
+            const lastRect = lastNodeArray.getBoundingClientRect();
+            const leftCenter = firstRect.left + (firstRect.width / 2) - wrapRect.left;
+            const rightCenter = lastRect.left + (lastRect.width / 2) - wrapRect.left;
+
+            const leftLine = childWrap.querySelector(':scope > .tree-split-line.left');
+            const rightLine = childWrap.querySelector(':scope > .tree-split-line.right');
+            if (leftLine) {
+              leftLine.style.left = `${Math.min(leftCenter, centerX)}px`;
+              leftLine.style.width = `${Math.max(centerX - leftCenter, 0)}px`;
+            }
+            if (rightLine) {
+              rightLine.style.left = `${centerX}px`;
+              rightLine.style.width = `${Math.max(rightCenter - centerX, 0)}px`;
+            }
+          });
+        });
+      }
+
+      function renderPath(step) {
+        pathRow.innerHTML = '';
+        if (!step.path.length) {
+          const empty = document.createElement('div');
+          empty.className = 'small empty';
+          empty.textContent = '再帰呼び出しなし';
+          pathRow.appendChild(empty);
+          return;
+        }
+
+        step.path.forEach((range, index) => {
+          const chip = document.createElement('div');
+          chip.className = 'path-chip';
+          if (index === step.path.length - 1) {
+            chip.classList.add('current');
+          }
+          chip.textContent = range;
+          pathRow.appendChild(chip);
+        });
+      }
+
+      function render(step) {
+        renderTopArray(step);
+        renderTree(step);
+        renderPath(step);
+        updateCodeHighlight(step);
+
+        callLabelTop.textContent = step.activeCall || '分割準備中';
+        phaseValue.textContent = step.phase;
+        rangeValue.textContent = step.left != null && step.right != null ? formatRange(step.left, step.right) : '-';
+        pivotValue.textContent = step.pivot ?? '-';
+        leftValue.textContent = step.nextLeft ?? '-';
+        equalValue.textContent = step.nextEqual ?? '-';
+        rightValue.textContent = step.nextRight ?? '-';
+        compValue.textContent = String(step.comparisons ?? 0);
+        swapValue.textContent = String(step.swaps ?? 0);
+        remainValue.textContent = String(Math.max(steps.length - stepIndex - 1, 0));
+        messageValue.textContent = step.message;
+        pathStateBox.textContent = step.path.length ? step.path.join(' -> ') : '(再帰呼び出し終了)';
+        arrayStateBox.textContent = formatArray(step.array);
+        doneNote.hidden = step.phase !== '完了';
+      }
+
+      function updateButtons() {
+        prevBtn.disabled = stepIndex === 0;
+        stepBtn.disabled = stepIndex >= steps.length - 1;
+        playBtn.disabled = playing || stepIndex >= steps.length - 1;
+        pauseBtn.disabled = !playing;
+      }
+
+      function clearTimer() {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function schedulePlay() {
+        clearTimer();
+        if (!playing) return;
+        if (stepIndex >= steps.length - 1) {
+          playing = false;
+          updateButtons();
+          return;
+        }
+        const delay = Math.round(850 / Number(speedInput.value));
+        timer = setTimeout(() => {
+          stepIndex += 1;
+          render(steps[stepIndex]);
+          updateButtons();
+          schedulePlay();
+        }, delay);
+      }
+
+      function resetState(values) {
+        steps = buildSteps(values);
+        stepIndex = 0;
+        playing = false;
+        clearTimer();
+        errorValue.textContent = '';
+        errorValue.className = 'small';
+        render(steps[0]);
+        updateButtons();
+      }
+
+      function applyInput() {
+        const values = parseArrayText(arrayInput.value);
+        if (values.length < 2) {
+          errorValue.textContent = '2個以上の整数を入力してください。';
+          errorValue.className = 'small error-text';
+          return;
+        }
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      }
+
+      randomBtn.addEventListener('click', () => {
+        const values = randomValues();
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      });
+
+      stepBtn.addEventListener('click', () => {
+        if (stepIndex < steps.length - 1) {
+          stepIndex += 1;
+          render(steps[stepIndex]);
+          updateButtons();
+        }
+      });
+
+      prevBtn.addEventListener('click', () => {
+        if (stepIndex > 0) {
+          stepIndex -= 1;
+          render(steps[stepIndex]);
+          updateButtons();
+        }
+      });
+
+      playBtn.addEventListener('click', () => {
+        if (stepIndex >= steps.length - 1) return;
+        playing = true;
+        updateButtons();
+        schedulePlay();
+      });
+
+      pauseBtn.addEventListener('click', () => {
+        playing = false;
+        clearTimer();
+        updateButtons();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        applyInput();
+      });
+
+      speedInput.addEventListener('input', () => {
+        speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+        if (playing) {
+          schedulePlay();
+        }
+      });
+
+      arrayInput.addEventListener('change', () => {
+        applyInput();
+      });
+
+      speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+      resetState(DEFAULT_VALUES);
+    </script>
+  </body>
+</html>
