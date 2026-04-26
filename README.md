@@ -44,9 +44,9 @@
     - [Quick Sort Animation](https://jkushida.github.io/Web_demo/DSA/quick-sort-animation.html) - 中央の要素を pivot として、pl/pr で分割を繰り返すクイックソートを可視化
     - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
   - 比較によらないソート
-    - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 比較によらず、値を対応する bucket に振り分けてから順に回収する流れを可視化
-    - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 比較によらず、1の位から100の位まで安定に桁ごとの並べ替えを可視化
-    - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - 比較によらず、counts と累積和を使って tmp を作る流れを可視化
+    - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 値を対応する bucket に振り分けてから順に回収する流れを可視化
+    - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 1の位から100の位まで安定に桁ごとの並べ替えを可視化
+    - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - counts と累積和を使って tmp を作る流れを可視化
 
 ### 進化計算 <a id="ec"></a>
 - [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ
