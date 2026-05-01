@@ -1,0 +1,1624 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>マージソート手順アニメーション</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --panel: #ffffff;
+        --line: #d1d5db;
+        --fg: #111827;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --primary-weak: #dbeafe;
+        --range: #eff6ff;
+        --compare: #f7e5d3;
+        --split: #e0f2fe;
+        --split-line: #0284c7;
+        --merge: #f3e8ff;
+        --merge-line: #7c3aed;
+        --done: #ecfccb;
+        --done-line: #65a30d;
+        --leaf: #fce7d6;
+        --leaf-line: #c2410c;
+        --pending: #f8fafc;
+        --pending-line: #cbd5e1;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+        background: #f8fafc;
+        color: var(--fg);
+        font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      }
+
+      header {
+        padding: 8px 14px 6px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fff;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      main {
+        padding: 10px 12px 14px;
+        overflow: auto;
+      }
+
+      .viz {
+        display: grid;
+        grid-template-columns: minmax(500px, 1fr) 410px;
+        gap: 10px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+      }
+
+      .chart-panel {
+        padding: 12px;
+      }
+
+      .side-stack {
+        display: grid;
+        gap: 10px;
+      }
+
+      .controls-panel,
+      .code-panel {
+        padding: 12px;
+      }
+
+      .controls.compact {
+        display: grid;
+        gap: 7px;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .array-row {
+        align-items: end;
+        flex-wrap: nowrap;
+      }
+
+      .array-label {
+        flex: 0 1 290px;
+        display: grid;
+        gap: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .array-input {
+        width: min(260px, 100%);
+      }
+
+      #randomBtn {
+        margin-left: auto;
+      }
+
+      input[type="text"],
+      input[type="range"],
+      button {
+        font: inherit;
+      }
+
+      input[type="text"] {
+        padding: 7px 9px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      button {
+        padding: 7px 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--fg);
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      button:hover { background: #f8fafc; }
+
+      button.primary {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .flow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row-block {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 4px 8px 6px;
+        background: #fcfcfd;
+      }
+
+      .row-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: baseline;
+        margin-bottom: 5px;
+      }
+
+      .row-title {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .row-head .small {
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      #callLabelTop {
+        font-size: 15px;
+      }
+
+      .full-array {
+        display: grid;
+        gap: 2px;
+        justify-content: center;
+        overflow-x: auto;
+      }
+
+      .index-row,
+      .value-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 46px;
+        gap: 4px;
+        width: max-content;
+      }
+
+      .index-chip {
+        text-align: center;
+        color: #0b72d0;
+        font-size: 13px;
+        font-style: italic;
+        font-weight: 800;
+      }
+
+      .value-chip {
+        min-height: 32px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #111827;
+        background: #fff;
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .value-chip.active {
+        background: var(--range);
+        border-color: #3b82f6;
+      }
+
+      .tree-wrap {
+        display: flex;
+        justify-content: center;
+        overflow-x: auto;
+        padding: 0;
+      }
+
+      .process-wrap {
+        display: grid;
+        gap: 10px;
+        justify-content: center;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .process-row {
+        display: grid;
+        gap: 4px;
+        justify-content: center;
+      }
+
+      .process-connector {
+        display: grid;
+        gap: 4px;
+        justify-content: center;
+        min-height: 14px;
+      }
+
+      .process-connector-line {
+        position: relative;
+        height: 14px;
+      }
+
+      .process-connector-line::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 9px;
+        border-top: 2px solid #cbd5e1;
+      }
+
+      .process-connector-line::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 5px;
+        border-left: 2px solid #cbd5e1;
+        transform: translateX(-50%);
+      }
+
+      .process-merge-connector {
+        display: grid;
+        gap: 4px;
+        justify-content: center;
+        min-height: 14px;
+      }
+
+      .process-merge-connector-line {
+        position: relative;
+        height: 14px;
+      }
+
+      .process-merge-connector-line::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        border-top: 2px solid #cbd5e1;
+      }
+
+      .process-merge-connector-line::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        border-left: 2px solid #cbd5e1;
+        transform: translateX(-50%);
+      }
+
+      .process-segment {
+        display: flex;
+        gap: 0;
+        justify-self: start;
+      }
+
+      .process-segment.split-row {
+        align-self: start;
+      }
+
+      .process-segment.merge-row {
+        align-self: start;
+      }
+
+      .process-cell {
+        min-width: 32px;
+        min-height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #111827;
+        background: #fff;
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .process-segment.split-row .process-cell {
+        background: var(--split);
+        border-color: var(--split-line);
+      }
+
+      .process-segment.pending-row .process-cell {
+        background: var(--pending);
+        border-color: var(--pending-line);
+      }
+
+      .process-segment.leaf-row .process-cell {
+        background: var(--leaf);
+        border-color: var(--leaf-line);
+      }
+
+      .process-segment.merge-row .process-cell {
+        background: var(--merge);
+        border-color: var(--merge-line);
+      }
+
+      .process-segment.done-row .process-cell {
+        background: var(--done);
+        border-color: var(--done-line);
+      }
+
+      .process-segment.active-row {
+        outline: 2px solid #93c5fd;
+        outline-offset: -2px;
+      }
+
+      .process-cell.blank {
+        background: #fff;
+        color: transparent;
+        border-color: #cbd5e1;
+      }
+
+      .tree-branch {
+        display: grid;
+        justify-items: center;
+        align-items: start;
+        gap: 4px;
+        min-width: 76px;
+      }
+
+      .tree-branch.child {
+        position: relative;
+      }
+
+      .tree-branch.child::before {
+        content: "";
+        position: absolute;
+        top: -10px;
+        left: 50%;
+        width: 0;
+        height: 10px;
+        border-left: 2px solid #cbd5e1;
+        transform: translateX(-50%);
+      }
+
+      .tree-children {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 10px;
+        position: relative;
+        padding-top: 10px;
+        min-width: max-content;
+      }
+
+      .tree-children::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 12px;
+        right: 12px;
+        border-top: 2px solid #cbd5e1;
+      }
+
+      .tree-split-line {
+        position: absolute;
+        top: 0;
+        height: 2px;
+        background: #cbd5e1;
+      }
+
+      .tree-split-line.left {
+        left: 50%;
+        width: 0;
+      }
+
+      .tree-split-line.right {
+        left: 50%;
+        width: 0;
+      }
+
+      .tree-drop {
+        width: 0;
+        height: 10px;
+        border-left: 2px solid #cbd5e1;
+      }
+
+      .node {
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+      }
+
+      .node.active-node .node-array {
+        box-shadow: 0 0 0 3px #93c5fd;
+      }
+
+      .node-label {
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.3;
+      }
+
+      .node-array {
+        display: flex;
+        gap: 0;
+        justify-content: center;
+        flex-wrap: nowrap;
+      }
+
+      .node-cell {
+        min-width: 32px;
+        min-height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #111827;
+        background: #fff;
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .node.pending .node-cell {
+        background: var(--pending);
+        border-color: var(--pending-line);
+      }
+
+      .node.leaf .node-cell {
+        background: var(--leaf);
+        border-color: var(--leaf-line);
+      }
+
+      .node.split .node-array {
+        box-shadow: 0 0 0 2px var(--split-line);
+      }
+
+      .node.split .node-cell {
+        background: var(--split);
+        border-color: var(--split-line);
+      }
+
+      .node.merging .node-array {
+        box-shadow: 0 0 0 2px var(--merge-line);
+      }
+
+      .node.merging .node-cell {
+        background: var(--merge);
+        border-color: var(--merge-line);
+      }
+
+      .node.merged .node-array {
+        box-shadow: 0 0 0 2px var(--done-line);
+      }
+
+      .node.merged .node-cell {
+        background: var(--done);
+        border-color: var(--done-line);
+      }
+
+      .merge-detail {
+        display: grid;
+        gap: 8px;
+      }
+
+      .merge-lane {
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        gap: 8px;
+        align-items: start;
+      }
+
+      .merge-label {
+        color: #475569;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.2;
+        padding-top: 14px;
+      }
+
+      .merge-track {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .pointer-row {
+        display: flex;
+        gap: 4px;
+        min-height: 12px;
+      }
+
+      .pointer-slot {
+        width: 40px;
+        height: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: end;
+      }
+
+      .pointer-mark {
+        color: #0b72d0;
+        font-size: 12px;
+        font-weight: 700;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        line-height: 1;
+      }
+
+      .merge-cells {
+        display: flex;
+        gap: 4px;
+        flex-wrap: nowrap;
+      }
+
+      .merge-cell {
+        width: 40px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border: 2px solid #111827;
+        background: #fff;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .merge-cell.active {
+        background: var(--compare, #f7e5d3);
+      }
+
+      .merge-cell.consumed {
+        opacity: 0.45;
+      }
+
+      .merge-cell.result {
+        background: var(--done);
+        border-color: var(--done-line);
+      }
+
+      .merge-empty {
+        color: #9ca3af;
+        font-style: italic;
+        font-size: 12px;
+        padding-top: 6px;
+      }
+
+      .status-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+
+      .status-row strong { color: var(--fg); }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 7px;
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 7px;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      .code-panel h2 {
+        margin: 0 0 10px;
+        font-size: 17px;
+      }
+
+      .code-list {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+        display: grid;
+        gap: 3px;
+        overflow-x: auto;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 7px;
+        align-items: baseline;
+        padding: 4px 6px;
+        border-radius: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        width: max-content;
+        min-width: 100%;
+      }
+
+      .code-line.active { background: var(--primary-weak); }
+      .code-text { white-space: nowrap; }
+      .ln { color: #64748b; text-align: right; }
+      .code-kw { color: #7c3aed; font-weight: 700; }
+      .code-fn { color: #0369a1; }
+      .code-var { color: #b45309; }
+      .code-num { color: #047857; }
+
+      .message-value {
+        color: var(--fg);
+        font-weight: 700;
+      }
+
+      .state-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        background: #f8fafc;
+        padding: 7px 9px;
+      }
+
+      .state-label {
+        margin-bottom: 5px;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .mono-box {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        color: #0f172a;
+      }
+
+      .program-state {
+        display: grid;
+        gap: 7px;
+        margin-top: 8px;
+      }
+
+      .hint-box {
+        margin: 8px 0;
+        padding: 7px 9px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .hint-box strong {
+        color: #111827;
+      }
+
+      .error-text {
+        color: #b91c1c;
+        font-weight: 700;
+      }
+
+      .empty {
+        color: #9ca3af;
+        font-style: italic;
+      }
+
+      @media (max-width: 960px) {
+        .viz {
+          grid-template-columns: minmax(560px, 1fr) 410px;
+          min-width: 980px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="margin: 0 0 4px;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>マージソート手順アニメーション</h1>
+    </header>
+
+    <main>
+      <section class="viz">
+        <section class="panel chart-panel">
+          <div class="flow">
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">data</span>
+                <span class="small" id="callLabelTop">merge_sort(列c)</span>
+              </div>
+              <div class="full-array">
+                <div id="indexRow" class="index-row"></div>
+                <div id="valueRow" class="value-row"></div>
+              </div>
+            </section>
+
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">分割とマージの木</span>
+                <span id="doneNote" class="small" style="color:#15803d;font-weight:800;" hidden>ソート完了</span>
+              </div>
+              <div id="treeWrap" class="tree-wrap"></div>
+            </section>
+
+            <section class="row-block">
+              <div class="row-head">
+                <span class="row-title">現在のマージ</span>
+                <span class="small" id="mergeRangeLabel">まだ merge(整列済みのa, 整列済みのb) は始まっていません</span>
+              </div>
+              <div id="mergeDetail" class="merge-detail"></div>
+            </section>
+          </div>
+
+          <div class="status-row">
+            <span>phase <strong id="phaseValue">初期化</strong></span>
+            <span>列c <strong id="rangeValue">-</strong></span>
+            <span>mid <strong id="midValue">-</strong></span>
+            <span>列a <strong id="leftValue">-</strong></span>
+            <span>列b <strong id="rightValue">-</strong></span>
+            <span>比較回数 <strong id="compValue">0</strong></span>
+            <span>書き込み回数 <strong id="writeValue">0</strong></span>
+            <span>残りステップ <strong id="remainValue">0</strong></span>
+          </div>
+
+          <div class="legend" aria-label="legend">
+            <div><i style="background:#ffffff; border:1px solid #111;"></i>通常</div>
+            <div><i style="background:#e0f2fe; border:1px solid #0284c7;"></i>分割中</div>
+            <div><i style="background:#f3e8ff; border:1px solid #7c3aed;"></i>マージ中</div>
+            <div><i style="background:#fce7d6; border:1px solid #c2410c;"></i>要素1個</div>
+            <div><i style="background:#ecfccb; border:1px solid #65a30d;"></i>マージ完了</div>
+          </div>
+        </section>
+
+        <section class="side-stack">
+          <section class="panel controls-panel" aria-label="controls">
+            <div class="controls compact">
+              <div class="control-row array-row">
+                <label class="array-label">配列：表示は 8 個まで
+                  <input id="arrayInput" class="array-input" type="text" value="55, 13, 3, 45, 74, 87, 46, 30" />
+                </label>
+                <button id="randomBtn">乱数生成</button>
+              </div>
+              <div class="control-row">
+                <button id="prevBtn">1ステップ戻る</button>
+                <button id="stepBtn">1ステップ進む</button>
+              </div>
+              <div class="control-row">
+                <label>速度 <input id="speedInput" type="range" min="0.5" max="10" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+                <button id="playBtn" class="primary">再生</button>
+                <button id="pauseBtn" disabled>一時停止</button>
+                <button id="resetBtn">リセット</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel code-panel">
+            <h2>マージソートの疑似コード</h2>
+            <div class="hint-box"><strong>列c を半分に分割</strong>し、整列済みの列a と整列済みの列b を最後に merge します。</div>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text">関数 <span class="code-fn">merge_sort</span>(<span class="code-var">列c</span>) {</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">if</span> (<span class="code-var">列c</span> の要素数が <span class="code-num">1</span>) {</span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-kw">return</span> <span class="code-var">列c</span></span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">列a</span>, <span class="code-var">列b</span> <span class="code-op">=</span> <span class="code-var">列c</span> を半分に分割する</span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">整列済みのa</span> <span class="code-op">=</span> <span class="code-fn">merge_sort</span>(<span class="code-var">列a</span>)</span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">&nbsp;&nbsp;<span class="code-var">整列済みのb</span> <span class="code-op">=</span> <span class="code-fn">merge_sort</span>(<span class="code-var">列b</span>)</span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">&nbsp;&nbsp;<span class="code-kw">return</span> <span class="code-fn">merge</span>(<span class="code-var">整列済みのa</span>, <span class="code-var">整列済みのb</span>)</span></li>
+              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">}</span></li>
+            </ol>
+            <div class="status-row small">
+              <span id="messageValue" class="message-value">初期状態</span>
+            </div>
+            <div id="errorValue" class="small"></div>
+            <div class="program-state">
+              <section class="state-box">
+                <div class="state-label">現在の列c</div>
+                <pre id="rangeStateBox" class="mono-box">[55, 13, 3, 45, 74, 87, 46, 30]</pre>
+              </section>
+              <section class="state-box">
+                <div class="state-label">現在の配列</div>
+                <pre id="arrayStateBox" class="mono-box">[55, 13, 3, 45, 74, 87, 46, 30]</pre>
+              </section>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const arrayInput = document.getElementById('arrayInput');
+      const speedInput = document.getElementById('speedInput');
+      const speedLabel = document.getElementById('speedLabel');
+      const randomBtn = document.getElementById('randomBtn');
+      const stepBtn = document.getElementById('stepBtn');
+      const prevBtn = document.getElementById('prevBtn');
+      const playBtn = document.getElementById('playBtn');
+      const pauseBtn = document.getElementById('pauseBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const indexRow = document.getElementById('indexRow');
+      const valueRow = document.getElementById('valueRow');
+      const treeWrap = document.getElementById('treeWrap');
+      const mergeDetail = document.getElementById('mergeDetail');
+      const callLabelTop = document.getElementById('callLabelTop');
+      const mergeRangeLabel = document.getElementById('mergeRangeLabel');
+      const doneNote = document.getElementById('doneNote');
+      const phaseValue = document.getElementById('phaseValue');
+      const rangeValue = document.getElementById('rangeValue');
+      const midValue = document.getElementById('midValue');
+      const leftValue = document.getElementById('leftValue');
+      const rightValue = document.getElementById('rightValue');
+      const compValue = document.getElementById('compValue');
+      const writeValue = document.getElementById('writeValue');
+      const remainValue = document.getElementById('remainValue');
+      const messageValue = document.getElementById('messageValue');
+      const errorValue = document.getElementById('errorValue');
+      const rangeStateBox = document.getElementById('rangeStateBox');
+      const arrayStateBox = document.getElementById('arrayStateBox');
+
+      const DEFAULT_VALUES = [55, 13, 3, 45, 74, 87, 46, 30];
+
+      const codeLines = new Map();
+      for (let line = 1; line <= 8; line += 1) {
+        codeLines.set(line, document.getElementById(`line-${line}`));
+      }
+
+      let steps = [];
+      let stepIndex = 0;
+      let playing = false;
+      let timer = null;
+
+      function parseArrayText(text) {
+        const values = [];
+        for (const part of text.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)) {
+          if (!/^-?\d+$/.test(part)) continue;
+          values.push(Number(part));
+          if (values.length >= 8) break;
+        }
+        return values;
+      }
+
+      function randomValues() {
+        return Array.from({ length: 8 }, () => 10 + Math.floor(Math.random() * 90));
+      }
+
+      function formatRange(start, end) {
+        return `[${start}, ${end})`;
+      }
+
+      function formatArray(values) {
+        return `[${values.join(', ')}]`;
+      }
+
+      function cloneNodes(nodes) {
+        return nodes.map((node) => ({
+          ...node,
+          values: [...node.values]
+        }));
+      }
+
+      function buildSteps(values) {
+        const items = [...values];
+        const nodes = [];
+        const built = [];
+        let nextNodeId = 0;
+        let comparisons = 0;
+        let writes = 0;
+
+        function makeNode(start, end, depth, parentId = null) {
+          const node = {
+            id: nextNodeId += 1,
+            start,
+            end,
+            depth,
+            parentId,
+            leftId: null,
+            rightId: null,
+            visible: parentId == null,
+            status: parentId == null ? 'split' : 'pending',
+            values: values.slice(start, end)
+          };
+          nodes.push(node);
+          if (end - start > 1) {
+            const mid = Math.floor((start + end) / 2);
+            node.leftId = makeNode(start, mid, depth + 1, node.id).id;
+            node.rightId = makeNode(mid, end, depth + 1, node.id).id;
+          }
+          return node;
+        }
+
+        const root = makeNode(0, values.length, 0);
+
+        function getNode(id) {
+          return nodes.find((node) => node.id === id);
+        }
+
+        function pushStep({
+          line,
+          phase,
+          message,
+          activeNodeId = null,
+          range = null,
+          mid = null,
+          mergeLeft = null,
+          mergeRight = null,
+          mergeResult = null,
+          leftIndex = null,
+          rightIndex = null,
+          activeCall = ''
+        }) {
+          const leftRange = range && mid != null ? formatArray(items.slice(range.start, mid)) : '-';
+          const rightRange = range && mid != null ? formatArray(items.slice(mid, range.end)) : '-';
+          built.push({
+            line,
+            phase,
+            message,
+            sourceArray: [...values],
+            array: [...items],
+            nodes: cloneNodes(nodes),
+            activeNodeId,
+            range,
+            mid,
+            leftRange,
+            rightRange,
+            mergeLeft: mergeLeft ? [...mergeLeft] : null,
+            mergeRight: mergeRight ? [...mergeRight] : null,
+            mergeResult: mergeResult ? [...mergeResult] : [],
+            leftIndex,
+            rightIndex,
+            activeCall,
+            comparisons,
+            writes
+          });
+        }
+
+        function sortNode(nodeId) {
+          const node = getNode(nodeId);
+          const length = node.end - node.start;
+          node.visible = true;
+          node.status = 'split';
+          pushStep({
+            line: 1,
+            phase: '分割',
+            message: `${formatRange(node.start, node.end)} を処理`,
+            activeNodeId: node.id,
+            range: { start: node.start, end: node.end },
+            activeCall: `merge_sort(列c=${formatArray(items.slice(node.start, node.end))})`
+          });
+
+          if (length <= 1) {
+            node.status = 'leaf';
+            node.values = items.slice(node.start, node.end);
+            pushStep({
+              line: 2,
+              phase: '葉',
+              message: `${formatRange(node.start, node.end)} は要素1個なのでそのまま`,
+              activeNodeId: node.id,
+              range: { start: node.start, end: node.end },
+              activeCall: `return 列c=${formatArray(items.slice(node.start, node.end))}`
+            });
+            pushStep({
+              line: 3,
+              phase: '葉',
+              message: `${formatRange(node.start, node.end)} を返す`,
+              activeNodeId: node.id,
+              range: { start: node.start, end: node.end },
+              activeCall: `列c=${formatArray(items.slice(node.start, node.end))}`
+            });
+            return items.slice(node.start, node.end);
+          }
+
+          const mid = Math.floor((node.start + node.end) / 2);
+          const leftNode = getNode(node.leftId);
+          const rightNode = getNode(node.rightId);
+          leftNode.visible = true;
+          rightNode.visible = true;
+          pushStep({
+            line: 4,
+            phase: '分割',
+            message: `${formatRange(node.start, node.end)} を ${formatRange(node.start, mid)} と ${formatRange(mid, node.end)} に分割`,
+            activeNodeId: node.id,
+            range: { start: node.start, end: node.end },
+            mid,
+            activeCall: `列c を 列a=${formatArray(items.slice(node.start, mid))} / 列b=${formatArray(items.slice(mid, node.end))} に分割`
+          });
+
+          pushStep({
+            line: 5,
+            phase: '左再帰',
+            message: `列a ${formatArray(items.slice(node.start, mid))} を再帰的に整列`,
+            activeNodeId: leftNode.id,
+            range: { start: node.start, end: mid },
+            mid: Math.floor((leftNode.start + leftNode.end) / 2),
+            activeCall: `merge_sort(列a=${formatArray(items.slice(node.start, mid))})`
+          });
+          const leftSorted = sortNode(leftNode.id);
+
+          pushStep({
+            line: 6,
+            phase: '右再帰',
+            message: `列b ${formatArray(items.slice(mid, node.end))} を再帰的に整列`,
+            activeNodeId: rightNode.id,
+            range: { start: mid, end: node.end },
+            mid: Math.floor((rightNode.start + rightNode.end) / 2),
+            activeCall: `merge_sort(列b=${formatArray(items.slice(mid, node.end))})`
+          });
+          const rightSorted = sortNode(rightNode.id);
+
+          let li = 0;
+          let ri = 0;
+          const merged = [];
+          node.status = 'merging';
+          pushStep({
+            line: 7,
+            phase: 'マージ準備',
+            message: `整列済みのa と 整列済みのb を merge する`,
+            activeNodeId: node.id,
+            range: { start: node.start, end: node.end },
+            mid,
+            mergeLeft: leftSorted,
+            mergeRight: rightSorted,
+            mergeResult: merged,
+            leftIndex: li,
+            rightIndex: ri,
+            activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+          });
+
+          while (li < leftSorted.length && ri < rightSorted.length) {
+            comparisons += 1;
+            pushStep({
+              line: 7,
+              phase: '比較',
+              message: `${leftSorted[li]} と ${rightSorted[ri]} を比較`,
+              activeNodeId: node.id,
+              range: { start: node.start, end: node.end },
+              mid,
+              mergeLeft: leftSorted,
+              mergeRight: rightSorted,
+              mergeResult: merged,
+              leftIndex: li,
+              rightIndex: ri,
+              activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+            });
+
+            if (leftSorted[li] <= rightSorted[ri]) {
+              merged.push(leftSorted[li]);
+              writes += 1;
+              pushStep({
+                line: 7,
+                phase: 'マージ',
+                message: `${leftSorted[li]} を結果へ追加`,
+                activeNodeId: node.id,
+                range: { start: node.start, end: node.end },
+                mid,
+                mergeLeft: leftSorted,
+                mergeRight: rightSorted,
+                mergeResult: merged,
+                leftIndex: li,
+                rightIndex: ri,
+                activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+              });
+              li += 1;
+            } else {
+              merged.push(rightSorted[ri]);
+              writes += 1;
+              pushStep({
+                line: 7,
+                phase: 'マージ',
+                message: `${rightSorted[ri]} を結果へ追加`,
+                activeNodeId: node.id,
+                range: { start: node.start, end: node.end },
+                mid,
+                mergeLeft: leftSorted,
+                mergeRight: rightSorted,
+                mergeResult: merged,
+                leftIndex: li,
+                rightIndex: ri,
+                activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+              });
+              ri += 1;
+            }
+          }
+
+          while (li < leftSorted.length) {
+            merged.push(leftSorted[li]);
+            writes += 1;
+            pushStep({
+              line: 7,
+              phase: '残りを追加',
+              message: `左側の残り ${leftSorted[li]} を追加`,
+              activeNodeId: node.id,
+              range: { start: node.start, end: node.end },
+              mid,
+              mergeLeft: leftSorted,
+              mergeRight: rightSorted,
+              mergeResult: merged,
+              leftIndex: li,
+              rightIndex: ri,
+              activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+            });
+            li += 1;
+          }
+
+          while (ri < rightSorted.length) {
+            merged.push(rightSorted[ri]);
+            writes += 1;
+            pushStep({
+              line: 7,
+              phase: '残りを追加',
+              message: `右側の残り ${rightSorted[ri]} を追加`,
+              activeNodeId: node.id,
+              range: { start: node.start, end: node.end },
+              mid,
+              mergeLeft: leftSorted,
+              mergeRight: rightSorted,
+              mergeResult: merged,
+              leftIndex: li,
+              rightIndex: ri,
+              activeCall: `merge(整列済みのa=${formatArray(leftSorted)}, 整列済みのb=${formatArray(rightSorted)})`
+            });
+            ri += 1;
+          }
+
+          for (let index = 0; index < merged.length; index += 1) {
+            items[node.start + index] = merged[index];
+          }
+          node.values = [...merged];
+          node.status = 'merged';
+          pushStep({
+            line: 7,
+            phase: 'マージ完了',
+            message: `merge(整列済みのa, 整列済みのb) が完了`,
+            activeNodeId: node.id,
+            range: { start: node.start, end: node.end },
+            mid,
+            mergeLeft: leftSorted,
+            mergeRight: rightSorted,
+            mergeResult: merged,
+            activeCall: `return merge(整列済みのa, 整列済みのb) = ${formatArray(merged)}`
+          });
+
+          return merged;
+        }
+
+        pushStep({
+          line: 1,
+          phase: '初期化',
+          message: 'マージソートを開始',
+          activeNodeId: root.id,
+          range: { start: 0, end: values.length },
+          activeCall: `merge_sort(列c=${formatArray(values)})`
+        });
+
+        sortNode(root.id);
+
+        root.status = 'merged';
+        pushStep({
+          line: 7,
+          phase: '完了',
+          message: 'マージソート完了',
+          activeNodeId: root.id,
+          range: { start: 0, end: values.length },
+          activeCall: `return ${formatArray(items)}`
+        });
+
+        return built;
+      }
+
+      function updateCodeHighlight(step) {
+        codeLines.forEach((line) => line.classList.remove('active'));
+        if (step && step.line) {
+          codeLines.get(step.line)?.classList.add('active');
+        }
+      }
+
+      function renderTopArray(step) {
+        indexRow.innerHTML = '';
+        valueRow.innerHTML = '';
+        for (let index = 0; index < step.array.length; index += 1) {
+          const idx = document.createElement('div');
+          idx.className = 'index-chip';
+          idx.textContent = `a[${index}]`;
+          indexRow.appendChild(idx);
+
+          const value = document.createElement('div');
+          value.className = 'value-chip';
+          if (step.range && index >= step.range.start && index < step.range.end) {
+            value.classList.add('active');
+          }
+          value.textContent = String(step.array[index]);
+          valueRow.appendChild(value);
+        }
+      }
+
+      function renderTree(step) {
+        treeWrap.innerHTML = '';
+        const visibleNodes = step.nodes.filter((node) => node.visible);
+        if (!visibleNodes.length) {
+          const empty = document.createElement('div');
+          empty.className = 'small empty';
+          empty.textContent = 'まだ分割は始まっていません。';
+          treeWrap.appendChild(empty);
+          return;
+        }
+        const total = step.array.length;
+        const maxDepth = Math.max(...visibleNodes.map((node) => node.depth));
+        const totalRows = (maxDepth * 2) + 1;
+        const wrap = document.createElement('div');
+        wrap.className = 'process-wrap';
+        const activeNode = visibleNodes.find((node) => node.id === step.activeNodeId) || null;
+        const nodeMap = new Map(visibleNodes.map((node) => [node.id, node]));
+
+        function getInputMode(node) {
+          if (node.status === 'merged') return 'done-row';
+          if (node.status === 'leaf') return 'leaf-row';
+          if (node.status === 'pending') return 'pending-row';
+          return 'split-row';
+        }
+
+        function shouldHighlight(node, mode) {
+          if (!activeNode) return false;
+
+          const mergePhase = activeNode.status === 'merging'
+            && (step.phase === 'マージ準備' || step.phase === '比較' || step.phase === 'マージ' || step.phase === '残りを追加');
+
+          if (mergePhase) {
+            const leftChild = activeNode.leftId ? nodeMap.get(activeNode.leftId) : null;
+            const rightChild = activeNode.rightId ? nodeMap.get(activeNode.rightId) : null;
+            if (leftChild && node.id === leftChild.id && mode === getInputMode(leftChild)) return true;
+            if (rightChild && node.id === rightChild.id && mode === getInputMode(rightChild)) return true;
+            return false;
+          }
+
+          if (node.id === activeNode.id) {
+            return true;
+          }
+          return false;
+        }
+
+        function appendSegment(row, node, mode, valuesOverride = null) {
+          const segment = document.createElement('div');
+          const length = node.end - node.start;
+          segment.className = `process-segment ${mode}`;
+          if (shouldHighlight(node, mode)) {
+            segment.classList.add('active-row');
+          }
+          segment.style.gridColumn = `${node.start + 1} / span ${length}`;
+
+          let values = valuesOverride ? [...valuesOverride] : [...node.values];
+          if (mode === 'merge-row' && node.id === step.activeNodeId && step.mergeResult) {
+            values = [...step.mergeResult];
+            while (values.length < length) values.push('');
+          }
+
+          for (let index = 0; index < length; index += 1) {
+            const cell = document.createElement('div');
+            cell.className = 'process-cell';
+            const value = values[index] ?? '';
+            if (value === '') {
+              cell.classList.add('blank');
+              cell.innerHTML = '&nbsp;';
+            } else {
+              cell.textContent = String(value);
+            }
+            segment.appendChild(cell);
+          }
+          row.appendChild(segment);
+        }
+
+        const rows = Array.from({ length: totalRows }, () => {
+          const row = document.createElement('div');
+          row.className = 'process-row';
+          row.style.gridTemplateColumns = `repeat(${total}, 32px)`;
+          return row;
+        });
+
+        visibleNodes
+          .slice()
+          .sort((a, b) => (a.depth - b.depth) || (a.start - b.start))
+          .forEach((node) => {
+            const splitRow = rows[node.depth];
+            const splitMode = node.status === 'leaf'
+              ? 'leaf-row'
+              : node.status === 'pending'
+                ? 'pending-row'
+                : 'split-row';
+            appendSegment(splitRow, node, splitMode, step.sourceArray.slice(node.start, node.end));
+
+            if (node.depth < maxDepth && (node.status === 'merging' || node.status === 'merged')) {
+              const mergeRowIndex = (maxDepth * 2) - node.depth;
+              const mergeRow = rows[mergeRowIndex];
+              const mergeMode = node.status === 'merged' ? 'done-row' : 'merge-row';
+              appendSegment(mergeRow, node, mergeMode);
+            }
+          });
+
+        rows.forEach((row, rowIndex) => {
+          if (!row.childElementCount) return;
+
+          if (rowIndex > maxDepth) {
+            const mergeConnector = document.createElement('div');
+            mergeConnector.className = 'process-merge-connector';
+            mergeConnector.style.gridTemplateColumns = `repeat(${total}, 32px)`;
+
+            visibleNodes
+              .filter((node) => node.depth < maxDepth
+                && (node.status === 'merging' || node.status === 'merged')
+                && ((maxDepth * 2) - node.depth) === rowIndex
+                && node.end - node.start > 1)
+              .forEach((node) => {
+                const line = document.createElement('div');
+                line.className = 'process-merge-connector-line';
+                line.style.gridColumn = `${node.start + 1} / span ${node.end - node.start}`;
+                mergeConnector.appendChild(line);
+              });
+
+            if (mergeConnector.childElementCount > 0) {
+              wrap.appendChild(mergeConnector);
+            }
+          }
+
+          wrap.appendChild(row);
+
+          if (rowIndex < maxDepth) {
+            const connector = document.createElement('div');
+            connector.className = 'process-connector';
+            connector.style.gridTemplateColumns = `repeat(${total}, 32px)`;
+
+            visibleNodes
+              .filter((node) => node.depth === rowIndex && node.end - node.start > 1)
+              .forEach((node) => {
+                const line = document.createElement('div');
+                line.className = 'process-connector-line';
+                line.style.gridColumn = `${node.start + 1} / span ${node.end - node.start}`;
+                connector.appendChild(line);
+              });
+
+            if (connector.childElementCount > 0) {
+              wrap.appendChild(connector);
+            }
+          }
+        });
+
+        treeWrap.appendChild(wrap);
+      }
+
+      function renderMergeCells(values, activeIndex, consumedClass = true, resultMode = false) {
+        const cells = document.createElement('div');
+        cells.className = 'merge-cells';
+        values.forEach((value, index) => {
+          const cell = document.createElement('div');
+          cell.className = 'merge-cell';
+          if (resultMode) {
+            cell.classList.add('result');
+          } else {
+            if (index === activeIndex) cell.classList.add('active');
+            if (consumedClass && activeIndex != null && index < activeIndex) cell.classList.add('consumed');
+          }
+          cell.textContent = String(value);
+          cells.appendChild(cell);
+        });
+        return cells;
+      }
+
+      function renderPointers(length, activeIndex, label) {
+        const row = document.createElement('div');
+        row.className = 'pointer-row';
+        for (let index = 0; index < length; index += 1) {
+          const slot = document.createElement('div');
+          slot.className = 'pointer-slot';
+          if (activeIndex != null && activeIndex === index) {
+            const mark = document.createElement('div');
+            mark.className = 'pointer-mark';
+            mark.textContent = label;
+            slot.appendChild(mark);
+          }
+          row.appendChild(slot);
+        }
+        return row;
+      }
+
+      function renderMergeDetail(step) {
+        mergeDetail.innerHTML = '';
+        if (!step.mergeLeft && !step.mergeRight) {
+          mergeRangeLabel.textContent = 'まだ merge(整列済みのa, 整列済みのb) は始まっていません';
+          const empty = document.createElement('div');
+          empty.className = 'merge-empty';
+          empty.textContent = '分割が終わると、ここに整列済みのa、整列済みのb、現在のマージ結果を表示します。';
+          mergeDetail.appendChild(empty);
+          return;
+        }
+
+        mergeRangeLabel.textContent = step.range ? `列c = ${formatRange(step.range.start, step.range.end)}` : 'マージ中';
+        const lanes = [
+          { label: '整列済みのa', values: step.mergeLeft || [], index: step.leftIndex, pointer: 'a', result: false },
+          { label: '整列済みのb', values: step.mergeRight || [], index: step.rightIndex, pointer: 'b', result: false },
+          { label: '結果', values: step.mergeResult || [], index: null, pointer: '', result: true }
+        ];
+
+        lanes.forEach((lane) => {
+          const row = document.createElement('div');
+          row.className = 'merge-lane';
+
+          const label = document.createElement('div');
+          label.className = 'merge-label';
+          label.textContent = lane.label;
+          row.appendChild(label);
+
+          const track = document.createElement('div');
+          track.className = 'merge-track';
+          if (lane.values.length > 0) {
+            if (!lane.result) {
+              track.appendChild(renderPointers(lane.values.length, lane.index, lane.pointer));
+            }
+            track.appendChild(renderMergeCells(lane.values, lane.index, true, lane.result));
+          } else {
+            const empty = document.createElement('div');
+            empty.className = 'merge-empty';
+            empty.textContent = lane.result ? 'まだ結果は空です。' : '空';
+            track.appendChild(empty);
+          }
+
+          row.appendChild(track);
+          mergeDetail.appendChild(row);
+        });
+      }
+
+      function render(step) {
+        renderTopArray(step);
+        renderTree(step);
+        renderMergeDetail(step);
+        updateCodeHighlight(step);
+
+        callLabelTop.textContent = step.activeCall || 'merge_sort(列c)';
+        phaseValue.textContent = step.phase;
+        rangeValue.textContent = step.range ? formatArray(step.array.slice(step.range.start, step.range.end)) : '-';
+        midValue.textContent = step.mid ?? '-';
+        leftValue.textContent = step.leftRange ?? '-';
+        rightValue.textContent = step.rightRange ?? '-';
+        compValue.textContent = String(step.comparisons ?? 0);
+        writeValue.textContent = String(step.writes ?? 0);
+        remainValue.textContent = String(Math.max(steps.length - stepIndex - 1, 0));
+        messageValue.textContent = step.message;
+        rangeStateBox.textContent = step.range ? formatArray(step.array.slice(step.range.start, step.range.end)) : '(列c なし)';
+        arrayStateBox.textContent = formatArray(step.array);
+        doneNote.hidden = step.phase !== '完了';
+      }
+
+      function updateButtons() {
+        prevBtn.disabled = stepIndex === 0;
+        stepBtn.disabled = stepIndex >= steps.length - 1;
+        playBtn.disabled = playing || stepIndex >= steps.length - 1;
+        pauseBtn.disabled = !playing;
+      }
+
+      function isHiddenDisplayStep(step) {
+        if (!step) return false;
+        return (step.phase === '左再帰' || step.phase === '右再帰')
+          || (step.phase === '分割' && step.line === 1);
+      }
+
+      function getPreviousVisibleStepIndex() {
+        let target = Math.max(0, stepIndex - 1);
+        while (target > 0 && isHiddenDisplayStep(steps[target])) {
+          target -= 1;
+        }
+        return target;
+      }
+
+      function clearTimer() {
+        if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      }
+
+      function schedulePlay() {
+        clearTimer();
+        if (!playing) return;
+        if (stepIndex >= steps.length - 1) {
+          playing = false;
+          updateButtons();
+          return;
+        }
+        const delay = Math.round(900 / Number(speedInput.value));
+        timer = setTimeout(() => {
+          do {
+            stepIndex += 1;
+          } while (stepIndex < steps.length - 1 && isHiddenDisplayStep(steps[stepIndex]));
+          render(steps[stepIndex]);
+          updateButtons();
+          schedulePlay();
+        }, delay);
+      }
+
+      function resetState(values) {
+        steps = buildSteps(values);
+        stepIndex = 0;
+        playing = false;
+        clearTimer();
+        errorValue.textContent = '';
+        errorValue.className = 'small';
+        render(steps[0]);
+        updateButtons();
+      }
+
+      function applyInput() {
+        const values = parseArrayText(arrayInput.value);
+        if (values.length < 2) {
+          errorValue.textContent = '2個以上の整数を入力してください。';
+          errorValue.className = 'small error-text';
+          return;
+        }
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      }
+
+      randomBtn.addEventListener('click', () => {
+        const values = randomValues();
+        arrayInput.value = values.join(', ');
+        resetState(values);
+      });
+
+      stepBtn.addEventListener('click', () => {
+        if (stepIndex < steps.length - 1) {
+          do {
+            stepIndex += 1;
+          } while (stepIndex < steps.length - 1 && isHiddenDisplayStep(steps[stepIndex]));
+          render(steps[stepIndex]);
+          updateButtons();
+        }
+      });
+
+      prevBtn.addEventListener('click', () => {
+        if (stepIndex > 0) {
+          stepIndex = getPreviousVisibleStepIndex();
+          render(steps[stepIndex]);
+          updateButtons();
+        }
+      });
+
+      playBtn.addEventListener('click', () => {
+        if (stepIndex >= steps.length - 1) return;
+        playing = true;
+        updateButtons();
+        schedulePlay();
+      });
+
+      pauseBtn.addEventListener('click', () => {
+        playing = false;
+        clearTimer();
+        updateButtons();
+      });
+
+      resetBtn.addEventListener('click', () => {
+        applyInput();
+      });
+
+      speedInput.addEventListener('input', () => {
+        speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+      });
+
+      arrayInput.addEventListener('change', applyInput);
+
+      speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
+      resetState(DEFAULT_VALUES);
+    </script>
+  </body>
+</html>
