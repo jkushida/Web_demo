@@ -566,22 +566,11 @@
         const ty = dy / len;
         const nx = -ty;
         const ny = tx;
-        const strokes = 5;
-
-        for (let j = 0; j < strokes; j++) {
-          const u = (j + 0.35) / strokes;
-          const spread = (j - (strokes - 1) / 2) / ((strokes - 1) / 2);
-          const wave = Math.sin((i * 7 + j * 3.1) * 1.7) * 0.18;
-          const cx = a.x + dx * u + nx * brow.width * (spread * 0.22 + wave);
-          const cy = a.y + dy * u + ny * brow.width * (spread * 0.22 + wave);
-          const dirX = tx * 0.92 - nx * 0.25;
-          const dirY = ty * 0.92 - ny * 0.25;
-          const hairLen = brow.width * (0.58 + 0.16 * Math.sin(i * 2.3 + j)) * Math.min(1.25, 0.7 + strength * 0.25);
-          ctx.beginPath();
-          ctx.moveTo(cx - dirX * hairLen * 0.45, cy - dirY * hairLen * 0.45);
-          ctx.lineTo(cx + dirX * hairLen * 0.55, cy + dirY * hairLen * 0.55);
-          ctx.stroke();
-        }
+        const t = i / Math.max(1, styledCenters.length - 1);
+        const taper = 0.42 + Math.sin(Math.PI * t) * 0.58;
+        const halfWidth = measuredWidth * widthScale * taper * Math.min(1.05, 0.45 + strength * 0.35);
+        top.push({ x: styledCenters[i].x + nx * halfWidth, y: styledCenters[i].y + ny * halfWidth });
+        bottom.push({ x: styledCenters[i].x - nx * halfWidth, y: styledCenters[i].y - ny * halfWidth });
       }
 
       return { polygon: top.concat(bottom.reverse()), centers: styledCenters, width: measuredWidth };
