@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Makeup - MediaPipe Face Mesh</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #24292f;
+      background: #f6f8fa;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid #d8dee4;
+      background: #fff;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 14px;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+    .stage, .controls {
+      background: #fff;
+      border: 1px solid #d8dee4;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(27, 31, 36, 0.04);
+    }
+    .stage {
+      padding: 10px;
+    }
+    .camera-frame {
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 8px;
+      background: #0b0f19;
+    }
+    video, canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    video {
+      display: none;
+    }
+    canvas {
+      background: #0b0f19;
+    }
+    .status {
+      margin-top: 8px;
+      color: #57606a;
+      font-size: 0.9rem;
+    }
+    .controls {
+      padding: 12px;
+    }
+    .section {
+      display: grid;
+      gap: 10px;
+      padding: 12px 0;
+      border-bottom: 1px solid #d8dee4;
+    }
+    .section:first-child {
+      padding-top: 0;
+    }
+    .section:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .section h2 {
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    label {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      color: #3b434d;
+      font-size: 0.88rem;
+    }
+    label.inline {
+      display: flex;
+      justify-content: flex-start;
+    }
+    select, input[type="range"], input[type="color"], button {
+      font: inherit;
+    }
+    select, button {
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #f6f8fa;
+      color: #24292f;
+      padding: 7px 9px;
+    }
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button.primary {
+      border-color: #1f883d;
+      background: #1f883d;
+      color: #fff;
+    }
+    input[type="color"] {
+      width: 46px;
+      height: 30px;
+      border: 1px solid #d0d7de;
+      border-radius: 6px;
+      background: #fff;
+      padding: 2px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .hint {
+      color: #57606a;
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+    @media (max-width: 900px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Virtual Makeup - MediaPipe Face Mesh</h1>
+    <a href="../index.html">デモ一覧へ戻る</a>
+  </header>
+
+  <main>
+    <section class="stage" aria-label="Camera preview">
+      <div class="camera-frame">
+        <video id="video" width="640" height="480" playsinline muted></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+      </div>
+      <div class="status" id="status">初期化中...</div>
+    </section>
+
+    <aside class="controls" aria-label="Makeup controls">
+      <div class="section">
+        <h2>プリセット</h2>
+        <label>
+          スタイル
+          <select id="preset">
+            <option value="natural" selected>Natural</option>
+            <option value="pink">Pink</option>
+            <option value="red">Red</option>
+            <option value="cool">Cool</option>
+            <option value="none">None</option>
+          </select>
+        </label>
+        <label>
+          全体の濃さ
+          <input id="strength" type="range" min="0" max="180" value="70">
+        </label>
+        <label>
+          追従の安定化
+          <input id="smoothing" type="range" min="0" max="95" value="55">
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>パーツ</h2>
+        <label class="inline"><input id="lipOn" type="checkbox" checked> 口紅</label>
+        <label>
+          口紅の色
+          <input id="lipColor" type="color" value="#c7365f">
+        </label>
+        <label class="inline"><input id="glossOn" type="checkbox" checked> リップグロス</label>
+        <label class="inline"><input id="cheekOn" type="checkbox" checked> チーク</label>
+        <label>
+          チークの色
+          <input id="cheekColor" type="color" value="#f47b9d">
+        </label>
+        <label class="inline"><input id="shadowOn" type="checkbox" checked> アイシャドウ</label>
+        <label>
+          シャドウの色
+          <input id="shadowColor" type="color" value="#c8a2d8">
+        </label>
+        <label class="inline"><input id="linerOn" type="checkbox" checked> アイライン</label>
+        <label>
+          アイラインの色
+          <input id="linerColor" type="color" value="#1d1820">
+        </label>
+        <label class="inline"><input id="browOn" type="checkbox" checked> 眉毛</label>
+        <label>
+          眉毛の色
+          <input id="browColor" type="color" value="#5a3f32">
+        </label>
+        <label>
+          眉毛の形
+          <select id="browStyle">
+            <option value="natural" selected>Natural</option>
+            <option value="soft">Soft</option>
+            <option value="straight">Straight</option>
+            <option value="arch">Arch</option>
+          </select>
+        </label>
+        <label class="inline"><input id="hairOn" type="checkbox" checked> ヘアカラー</label>
+        <label>
+          髪色
+          <input id="hairColor" type="color" value="#6b463c">
+        </label>
+        <label>
+          髪色の濃さ
+          <input id="hairStrength" type="range" min="0" max="100" value="38">
+        </label>
+        <label>
+          髪判定
+          <input id="hairThreshold" type="range" min="0" max="100" value="50">
+        </label>
+        <label>
+          髪推論FPS
+          <input id="hairTargetFps" type="range" min="2" max="30" value="15">
+        </label>
+      </div>
+
+      <div class="section">
+        <h2>表示</h2>
+        <label class="inline"><input id="meshOn" type="checkbox"> Face Meshを表示</label>
+        <div class="actions">
+          <button class="primary" id="snapshotBtn" type="button">PNG保存</button>
+          <button id="defaultBtn" type="button">デフォルトに戻す</button>
+        </div>
+        <div class="hint">
+          Face Mesh のランドマークから唇、目、頬の位置を推定し、ぼかしたマスクとブレンドモードでメイクを重ねます。
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const maskCanvas = document.createElement('canvas');
+    const maskCtx = maskCanvas.getContext('2d');
+    maskCanvas.width = 640;
+    maskCanvas.height = 480;
+    let smoothedLandmarks = null;
+
+    const controls = {
+      preset: document.getElementById('preset'),
+      strength: document.getElementById('strength'),
+      smoothing: document.getElementById('smoothing'),
+      lipOn: document.getElementById('lipOn'),
+      lipColor: document.getElementById('lipColor'),
+      glossOn: document.getElementById('glossOn'),
+      cheekOn: document.getElementById('cheekOn'),
+      cheekColor: document.getElementById('cheekColor'),
+      shadowOn: document.getElementById('shadowOn'),
+      shadowColor: document.getElementById('shadowColor'),
+      linerOn: document.getElementById('linerOn'),
+      linerColor: document.getElementById('linerColor'),
+      browOn: document.getElementById('browOn'),
+      browColor: document.getElementById('browColor'),
+      browStyle: document.getElementById('browStyle'),
+      hairOn: document.getElementById('hairOn'),
+      hairColor: document.getElementById('hairColor'),
+      hairStrength: document.getElementById('hairStrength'),
+      hairThreshold: document.getElementById('hairThreshold'),
+      hairTargetFps: document.getElementById('hairTargetFps'),
+      meshOn: document.getElementById('meshOn'),
+      snapshotBtn: document.getElementById('snapshotBtn'),
+      defaultBtn: document.getElementById('defaultBtn')
+    };
+
+    const W = 640;
+    const H = 480;
+    const HAIR_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/hair_segmenter/float32/latest/hair_segmenter.tflite';
+    const OUTER_LIPS = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0, 37, 39, 40, 185];
+    const UPPER_LIP = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 308, 415, 310, 311, 312, 13, 82, 81, 80, 191, 78];
+    const LOWER_LIP = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95, 78];
+    const INNER_MOUTH = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308, 324, 318, 402, 317, 14, 87, 178, 88, 95];
+    const LEFT_UPPER_EYE = [33, 246, 161, 160, 159, 158, 157, 173, 133];
+    const RIGHT_UPPER_EYE = [362, 398, 384, 385, 386, 387, 388, 466, 263];
+    const LEFT_SHADOW = [33, 246, 161, 160, 159, 158, 157, 173, 133, 243, 112, 26, 22, 23, 24, 110, 25, 130];
+    const RIGHT_SHADOW = [362, 398, 384, 385, 386, 387, 388, 466, 263, 463, 341, 256, 252, 253, 254, 339, 255, 359];
+    const LEFT_SCREEN_BROW_UPPER = [70, 63, 105, 66, 107];
+    const LEFT_SCREEN_BROW_LOWER = [55, 65, 52, 53, 46];
+    const RIGHT_SCREEN_BROW_UPPER = [336, 296, 334, 293, 300];
+    const RIGHT_SCREEN_BROW_LOWER = [285, 295, 282, 283, 276];
+    let hairSegmenter = null;
+    let latestHairMask = null;
+    let lastHairInference = 0;
+    let hairInferenceBusy = false;
+    let hairStatus = '髪モデル読込中';
+
+    const presets = {
+      natural: { strength: 70, lip: '#c7365f', cheek: '#f47b9d', shadow: '#c8a2d8', liner: '#1d1820', brow: '#5a3f32', browStyle: 'natural', hair: '#6b463c', hairStrength: 38, hairOn: true, parts: true, gloss: false },
+      pink: { strength: 82, lip: '#e94483', cheek: '#ff8db1', shadow: '#e5b8ec', liner: '#3b2435', brow: '#60433a', browStyle: 'soft', hair: '#8b4f68', hairStrength: 45, hairOn: true, parts: true, gloss: false },
+      red: { strength: 86, lip: '#b70f2d', cheek: '#ec6b72', shadow: '#b9828d', liner: '#2a1717', brow: '#52372f', browStyle: 'arch', hair: '#7f2e28', hairStrength: 48, hairOn: true, parts: true, gloss: false },
+      cool: { strength: 74, lip: '#8c4b8f', cheek: '#d17ab7', shadow: '#7b8cff', liner: '#1c223b', brow: '#4b4051', browStyle: 'straight', hair: '#4f5f9b', hairStrength: 46, hairOn: true, parts: true, gloss: false },
+      none: { strength: 0, lip: '#c7365f', cheek: '#f47b9d', shadow: '#c8a2d8', liner: '#1d1820', brow: '#5a3f32', browStyle: 'natural', hair: '#6b463c', hairStrength: 0, hairOn: false, parts: false, gloss: false }
+    };
+
+    function point(lms, index) {
+      return { x: lms[index].x * W, y: lms[index].y * H };
+    }
+
+    function colorToRgba(hex, alpha) {
+      const value = hex.replace('#', '');
+      const r = parseInt(value.slice(0, 2), 16);
+      const g = parseInt(value.slice(2, 4), 16);
+      const b = parseInt(value.slice(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+    }
+
+    function colorToRgb(hex) {
+      const value = hex.replace('#', '');
+      return {
+        r: parseInt(value.slice(0, 2), 16),
+        g: parseInt(value.slice(2, 4), 16),
+        b: parseInt(value.slice(4, 6), 16)
+      };
+    }
+
+    function smoothLandmarks(lms) {
+      const keep = Number(controls.smoothing.value) / 100;
+      if (!smoothedLandmarks || smoothedLandmarks.length !== lms.length) {
+        smoothedLandmarks = lms.map(p => ({ x: p.x, y: p.y, z: p.z || 0 }));
+        return smoothedLandmarks;
+      }
+      smoothedLandmarks = lms.map((p, i) => ({
+        x: smoothedLandmarks[i].x * keep + p.x * (1 - keep),
+        y: smoothedLandmarks[i].y * keep + p.y * (1 - keep),
+        z: (smoothedLandmarks[i].z || 0) * keep + (p.z || 0) * (1 - keep)
+      }));
+      return smoothedLandmarks;
+    }
+
+    function drawPolygon(targetCtx, indices, lms, fillStyle) {
+      if (!indices.length) return;
+      targetCtx.beginPath();
+      indices.forEach((index, i) => {
+        const p = point(lms, index);
+        if (i === 0) targetCtx.moveTo(p.x, p.y);
+        else targetCtx.lineTo(p.x, p.y);
+      });
+      targetCtx.closePath();
+      targetCtx.fillStyle = fillStyle;
+      targetCtx.fill();
+    }
+
+    function fillPolygonPath(targetCtx, indices, lms) {
+      targetCtx.beginPath();
+      indices.forEach((index, i) => {
+        const p = point(lms, index);
+        if (i === 0) targetCtx.moveTo(p.x, p.y);
+        else targetCtx.lineTo(p.x, p.y);
+      });
+      targetCtx.closePath();
+    }
+
+    function drawFeatheredPolygons(polygons, lms, hex, alpha, blendMode, blurPx, cutouts = []) {
+      maskCtx.clearRect(0, 0, W, H);
+      maskCtx.save();
+      maskCtx.filter = blurPx > 0 ? `blur(${blurPx}px)` : 'none';
+      polygons.forEach(indices => {
+        drawPolygon(maskCtx, indices, lms, colorToRgba(hex, alpha));
+      });
+      maskCtx.restore();
+
+      if (cutouts.length) {
+        maskCtx.save();
+        maskCtx.globalCompositeOperation = 'destination-out';
+        maskCtx.filter = blurPx > 0 ? `blur(${Math.max(0.7, blurPx * 0.55)}px)` : 'none';
+        cutouts.forEach(indices => {
+          fillPolygonPath(maskCtx, indices, lms);
+          maskCtx.fillStyle = 'rgba(0, 0, 0, 1)';
+          maskCtx.fill();
+        });
+        maskCtx.restore();
+      }
+
+      ctx.save();
+      ctx.globalCompositeOperation = blendMode;
+      ctx.drawImage(maskCanvas, 0, 0);
+      ctx.restore();
+    }
+
+    function clipOuterLip(lms) {
+      ctx.beginPath();
+      [OUTER_LIPS, INNER_MOUTH].forEach(indices => {
+        indices.forEach((index, i) => {
+          const p = point(lms, index);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.closePath();
+      });
+      ctx.clip('evenodd');
+    }
+
+    function drawLipstick(lms, strength) {
+      if (!controls.lipOn.checked || strength <= 0) return;
+      const alpha = 0.18 + strength * 0.32;
+      drawFeatheredPolygons([OUTER_LIPS], lms, controls.lipColor.value, alpha, 'overlay', 0.7, [INNER_MOUTH]);
+
+      if (controls.glossOn.checked) {
+        const shine = `rgba(255, 245, 248, ${0.04 + strength * 0.08})`;
+        ctx.save();
+        clipOuterLip(lms);
+        ctx.globalCompositeOperation = 'screen';
+        strokePath([191, 80, 81, 82, 13, 312, 311, 310, 415], lms, shine, 1.2 + strength * 1.2);
+        strokePath([95, 88, 178, 87, 14, 317, 402, 318, 324], lms, shine, 1.0 + strength);
+        ctx.restore();
+      }
+    }
+
+    function drawCheek(lms, strength, centerIndex) {
+      if (!controls.cheekOn.checked || strength <= 0) return;
+      const center = point(lms, centerIndex);
+      const left = point(lms, 234);
+      const right = point(lms, 454);
+      const faceWidth = Math.max(60, Math.abs(right.x - left.x));
+      const radius = faceWidth * 0.14;
+      const grad = ctx.createRadialGradient(center.x, center.y, radius * 0.1, center.x, center.y, radius);
+      grad.addColorStop(0, colorToRgba(controls.cheekColor.value, 0.26 * strength));
+      grad.addColorStop(0.55, colorToRgba(controls.cheekColor.value, 0.12 * strength));
+      grad.addColorStop(1, colorToRgba(controls.cheekColor.value, 0));
+      ctx.save();
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawEyeShadow(lms, strength) {
+      if (!controls.shadowOn.checked || strength <= 0) return;
+      const alpha = 0.08 + strength * 0.14;
+      drawFeatheredPolygons([LEFT_SHADOW, RIGHT_SHADOW], lms, controls.shadowColor.value, alpha, 'soft-light', 1.6);
+    }
+
+    function strokePath(indices, lms, style, width) {
+      ctx.beginPath();
+      indices.forEach((index, i) => {
+        const p = point(lms, index);
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.strokeStyle = style;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.stroke();
+    }
+
+    function drawEyeliner(lms, strength) {
+      if (!controls.linerOn.checked || strength <= 0) return;
+      const width = Math.min(3.4, 0.9 + strength * 1.25);
+      const alpha = 0.18 + strength * 0.28;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      strokePath(LEFT_UPPER_EYE, lms, colorToRgba(controls.linerColor.value, alpha), width);
+      strokePath(RIGHT_UPPER_EYE, lms, colorToRgba(controls.linerColor.value, alpha), width);
+      ctx.restore();
+    }
+
+    function createSmoothClosedPath(targetCtx, points) {
+      if (points.length < 3) return;
+      targetCtx.beginPath();
+      targetCtx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const cur = points[i];
+        targetCtx.quadraticCurveTo(prev.x, prev.y, (prev.x + cur.x) / 2, (prev.y + cur.y) / 2);
+      }
+      const last = points[points.length - 1];
+      const first = points[0];
+      targetCtx.quadraticCurveTo(last.x, last.y, (last.x + first.x) / 2, (last.y + first.y) / 2);
+      targetCtx.closePath();
+    }
+
+    function drawSmoothClosedPoints(targetCtx, points, fillStyle) {
+      if (points.length < 3) return;
+      createSmoothClosedPath(targetCtx, points);
+      targetCtx.fillStyle = fillStyle;
+      targetCtx.fill();
+    }
+
+    function getSortedBrowPoints(upper, lower, lms) {
+      const upperPoints = upper
+        .map(index => point(lms, index))
+        .sort((a, b) => a.x - b.x);
+      const lowerPoints = lower
+        .map(index => point(lms, index))
+        .sort((a, b) => a.x - b.x);
+      return { upperPoints, lowerPoints };
+    }
+
+    function makeBrowRibbon(upper, lower, lms, strength, style) {
+      const { upperPoints, lowerPoints } = getSortedBrowPoints(upper, lower, lms);
+      const count = Math.min(upperPoints.length, lowerPoints.length);
+      const centers = [];
+      let measuredWidth = 0;
+
+      for (let i = 0; i < count; i++) {
+        const up = upperPoints[i];
+        const low = lowerPoints[i];
+        centers.push({ x: (up.x + low.x) / 2, y: (up.y + low.y) / 2 });
+        measuredWidth += Math.hypot(up.x - low.x, up.y - low.y);
+      }
+
+      measuredWidth = Math.max(2, measuredWidth / Math.max(1, count));
+      const minX = centers[0].x;
+      const maxX = centers[centers.length - 1].x;
+      const span = Math.max(1, maxX - minX);
+      const leftY = centers[0].y;
+      const rightY = centers[centers.length - 1].y;
+      const archHeight = measuredWidth * (style === 'arch' ? 1.5 : style === 'soft' ? 0.65 : 0.35);
+      const widthScale = style === 'straight' ? 0.72 : style === 'arch' ? 0.86 : 0.78;
+
+      const styledCenters = centers.map(center => {
+        const t = (center.x - minX) / span;
+        const baselineY = leftY + (rightY - leftY) * t;
+        let y = center.y;
+        if (style === 'straight') y = baselineY + (center.y - baselineY) * 0.12;
+        else if (style === 'soft') y = baselineY + (center.y - baselineY) * 0.35 - Math.sin(Math.PI * t) * archHeight * 0.25;
+        else if (style === 'arch') y = baselineY - Math.sin(Math.PI * t) * archHeight;
+        return { x: center.x, y };
+      });
+
+      const top = [];
+      const bottom = [];
+      for (let i = 0; i < styledCenters.length; i++) {
+        const prev = styledCenters[Math.max(0, i - 1)];
+        const next = styledCenters[Math.min(styledCenters.length - 1, i + 1)];
+        const dx = next.x - prev.x;
+        const dy = next.y - prev.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const tx = dx / len;
+        const ty = dy / len;
+        const nx = -ty;
+        const ny = tx;
+        const strokes = 5;
+
+        for (let j = 0; j < strokes; j++) {
+          const u = (j + 0.35) / strokes;
+          const spread = (j - (strokes - 1) / 2) / ((strokes - 1) / 2);
+          const wave = Math.sin((i * 7 + j * 3.1) * 1.7) * 0.18;
+          const cx = a.x + dx * u + nx * brow.width * (spread * 0.22 + wave);
+          const cy = a.y + dy * u + ny * brow.width * (spread * 0.22 + wave);
+          const dirX = tx * 0.92 - nx * 0.25;
+          const dirY = ty * 0.92 - ny * 0.25;
+          const hairLen = brow.width * (0.58 + 0.16 * Math.sin(i * 2.3 + j)) * Math.min(1.25, 0.7 + strength * 0.25);
+          ctx.beginPath();
+          ctx.moveTo(cx - dirX * hairLen * 0.45, cy - dirY * hairLen * 0.45);
+          ctx.lineTo(cx + dirX * hairLen * 0.55, cy + dirY * hairLen * 0.55);
+          ctx.stroke();
+        }
+      }
+
+      return { polygon: top.concat(bottom.reverse()), centers: styledCenters, width: measuredWidth };
+    }
+
+    function drawBrowShape(upper, lower, lms, strength, style) {
+      const brow = makeBrowRibbon(upper, lower, lms, strength, style);
+      drawSmoothClosedPoints(maskCtx, brow.polygon, colorToRgba(controls.browColor.value, 0.04 + strength * 0.08));
+      return brow;
+    }
+
+    function drawBrowHairStrokes(brow, strength) {
+      if (!brow || brow.centers.length < 2) return;
+      ctx.save();
+      createSmoothClosedPath(ctx, brow.polygon);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.strokeStyle = colorToRgba(controls.browColor.value, 0.1 + strength * 0.14);
+      ctx.lineWidth = Math.max(0.45, Math.min(1.1, brow.width * 0.08));
+      ctx.lineCap = 'round';
+
+      for (let i = 0; i < brow.centers.length - 1; i++) {
+        const a = brow.centers[i];
+        const b = brow.centers[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const tx = dx / len;
+        const ty = dy / len;
+        const nx = -ty;
+        const ny = tx;
+        const strokes = 5;
+
+        for (let j = 0; j < strokes; j++) {
+          const u = (j + 0.35) / strokes;
+          const spread = (j - (strokes - 1) / 2) / ((strokes - 1) / 2);
+          const wave = Math.sin((i * 7 + j * 3.1) * 1.7) * 0.18;
+          const cx = a.x + dx * u + nx * brow.width * (spread * 0.22 + wave);
+          const cy = a.y + dy * u + ny * brow.width * (spread * 0.22 + wave);
+          const dirX = tx * 0.92 - nx * 0.25;
+          const dirY = ty * 0.92 - ny * 0.25;
+          const hairLen = brow.width * (0.58 + 0.16 * Math.sin(i * 2.3 + j)) * Math.min(1.25, 0.7 + strength * 0.25);
+          ctx.beginPath();
+          ctx.moveTo(cx - dirX * hairLen * 0.45, cy - dirY * hairLen * 0.45);
+          ctx.lineTo(cx + dirX * hairLen * 0.55, cy + dirY * hairLen * 0.55);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawEyebrows(lms, strength) {
+      if (!controls.browOn.checked || strength <= 0) return;
+      maskCtx.clearRect(0, 0, W, H);
+      maskCtx.save();
+      maskCtx.filter = 'blur(0.7px)';
+      const leftBrow = drawBrowShape(LEFT_SCREEN_BROW_UPPER, LEFT_SCREEN_BROW_LOWER, lms, strength, controls.browStyle.value);
+      const rightBrow = drawBrowShape(RIGHT_SCREEN_BROW_UPPER, RIGHT_SCREEN_BROW_LOWER, lms, strength, controls.browStyle.value);
+      maskCtx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(maskCanvas, 0, 0);
+      ctx.restore();
+
+      drawBrowHairStrokes(leftBrow, strength);
+      drawBrowHairStrokes(rightBrow, strength);
+    }
+
+    function getHairScore(maskInfo, index) {
+      if (maskInfo.confidence) return maskInfo.confidence[index];
+      return maskInfo.category[index] === 1 ? 1 : 0;
+    }
+
+    function applyHairColor() {
+      if (!controls.hairOn.checked || !latestHairMask) return;
+      const strength = Number(controls.hairStrength.value) / 100;
+      if (strength <= 0) return;
+
+      const threshold = Number(controls.hairThreshold.value) / 100;
+      const color = colorToRgb(controls.hairColor.value);
+      const { width: maskWidth, height: maskHeight } = latestHairMask;
+      const image = ctx.getImageData(0, 0, W, H);
+      const pixels = image.data;
+      const maxAlpha = Math.min(0.88, strength * 0.85);
+
+      for (let y = 0; y < H; y++) {
+        const sy = Math.min(maskHeight - 1, Math.floor(y * maskHeight / H));
+        for (let x = 0; x < W; x++) {
+          const sx = maskWidth - 1 - Math.min(maskWidth - 1, Math.floor(x * maskWidth / W));
+          const score = getHairScore(latestHairMask, sy * maskWidth + sx);
+          if (score < threshold) continue;
+
+          const t = (score - threshold) / Math.max(0.001, 1 - threshold);
+          const alpha = maxAlpha * t;
+          const i = (y * W + x) * 4;
+          const shade = Math.max(0.45, Math.min(1.25, (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 390));
+          const targetR = Math.min(255, color.r * shade);
+          const targetG = Math.min(255, color.g * shade);
+          const targetB = Math.min(255, color.b * shade);
+          pixels[i] = pixels[i] * (1 - alpha) + targetR * alpha;
+          pixels[i + 1] = pixels[i + 1] * (1 - alpha) + targetG * alpha;
+          pixels[i + 2] = pixels[i + 2] * (1 - alpha) + targetB * alpha;
+        }
+      }
+      ctx.putImageData(image, 0, 0);
+    }
+
+    function updateRenderStatus(faceStatus) {
+      const hairText = controls.hairOn.checked ? ` / ${hairStatus}` : '';
+      statusEl.textContent = `${faceStatus}${hairText}`;
+    }
+
+    async function initHairSegmenter() {
+      try {
+        const { FilesetResolver, ImageSegmenter } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.js');
+        const fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm');
+        const options = delegate => ({
+          baseOptions: {
+            modelAssetPath: HAIR_MODEL_URL,
+            delegate
+          },
+          runningMode: 'VIDEO',
+          outputCategoryMask: true,
+          outputConfidenceMasks: true
+        });
+
+        try {
+          hairSegmenter = await ImageSegmenter.createFromOptions(fileset, options('GPU'));
+        } catch (error) {
+          console.warn('HairSegmenter GPU delegate failed. Falling back to CPU.', error);
+          hairSegmenter = await ImageSegmenter.createFromOptions(fileset, options('CPU'));
+        }
+        const labels = hairSegmenter.getLabels().join(', ');
+        hairStatus = `髪検出OK${labels ? `: ${labels}` : ''}`;
+      } catch (error) {
+        hairStatus = `髪検出OFF: ${error.message || error}`;
+        console.error(error);
+      }
+    }
+
+    function updateHairSegmentation(now) {
+      if (!controls.hairOn.checked || !hairSegmenter || hairInferenceBusy || video.readyState < 2) return;
+      const interval = 1000 / Math.max(1, Number(controls.hairTargetFps.value));
+      if (now - lastHairInference < interval) return;
+
+      lastHairInference = now;
+      hairInferenceBusy = true;
+      try {
+        hairSegmenter.segmentForVideo(video, now, result => {
+          try {
+            if (!result.categoryMask) return;
+            const confidenceMask = result.confidenceMasks && result.confidenceMasks[1];
+            latestHairMask = {
+              category: result.categoryMask.getAsUint8Array().slice(),
+              confidence: confidenceMask ? confidenceMask.getAsFloat32Array().slice() : null,
+              width: result.categoryMask.width,
+              height: result.categoryMask.height
+            };
+          } finally {
+            result.close?.();
+            hairInferenceBusy = false;
+          }
+        });
+      } catch (error) {
+        hairInferenceBusy = false;
+        hairStatus = '髪推論エラー';
+        console.error(error);
+      }
+    }
+
+    function drawMakeup(lms) {
+      const strength = Number(controls.strength.value) / 100;
+      drawEyeShadow(lms, strength);
+      drawEyebrows(lms, strength);
+      drawCheek(lms, strength, 205);
+      drawCheek(lms, strength, 425);
+      drawLipstick(lms, strength);
+      drawEyeliner(lms, strength);
+    }
+
+    function onResults(results) {
+      ctx.save();
+      ctx.clearRect(0, 0, W, H);
+      ctx.translate(W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(results.image, 0, 0, W, H);
+      applyHairColor();
+
+      const rawLandmarks = results.multiFaceLandmarks && results.multiFaceLandmarks[0];
+      if (rawLandmarks) {
+        const lms = smoothLandmarks(rawLandmarks);
+        drawMakeup(lms);
+        if (controls.meshOn.checked) {
+          drawConnectors(ctx, lms, FACEMESH_TESSELATION, { color: 'rgba(17, 205, 180, 0.18)', lineWidth: 1 });
+          drawLandmarks(ctx, lms, { color: 'rgba(9, 105, 218, 0.65)', radius: 0.8 });
+        }
+        updateRenderStatus('顔検出中: メイクを合成しています');
+      } else {
+        smoothedLandmarks = null;
+        updateRenderStatus('顔未検出: カメラ正面に顔を入れてください');
+      }
+      ctx.restore();
+    }
+
+    function applyPreset(name) {
+      const preset = presets[name] || presets.natural;
+      controls.strength.value = preset.strength;
+      controls.lipColor.value = preset.lip;
+      controls.cheekColor.value = preset.cheek;
+      controls.shadowColor.value = preset.shadow;
+      controls.linerColor.value = preset.liner;
+      controls.browColor.value = preset.brow;
+      controls.browStyle.value = preset.browStyle;
+      controls.hairColor.value = preset.hair;
+      controls.hairStrength.value = preset.hairStrength;
+      controls.lipOn.checked = preset.parts;
+      controls.cheekOn.checked = preset.parts;
+      controls.shadowOn.checked = preset.parts;
+      controls.linerOn.checked = preset.parts;
+      controls.browOn.checked = preset.parts;
+      controls.hairOn.checked = preset.hairOn;
+      controls.glossOn.checked = preset.gloss;
+    }
+
+    controls.preset.addEventListener('change', () => applyPreset(controls.preset.value));
+    controls.defaultBtn.addEventListener('click', () => {
+      controls.preset.value = 'natural';
+      applyPreset('natural');
+      controls.smoothing.value = 55;
+      controls.hairThreshold.value = 50;
+      controls.hairTargetFps.value = 15;
+      controls.meshOn.checked = false;
+      smoothedLandmarks = null;
+    });
+    controls.snapshotBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = 'virtual_makeup.png';
+      link.click();
+    });
+
+    const faceMesh = new FaceMesh({
+      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+    });
+    faceMesh.setOptions({
+      maxNumFaces: 1,
+      refineLandmarks: true,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    faceMesh.onResults(onResults);
+
+    async function startCamera() {
+      try {
+        const camera = new Camera(video, {
+          onFrame: async () => {
+            updateHairSegmentation(performance.now());
+            await faceMesh.send({ image: video });
+          },
+          width: W,
+          height: H
+        });
+        await camera.start();
+        statusEl.textContent = 'カメラ起動中: 顔を正面に入れてください';
+      } catch (error) {
+        statusEl.textContent = 'カメラ起動に失敗しました。localhost/HTTPS とカメラ権限を確認してください。';
+        console.error(error);
+      }
+    }
+
+    applyPreset('natural');
+    initHairSegmenter();
+    startCamera();
+  </script>
+</body>
+</html>

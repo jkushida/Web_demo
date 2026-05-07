@@ -67,6 +67,7 @@
 - [Boid Fish (Hand Control)](https://jkushida.github.io/Web_demo/MediaPipe/boid-fish-hand-control.html) - 手の動きで群れ（Boids）の魚を制御
 - [3D Physics × Hand Tracking](https://jkushida.github.io/Web_demo/MediaPipe/mediapipe_physics_3d.html) - 3D物理×ハンドトラッキング
 - [Emotion Recognition](https://jkushida.github.io/Web_demo/MediaPipe/emotion_recognition.html) - 表情認識（Face Mesh + face-api.js）
+- [Virtual Makeup](https://jkushida.github.io/Web_demo/MediaPipe/virtual-makeup.html) - バーチャルメイク（MediaPipe Face Mesh）
 
 ### 音声処理 (Audio) <a id="audio"></a>
 - [マイク波形（リアルタイム）](https://jkushida.github.io/Web_demo/Audio/mic-waveform.html) - マイク入力の時間波形をリアルタイム描画
