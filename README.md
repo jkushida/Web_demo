@@ -24,6 +24,7 @@
 - **探索・数え上げ・ハッシュ**
   - [Euclidean Algorithm Visualizer](https://jkushida.github.io/Web_demo/DSA/euclidean-algorithm.html) - ユークリッドの互除法で最大公約数を求める過程を可視化
   - [Sentinel Search Comparison](https://jkushida.github.io/Web_demo/DSA/sentinel-search.html) - 番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化
+  - [Binary Search Visualization](https://jkushida.github.io/Web_demo/DSA/binary-search.html) - ソート済み配列からターゲットを絞り込む二分探索の過程を、ツリー状の可視化と擬似コードで表示
   - [Hash Search](https://jkushida.github.io/Web_demo/DSA/hash-search.html) - ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化
   - [Maze Search (BFS/DFS)](https://jkushida.github.io/Web_demo/DSA/maze-search.html) - 幅優先/深さ優先で迷路を探索。探索木とログを動的表示
 
