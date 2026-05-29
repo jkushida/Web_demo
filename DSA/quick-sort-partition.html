@@ -1,0 +1,1404 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>クイックソート - 分割の決め方</title>
+    <style>
+      :root {
+        --fg: #111827;
+        --muted: #6b7280;
+        --line: #e5e7eb;
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --primary: #2563eb;
+        --primary-weak: #dbeafe;
+
+        --pivot-bg:   #f5d0fe; --pivot-line:  #a21caf;
+        --pl-bg:      #dbeafe; --pl-line:     #2563eb;
+        --pr-bg:      #fee2e2; --pr-line:     #dc2626;
+        --swap-bg:    #fef3c7; --swap-line:   #d97706;
+        --done-l-bg:  #eff6ff; --done-l-line: #3b82f6;
+        --done-r-bg:  #fff1f2; --done-r-line: #f43f5e;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        flex-shrink: 0;
+        padding: 4px 12px 3px;
+        border-bottom: 1px solid var(--line);
+        background: #fff;
+      }
+      header p { margin: 0 0 1px; font-size: 11px; }
+      header a { color: var(--primary); text-decoration: none; }
+      header a:hover { text-decoration: underline; }
+      h1 { margin: 0; font-size: 15px; font-weight: 800; }
+
+      main {
+        flex: 1;
+        min-height: 0;
+        padding: 6px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.03);
+      }
+
+      /* ── Rules Banner ── */
+      .rules-box {
+        margin-bottom: 6px;
+        padding: 5px 10px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #166534;
+        line-height: 1.25;
+      }
+      .rules-box strong {
+        color: #14532d;
+        display: block;
+        margin-bottom: 3px;
+      }
+      .rules-list {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .rules-list li {
+        margin-bottom: 1px;
+      }
+      .rules-list li:last-child {
+        margin-bottom: 0;
+      }
+
+      /* ── Controls ── */
+      .controls-panel {
+        padding: 6px 10px;
+        flex-shrink: 0;
+      }
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .ctrl-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      input[type="text"], input[type="range"], select, button { font: inherit; }
+      input[type="text"] {
+        padding: 3px 7px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        font-size: 12px;
+        line-height: 1.2;
+        min-height: 26px;
+      }
+      select {
+        padding: 3px 7px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--fg);
+        font-size: 12px;
+        min-height: 26px;
+      }
+      button {
+        padding: 2px 10px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--fg);
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        min-height: 26px;
+      }
+      button:hover   { background: #f1f5f9; border-color: #cbd5e1; }
+      button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+      button:disabled { opacity: .45; cursor: not-allowed; }
+
+      .step-info { font-size: 12px; color: var(--muted); font-weight: 700; }
+
+      /* ── Content Grid ── */
+      .content-grid {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 6px;
+      }
+
+      .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+        min-height: 0;
+      }
+
+      .spotlight-panel {
+        padding: 8px 10px 9px;
+        flex-shrink: 0;
+      }
+      .spotlight-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+      .spotlight-head h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .pivot-note {
+        display: block;
+        color: var(--pivot-line);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      #current-array {
+        position: relative;
+        overflow-x: auto;
+        padding: 4px 0 2px;
+      }
+      #current-array .arr-row,
+      #current-array .ptr-row {
+        grid-auto-columns: 44px;
+        gap: 4px;
+      }
+      .pivot-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 44px;
+        gap: 4px;
+        margin-bottom: 1px;
+      }
+      .pivot-marker {
+        text-align: center;
+        color: var(--pivot-line);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.15;
+        white-space: nowrap;
+      }
+      #current-array .idx-chip {
+        color: #0b72d0;
+        font-size: 13px;
+      }
+      #current-array .val-chip {
+        height: 38px;
+        border-radius: 2px;
+        font-size: 22px;
+      }
+      #current-array .ptr-chip {
+        height: 18px;
+        font-size: 13px;
+        line-height: 16px;
+      }
+      #current-array .ptr-chip.ptr-both {
+        height: 34px;
+        line-height: 1.05;
+      }
+      .ptr-stack {
+        display: inline-grid;
+        gap: 2px;
+        justify-items: center;
+      }
+      .ptr-stack .ptr-pr { color: #dc2626; }
+      .ptr-stack .ptr-pl { color: #2563eb; }
+      .final-grid {
+        display: inline-grid;
+        gap: 1px;
+        padding-bottom: 2px;
+      }
+      .final-brace-wrap {
+        position: relative;
+        height: 72px;
+        margin-top: 2px;
+      }
+      .final-brace-row {
+        position: relative;
+        height: 18px;
+      }
+      .final-brace {
+        position: absolute;
+        top: 0;
+        height: 14px;
+        border-bottom: 2px solid #d97706;
+      }
+      .final-brace::before,
+      .final-brace::after {
+        content: "";
+        position: absolute;
+        bottom: -2px;
+        width: 2px;
+        height: 10px;
+        background: #d97706;
+      }
+      .final-brace::before { left: 0; }
+      .final-brace::after { right: 0; }
+      .final-eq-marker {
+        position: absolute;
+        top: 1px;
+        width: 2px;
+        height: 46px;
+        background: #60a5fa;
+      }
+      .final-eq-marker::after {
+        content: "枢軸と等しい";
+        position: absolute;
+        top: 48px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #111827;
+        font-size: 14px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .final-label {
+        position: absolute;
+        top: 23px;
+        color: #111827;
+        font-size: 18px;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.1;
+        white-space: nowrap;
+      }
+      .stage-note {
+        margin-top: 7px;
+        padding: 6px 9px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #1f2937;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+      .stage-note b { color: #111827; }
+
+      /* ── History panel ── */
+      .history-panel {
+        padding: 7px 10px;
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 0;
+        flex: 0 0 auto;
+      }
+      .history-panel > h2 {
+        margin: 0 0 5px;
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--fg);
+      }
+
+      #history-container {
+        flex: 0 0 auto;
+        height: min(30vh, 250px);
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 0 4px 36px 0;
+      }
+      #history-container::-webkit-scrollbar {
+        width: 10px;
+      }
+      #history-container::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 999px;
+      }
+      #history-container::-webkit-scrollbar-thumb {
+        background: #94a3b8;
+        border: 2px solid #f1f5f9;
+        border-radius: 999px;
+      }
+      #history-container::-webkit-scrollbar-thumb:hover {
+        background: #64748b;
+      }
+
+      /* Each history row */
+      .h-row {
+        display: grid;
+        grid-template-columns: 330px 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 8px;
+        border: 1.5px solid transparent;
+        opacity: 0.42;
+        transition: opacity .2s, border-color .2s, background .2s;
+      }
+      .h-row.current {
+        opacity: 1;
+        border-color: #93c5fd;
+        background: #f0f7ff;
+      }
+      /* slightly less dim for immediate prior rows */
+      .h-row.near { opacity: 0.7; }
+
+      /* left side of row: array container */
+      .h-row-left {
+        overflow-x: auto;
+        flex-shrink: 0;
+      }
+
+      /* right side: badge and explanation text */
+      .h-row-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .step-badge {
+        display: inline-block;
+        padding: 2.5px 10px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        border: 1px solid var(--line);
+        background: #f1f5f9;
+        color: #475569;
+        white-space: nowrap;
+        text-align: center;
+        flex-shrink: 0;
+      }
+      .step-badge.pl     { background: var(--pl-bg);   color: #1d4ed8; border-color: #93c5fd; }
+      .step-badge.pr     { background: var(--pr-bg);   color: #b91c1c; border-color: #fca5a5; }
+      .step-badge.swap   { background: var(--swap-bg); color: #92400e; border-color: #fcd34d; }
+      .step-badge.ready  { background: #fee2e2; color: #b91c1c; border-color: #ef4444; }
+      .step-badge.adv    { background: #f0fdf4; color: #166534; border-color: #86efac; }
+      .step-badge.done   { background: #f0fdf4; color: #166534; border-color: #86efac; }
+
+      .h-annotation {
+        font-size: 12px;
+        color: #374151;
+        line-height: 1.3;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+
+      .arr-grid { display: inline-grid; gap: 1px; }
+      .arr-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 28px;
+        gap: 2px;
+      }
+      .idx-chip {
+        text-align: center;
+        font-size: 9px;
+        font-style: italic;
+        font-weight: 700;
+        color: #6b7280;
+      }
+      .val-chip {
+        position: relative;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border: 1.5px solid #111827;
+        background: #fff;
+        font-size: 12.5px;
+        font-weight: 700;
+        border-radius: 4px;
+        transition: background .15s, border-color .15s;
+      }
+      .val-chip.is-pivot  { background: var(--pivot-bg);  border-color: var(--pivot-line); }
+      #current-array .val-chip.is-pivot {
+        border-width: 2px;
+        box-shadow: inset 0 0 0 1px rgba(162, 28, 175, .18);
+      }
+      #current-array .val-chip.is-swap {
+        background: var(--swap-bg);
+        border-color: var(--swap-line);
+        color: #92400e;
+        animation: cell-swap-pop 520ms ease-out;
+        box-shadow: 0 6px 16px rgba(217, 119, 6, .22);
+      }
+      #current-array .val-chip.is-exchange-ready::after {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: 6px;
+        background:
+          linear-gradient(90deg, #ef4444 50%, transparent 0) 0 0 / 10px 2px repeat-x,
+          linear-gradient(90deg, #ef4444 50%, transparent 0) 0 100% / 10px 2px repeat-x,
+          linear-gradient(0deg, #ef4444 50%, transparent 0) 0 0 / 2px 10px repeat-y,
+          linear-gradient(0deg, #ef4444 50%, transparent 0) 100% 0 / 2px 10px repeat-y;
+        pointer-events: none;
+        animation: exchange-border-flow 640ms linear infinite;
+      }
+      .swap-bubble {
+        position: absolute;
+        z-index: 4;
+        padding: 3px 8px;
+        border: 2px solid #ef4444;
+        border-radius: 999px;
+        background: #fff1f2;
+        color: #dc2626;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        pointer-events: none;
+        transform: translate(-50%, 0);
+        animation: swap-bubble-pop 760ms ease forwards;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, .18);
+      }
+      @keyframes cell-swap-pop {
+        0% { transform: translateY(0) scale(1); }
+        35% { transform: translateY(-5px) scale(1.08); }
+        100% { transform: translateY(0) scale(1); }
+      }
+      @keyframes swap-bubble-pop {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, 8px) scale(.82);
+        }
+        18% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1.06);
+        }
+        70% {
+          opacity: 1;
+          transform: translate(-50%, -6px) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -14px) scale(.96);
+        }
+      }
+      @keyframes exchange-border-flow {
+        from {
+          background-position: 0 0, 0 100%, 0 0, 100% 0;
+        }
+        to {
+          background-position: 10px 0, -10px 100%, 0 10px, 100% -10px;
+        }
+      }
+      .val-chip.is-pl     { background: var(--pl-bg);     border-color: var(--pl-line); }
+      .val-chip.is-pr     { background: var(--pr-bg);     border-color: var(--pr-line); }
+      .val-chip.is-both   { background: #e0e7ff;           border-color: #4f46e5; }
+      .val-chip.is-swap   { background: var(--swap-bg);   border-color: var(--swap-line); }
+      .val-chip.is-done-l { background: var(--done-l-bg); border-color: var(--done-l-line); }
+      .val-chip.is-done-r { background: var(--done-r-bg); border-color: var(--done-r-line); }
+
+      .ptr-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 28px;
+        gap: 2px;
+      }
+      .ptr-chip {
+        height: 10px;
+        text-align: center;
+        font-size: 8.5px;
+        font-weight: 800;
+        line-height: 10px;
+      }
+      .ptr-pl   { color: #2563eb; }
+      .ptr-pr   { color: #dc2626; }
+      .ptr-both { color: #4f46e5; }
+
+      /* ── Right column ── */
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+      }
+
+      .side-panel {
+        padding: 8px 10px;
+      }
+      .side-panel h2 { margin: 0 0 5px; font-size: 12px; font-weight: 800; }
+
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3px 6px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .legend-item { display: flex; align-items: center; gap: 5px; min-width: 0; }
+      .legend-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .legend-box {
+        width: 10px; height: 10px;
+        border-radius: 2px;
+        border: 1px solid transparent;
+        flex-shrink: 0;
+      }
+
+      /* ── Code Panel ── */
+      .code-panel {
+        padding: 8px 10px;
+      }
+      .code-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .code-line {
+        display: flex;
+        align-items: center;
+        padding: 2px 5px;
+        font-size: 11.5px;
+        line-height: 1.38;
+        color: #374151;
+        transition: background .1s, color .1s;
+      }
+      .code-line.active {
+        background: #fef08a; /* Soft highlight yellow */
+        color: #000;
+        font-weight: 700;
+      }
+      .ln {
+        width: 16px;
+        color: #9ca3af;
+        text-align: right;
+        margin-right: 6px;
+        user-select: none;
+        font-size: 10px;
+      }
+      .code-text {
+        white-space: pre;
+      }
+      .code-kw { color: #8b5cf6; font-weight: 700; }
+      .code-fn { color: #2563eb; }
+      .code-var { color: #1e293b; }
+      .code-op { color: #ef4444; }
+      .code-num { color: #059669; }
+
+      /* done result */
+      #done-panel {
+        padding: 8px 10px;
+      }
+      #done-panel h2 { margin: 0 0 5px; font-size: 12px; font-weight: 800; }
+      #done-content {
+        font-size: 11.5px;
+        line-height: 1.4;
+        color: #166534;
+        background: #f0fdf4;
+        padding: 5px 7px;
+        border-radius: 6px;
+        border: 1px solid #86efac;
+      }
+
+      @media (max-width: 850px) {
+        body { overflow: auto; height: auto; }
+        main { height: auto; overflow: visible; }
+        .content-grid { grid-template-columns: 1fr; }
+        .h-row { grid-template-columns: 1fr; gap: 8px; }
+        #history-container {
+          height: 320px;
+        }
+        #current-array .arr-row,
+        #current-array .ptr-row,
+        .pivot-row {
+          grid-auto-columns: 40px;
+        }
+        #current-array .val-chip {
+          height: 36px;
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+
+    <header>
+      <div>
+        <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+        <h1>クイックソート - 分割の決め方</h1>
+      </div>
+    </header>
+
+    <main>
+      <!-- Controls -->
+      <section class="panel controls-panel">
+        <!-- Rules Banner -->
+        <div class="rules-box">
+          <strong>分割（パーティション）の決め方:</strong>
+          <ul class="rules-list">
+            <li>配列 <i>a</i> から枢軸（pivot）を選択する（ここでは中央の要素）</li>
+            <li><i>a</i>[<span style="color:#2563eb; font-weight:bold; font-style:italic;">pl</span>] ≥ pivot となる値を左から探す</li>
+            <li><i>a</i>[<span style="color:#dc2626; font-weight:bold; font-style:italic;">pr</span>] ≤ pivot となる値を右から探す</li>
+            <li><span style="color:#2563eb; font-weight:bold; font-style:italic;">pl</span> と <span style="color:#dc2626; font-weight:bold; font-style:italic;">pr</span> が交差するまで交換を繰り返し、pivot 以下／以上のグループに分ける</li>
+          </ul>
+        </div>
+
+        <div class="controls">
+          <div class="ctrl-row">
+            <label style="font-size:13px;color:var(--muted);white-space:nowrap;font-weight:700;">配列 a =</label>
+            <select id="arrayPreset" onchange="applyPreset()">
+              <option value="5, 7, 1, 4, 6, 2, 3, 9, 8">スライド基本例</option>
+              <option value="5, 1, 2, 4, 4, 6, 9, 7, 8">枢軸と等しい値あり</option>
+              <option value="1, 2, 3, 4, 6, 7, 5, 8, 9">if交換判定がfalse</option>
+              <option value="custom">直接入力</option>
+            </select>
+            <input id="arrayInput" type="text" value="5, 7, 1, 4, 6, 2, 3, 9, 8" style="width: 180px; flex-grow: 0;" />
+            <button onclick="randomize()">乱数生成</button>
+            <span style="border-left: 1px solid var(--line); height: 20px; margin: 0 4px;"></span>
+            <button id="prevBtn"  onclick="stepBack()">1ステップ戻る</button>
+            <button id="nextBtn"  onclick="stepForward()">1ステップ進む</button>
+            <button id="playBtn"  class="primary" onclick="togglePlay()">再生</button>
+            <button id="pauseBtn" disabled onclick="togglePlay()">一時停止</button>
+            <button onclick="reset()">リセット</button>
+          </div>
+          <div class="ctrl-row" style="margin-top: 2px;">
+            <label style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">速度
+              <input id="speedInput" type="range" min="0.5" max="8" step="0.5" value="2" style="width: 100px; vertical-align: middle;" />
+              <span id="speedLabel" style="min-width: 32px; display: inline-block;">2.0x</span>
+            </label>
+            <span style="border-left: 1px solid var(--line); height: 16px; margin: 0 4px;"></span>
+            <div class="progress-wrap" style="flex: 1; height: 4px; background: #e5e7eb; border-radius: 2px; position: relative; overflow: hidden;">
+              <div id="progress-bar" style="width:0%; height: 100%; background: var(--primary); border-radius: 2px;"></div>
+            </div>
+            <span class="step-info" id="stepInfo">— / —</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Content Grid -->
+      <div class="content-grid">
+        <div class="left-col">
+          <section class="panel spotlight-panel">
+            <div class="spotlight-head">
+              <h2>現在の状態</h2>
+              <div id="current-pivot" class="pivot-note">pivot = —</div>
+            </div>
+            <div id="current-array"></div>
+            <div id="current-note" class="stage-note">配列を入力してリセットしてください。</div>
+          </section>
+
+          <!-- History Panel -->
+          <section class="panel history-panel">
+          <h2>分割の決め方（ステップ履歴）</h2>
+            <div id="history-container"></div>
+          </section>
+        </div>
+
+        <!-- Right Column -->
+        <div class="right-col">
+          <section class="panel side-panel">
+            <h2>凡例</h2>
+            <div class="legend">
+              <div class="legend-item">
+                <div class="legend-box" style="background:var(--pl-bg);border-color:var(--pl-line)"></div>
+                <span>pl（左カーソル）</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:var(--pr-bg);border-color:var(--pr-line)"></div>
+                <span>pr（右カーソル）</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:var(--pivot-bg);border-color:var(--pivot-line)"></div>
+                <span>pivot</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:var(--swap-bg);border-color:var(--swap-line)"></div>
+                <span>交換した要素</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Pseudocode Panel -->
+          <section class="panel side-panel code-panel">
+            <h2>分割を決めるコード</h2>
+            <ol class="code-list">
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">partition</span>(<span class="code-var">a</span>, <span class="code-var">end</span>):</span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">  <span class="code-var">pl</span> <span class="code-op">=</span> <span class="code-num">0</span>,  <span class="code-var">pr</span> <span class="code-op">=</span> <span class="code-var">end</span></span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">  <span class="code-var">pivot</span> <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">end</span> <span class="code-op">//</span> <span class="code-num">2</span>]</span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">  <span class="code-kw">while</span> <span class="code-var">pl</span> <span class="code-op">&lt;=</span> <span class="code-var">pr</span>:</span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">a</span>[<span class="code-var">pl</span>] <span class="code-op">&lt;</span> <span class="code-var">pivot</span>: <span class="code-var">pl</span> <span class="code-op">+=</span> <span class="code-num">1</span></span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">a</span>[<span class="code-var">pr</span>] <span class="code-op">&gt;</span> <span class="code-var">pivot</span>: <span class="code-var">pr</span> <span class="code-op">-=</span> <span class="code-num">1</span></span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">    <span class="code-kw">if</span> <span class="code-var">pl</span> <span class="code-op">&lt;=</span> <span class="code-var">pr</span>:</span></li>
+              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">      <span class="code-var">a</span>[<span class="code-var">pl</span>], <span class="code-var">a</span>[<span class="code-var">pr</span>] <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">pr</span>], <span class="code-var">a</span>[<span class="code-var">pl</span>]</span></li>
+              <li id="line-9" class="code-line"><span class="ln">9</span><span class="code-text">      <span class="code-var">pl</span> <span class="code-op">+=</span> <span class="code-num">1</span>,  <span class="code-var">pr</span> <span class="code-op">-=</span> <span class="code-num">1</span></span></li>
+            </ol>
+          </section>
+
+          <section class="panel side-panel" id="done-panel" style="display: none;">
+            <h2>分割結果</h2>
+            <div id="done-content"></div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <script>
+    // ──────────────────────────────────────────────
+    //  Step generation  (coarse: one step per event)
+    // ──────────────────────────────────────────────
+    function generateSteps(initArr) {
+      const steps = [];
+      const a = [...initArr];
+      const ids = initArr.map((_, i) => i);
+      const n = a.length;
+      let pl = 0, pr = n - 1;
+      const pivotIdx0 = Math.floor((pl + pr) / 2);
+      const pivotVal  = a[pivotIdx0];
+      const pivotId = ids[pivotIdx0];
+      let iter = 0;
+
+      function snap(type, label, badgeClass, annotation, extra = {}) {
+        steps.push({
+          array: [...a], ids: [...ids], pl, pr, pivotVal, pivotIdx: pivotIdx0, pivotId, type,
+          label, badgeClass, annotation, iter,
+          ...extra
+        });
+      }
+
+      // ① Initial state
+      snap('init', '初期状態', '',
+        `pl = 0, pr = ${pr} 　 (pivot = a[${pivotIdx0}] = <b>${pivotVal}</b>)`,
+        { line: [2, 3] });
+
+      while (true) {
+        iter++;
+
+        if (pl > pr) {
+          snap('done', '分割完了', 'done',
+            `4行目に戻って判定: pl(${pl}) > pr(${pr}) なので while を抜ける`,
+            { done: true, doneLeft: pr, doneRight: pl, line: 4 });
+          break;
+        }
+
+        // ② Move pl right one by one
+        while (a[pl] < pivotVal) {
+          snap('pl-scan', 'pl 移動', 'pl',
+            `a[pl] = a[<b style="color:#2563eb">${pl}</b>] = ${a[pl]} < pivot(${pivotVal}) ➔ 右へ移動する`,
+            { line: 5 });
+          pl++;
+        }
+        snap('pl-stop', 'pl 停止', 'pl',
+          `a[pl] = a[<b style="color:#2563eb">${pl}</b>] = ${a[pl]} ≥ pivot(${pivotVal}) で停止`,
+          { line: 5 });
+
+        // ③ Move pr left one by one
+        while (a[pr] > pivotVal) {
+          snap('pr-scan', 'pr 移動', 'pr',
+            `a[pr] = a[<b style="color:#dc2626">${pr}</b>] = ${a[pr]} > pivot(${pivotVal}) ➔ 左へ移動する`,
+            { line: 6 });
+          pr--;
+        }
+        const isReady = pl <= pr;
+        snap('pr-stop', isReady ? '交換条件成立' : 'pr 停止', isReady ? 'ready' : 'pr',
+          isReady
+            ? `a[pl] ≥ pivot かつ a[pr] ≤ pivot なので交換できる状態`
+            : `a[pr] = a[<b style="color:#dc2626">${pr}</b>] = ${a[pr]} ≤ pivot(${pivotVal}) で停止`,
+          { line: 6 });
+
+        // ④ Check: done?
+        if (pl > pr) {
+          snap('done', '分割完了', 'done',
+            `4行目に戻って判定: pl(${pl}) > pr(${pr}) なので while を抜ける`,
+            { done: true, doneLeft: pr, doneRight: pl, line: 4 });
+          break;
+        }
+
+        // ⑤ Swap
+        const sp = pl, srp = pr, sv1 = a[pl], sv2 = a[pr];
+        [a[pl], a[pr]] = [a[pr], a[pl]];
+        [ids[pl], ids[pr]] = [ids[pr], ids[pl]];
+        snap('swapped', '要素交換', 'swap',
+          `a[pl] = ${sv1} ↔ a[pr] = ${sv2} を交換`,
+          { swapPl: sp, swapPr: srp, line: 8 });
+
+        // ⑥ Advance
+        pl++; pr--;
+        snap('advanced', 'ポインタ更新', 'adv',
+          `pl = <b style="color:#2563eb">${pl}</b>, pr = <b style="color:#dc2626">${pr}</b> に更新`,
+          { line: 9 });
+      }
+
+      return steps;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Cell color resolver
+    // ──────────────────────────────────────────────
+    function cellClass(step, i) {
+      const { array, pl, pr, pivotVal, type, done, doneLeft, doneRight, swapPl, swapPr } = step;
+      if (done) {
+        if (i <= doneLeft)  return 'is-done-l';
+        if (i >= doneRight) return 'is-done-r';
+        return '';
+      }
+      if (type === 'swapped') {
+        if (step.ids && step.ids[i] === step.pivotId) return 'is-pivot';
+        if (i === swapPl || i === swapPr) return 'is-swap';
+        return '';
+      }
+      const isPivot = step.ids ? step.ids[i] === step.pivotId : i === step.pivotIdx;
+      const isPl = i === pl, isPr = i === pr;
+      if (isPl && isPr) return 'is-both';
+      if (isPl)         return 'is-pl';
+      if (isPr)         return 'is-pr';
+      if (isPivot)      return 'is-pivot';
+      return '';
+    }
+
+    function buildArrayGrid(step, showPointers = true) {
+      const n = step.array.length;
+      const grid = document.createElement('div');
+      grid.className = 'arr-grid';
+
+      if (step.showPivotLabel) {
+        const pivotRow = document.createElement('div');
+        pivotRow.className = 'pivot-row';
+        const pivotCurrentIndex = step.ids
+          ? step.ids.findIndex(id => id === step.pivotId)
+          : step.pivotIdx;
+        for (let i = 0; i < n; i++) {
+          const c = document.createElement('div');
+          c.className = 'pivot-marker';
+          c.textContent = i === pivotCurrentIndex ? `pivot = a[${step.pivotIdx}] = ${step.pivotVal}` : '';
+          pivotRow.appendChild(c);
+        }
+        grid.appendChild(pivotRow);
+      }
+
+      const idxRow = document.createElement('div');
+      idxRow.className = 'arr-row';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'idx-chip';
+        c.textContent = i;
+        idxRow.appendChild(c);
+      }
+      grid.appendChild(idxRow);
+
+      const valRow = document.createElement('div');
+      valRow.className = 'arr-row';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        const cls = cellClass(step, i);
+        c.className = 'val-chip' + (cls ? ' ' + cls : '');
+        if (step.type === 'pr-stop' && step.pl <= step.pr && (i === step.pl || i === step.pr)) {
+          c.classList.add('is-exchange-ready');
+        }
+        c.dataset.index = i;
+        c.textContent = step.array[i];
+        valRow.appendChild(c);
+      }
+      grid.appendChild(valRow);
+
+      if (showPointers && !step.done) {
+        const ptrRow = document.createElement('div');
+        ptrRow.className = 'ptr-row';
+        for (let i = 0; i < n; i++) {
+          const c = document.createElement('div');
+          c.className = 'ptr-chip';
+          const isPl = i === step.pl, isPr = i === step.pr;
+          if (isPl && isPr) {
+            c.classList.add('ptr-both');
+            c.innerHTML = '<span class="ptr-stack"><span class="ptr-pr">↑ pr</span><span class="ptr-pl">↑ pl</span></span>';
+          }
+          else if (isPl)    { c.textContent = '↑ pl';    c.classList.add('ptr-pl'); }
+          else if (isPr)    { c.textContent = '↑ pr';    c.classList.add('ptr-pr'); }
+          ptrRow.appendChild(c);
+        }
+        grid.appendChild(ptrRow);
+      }
+
+      return grid;
+    }
+
+    function buildFinalGrid(step) {
+      const n = step.array.length;
+      const hasEqualGroup = step.pr + 1 < step.pl;
+      const leftEndExclusive = hasEqualGroup ? step.pr + 1 : step.doneRight;
+      const rightStart = step.doneRight;
+      const grid = document.createElement('div');
+      grid.className = 'final-grid';
+
+      const idxRow = document.createElement('div');
+      idxRow.className = 'arr-row';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'idx-chip';
+        c.textContent = i;
+        idxRow.appendChild(c);
+      }
+      grid.appendChild(idxRow);
+
+      const valRow = document.createElement('div');
+      valRow.className = 'arr-row';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'val-chip';
+        if (step.ids && step.ids[i] === step.pivotId) c.classList.add('is-pivot');
+        c.dataset.index = i;
+        c.textContent = step.array[i];
+        valRow.appendChild(c);
+      }
+      grid.appendChild(valRow);
+
+      const ptrRow = document.createElement('div');
+      ptrRow.className = 'ptr-row';
+      for (let i = 0; i < n; i++) {
+        const c = document.createElement('div');
+        c.className = 'ptr-chip';
+        if (i === step.pr) { c.textContent = '↑ pr'; c.classList.add('ptr-pr'); }
+        if (i === step.pl) { c.textContent = '↑ pl'; c.classList.add('ptr-pl'); }
+        ptrRow.appendChild(c);
+      }
+      grid.appendChild(ptrRow);
+
+      const braceWrap = document.createElement('div');
+      braceWrap.className = 'final-brace-wrap';
+
+      if (leftEndExclusive > 0) {
+        const leftBrace = document.createElement('div');
+        leftBrace.className = 'final-brace final-brace-left';
+        braceWrap.appendChild(leftBrace);
+      }
+
+      if (rightStart < n) {
+        const rightBrace = document.createElement('div');
+        rightBrace.className = 'final-brace final-brace-right';
+        braceWrap.appendChild(rightBrace);
+      }
+
+      if (leftEndExclusive > 0) {
+        const leftLabel = document.createElement('div');
+        leftLabel.className = 'final-label final-label-left';
+        leftLabel.textContent = '枢軸以下';
+        braceWrap.appendChild(leftLabel);
+      }
+
+      if (rightStart < n) {
+        const rightLabel = document.createElement('div');
+        rightLabel.className = 'final-label final-label-right';
+        rightLabel.textContent = '枢軸以上';
+        braceWrap.appendChild(rightLabel);
+      }
+
+      if (step.pr + 1 < step.pl) {
+        const eqMarker = document.createElement('div');
+        eqMarker.className = 'final-eq-marker';
+        braceWrap.appendChild(eqMarker);
+      }
+      grid.appendChild(braceWrap);
+
+      return grid;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Build one history row DOM element
+    // ──────────────────────────────────────────────
+    function buildRow(step, idx) {
+      const row = document.createElement('div');
+      row.className = 'h-row';
+      row.dataset.idx = idx;
+
+      // ── Left side: array (aligned) ──
+      const left = document.createElement('div');
+      left.className = 'h-row-left';
+
+      left.appendChild(buildArrayGrid(step));
+      row.appendChild(left);
+
+      // ── Right side: Badge and annotation text ──
+      const right = document.createElement('div');
+      right.className = 'h-row-right';
+
+      const badge = document.createElement('span');
+      badge.className = 'step-badge ' + (step.badgeClass || '');
+      badge.textContent = step.label;
+      right.appendChild(badge);
+
+      const ann = document.createElement('div');
+      ann.className = 'h-annotation';
+      ann.innerHTML = step.annotation;
+      right.appendChild(ann);
+
+      row.appendChild(right);
+
+      return row;
+    }
+
+    function updateCurrentPanel(step) {
+      document.getElementById('current-pivot').textContent = `pivot = a[${step.pivotIdx}] = ${step.pivotVal}`;
+
+      const currentArray = document.getElementById('current-array');
+      currentArray.innerHTML = '';
+      currentArray.appendChild(step.done ? buildFinalGrid(step) : buildArrayGrid(step));
+      if (step.done) {
+        positionFinalBraces(step);
+      }
+      if (step.type === 'swapped') {
+        showSwapBubble(step);
+      }
+
+      const note = document.getElementById('current-note');
+      if (step.done) {
+        note.innerHTML = `<b>pr までを枢軸以下</b>、<b>pl からを枢軸以上</b>のグループとして示します。`;
+      } else if (step.type === 'pl-scan' || step.type === 'pl-stop') {
+        note.innerHTML = `<b>左カーソル pl</b> は、a[pl] ≥ pivot で止まります。`;
+      } else if (step.type === 'pr-scan' || step.type === 'pr-stop') {
+        if (step.type === 'pr-stop' && step.pl <= step.pr) {
+          note.innerHTML = `<b>交換条件成立</b>: a[pl] ≥ pivot かつ a[pr] ≤ pivot なので、a[pl] と a[pr] を交換できます。`;
+        } else {
+          note.innerHTML = `<b>右カーソル pr</b> は、a[pr] ≤ pivot で止まります。`;
+        }
+      } else if (step.type === 'swapped') {
+        note.innerHTML = `<b>a[pl] と a[pr] を交換</b>し、pivot 以下の値を左へ、pivot 以上の値を右へ送ります。`;
+      } else if (step.type === 'advanced') {
+        note.innerHTML = `交換後は <b>pl を 1 つ右へ</b>、<b>pr を 1 つ左へ</b>進め、同じ処理を繰り返します。`;
+      } else {
+        note.innerHTML = `左カーソルを先頭、右カーソルを末尾に置き、中央の値を pivot とします。<br>この pivot を境にグループ分けできる位置を探します。`;
+      }
+    }
+
+    function positionFinalBraces(step) {
+      const currentArray = document.getElementById('current-array');
+      const wrap = currentArray.querySelector('.final-brace-wrap');
+      if (!wrap) return;
+
+      const cells = Array.from(currentArray.querySelectorAll('.final-grid .val-chip'));
+      const hasEqualGroup = step.pr + 1 < step.pl;
+      const leftEndExclusive = hasEqualGroup ? step.pr + 1 : step.doneRight;
+      const rightStart = step.doneRight;
+      if (cells.length !== step.array.length) return;
+
+      const wrapRect = wrap.getBoundingClientRect();
+      const getBounds = (start, endExclusive) => {
+        const first = cells[start]?.getBoundingClientRect();
+        const last = cells[endExclusive - 1]?.getBoundingClientRect();
+        if (!first || !last) return null;
+        return {
+          left: first.left - wrapRect.left,
+          width: last.right - first.left,
+          center: ((first.left + last.right) / 2) - wrapRect.left
+        };
+      };
+
+      const applyGroup = (braceSelector, labelSelector, bounds) => {
+        if (!bounds) return;
+        const brace = wrap.querySelector(braceSelector);
+        const label = wrap.querySelector(labelSelector);
+        if (brace) {
+          brace.style.left = `${bounds.left}px`;
+          brace.style.width = `${bounds.width}px`;
+        }
+        if (label) {
+          label.style.left = `${bounds.center}px`;
+          label.style.transform = 'translateX(-50%)';
+        }
+      };
+
+      applyGroup('.final-brace-left', '.final-label-left', getBounds(0, leftEndExclusive));
+      applyGroup('.final-brace-right', '.final-label-right', getBounds(rightStart, cells.length));
+
+      const eqMarker = wrap.querySelector('.final-eq-marker');
+      if (eqMarker && step.pr + 1 < step.pl) {
+        const eqBounds = getBounds(step.pr + 1, step.pl);
+        if (eqBounds) {
+          eqMarker.style.left = `${eqBounds.center}px`;
+        }
+      }
+    }
+
+    function showSwapBubble(step) {
+      const currentArray = document.getElementById('current-array');
+      const cells = [step.swapPl, step.swapPr]
+        .map(index => currentArray.querySelector(`.val-chip[data-index="${index}"]`))
+        .filter(Boolean);
+      if (!cells.length) return;
+
+      const arrayRect = currentArray.getBoundingClientRect();
+      const rects = cells.map(cell => cell.getBoundingClientRect());
+      const left = Math.min(...rects.map(rect => rect.left));
+      const right = Math.max(...rects.map(rect => rect.right));
+      const top = Math.min(...rects.map(rect => rect.top));
+
+      const bubble = document.createElement('div');
+      bubble.className = 'swap-bubble';
+      bubble.textContent = '交換';
+      bubble.style.left = `${((left + right) / 2) - arrayRect.left}px`;
+      bubble.style.top = `${top - arrayRect.top - 8}px`;
+      currentArray.appendChild(bubble);
+
+      window.setTimeout(() => {
+        bubble.remove();
+      }, 820);
+    }
+
+    // ──────────────────────────────────────────────
+    //  State
+    // ──────────────────────────────────────────────
+    let steps = [], cur = -1, playing = false, timer = null;
+    const container = document.getElementById('history-container');
+
+    // ──────────────────────────────────────────────
+    //  Update code highlight
+    // ──────────────────────────────────────────────
+    function updateCodeHighlight() {
+      // Clear previous active lines
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+
+      if (cur < 0 || !steps.length) return;
+      const s = steps[cur];
+      if (s.line) {
+        const lines = Array.isArray(s.line) ? s.line : [s.line];
+        lines.forEach(ln => {
+          const lineEl = document.getElementById(`line-${ln}`);
+          if (lineEl) lineEl.classList.add('active');
+        });
+      }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Update right-panel vars
+    // ──────────────────────────────────────────────
+    function updateSidePanel() {
+      if (cur < 0 || !steps.length) return;
+      const s = steps[cur];
+      updateCurrentPanel(s);
+
+      // update code highlight
+      updateCodeHighlight();
+
+      // done panel
+      const donePanel = document.getElementById('done-panel');
+      if (s.done) {
+        donePanel.style.display = '';
+        const split = s.doneRight;
+        const L = s.array.slice(0, split).join(', ');
+        const R = s.array.slice(split).join(', ');
+        const equalGroup = s.pr + 1 < s.pl ? s.array.slice(s.pr + 1, s.pl).join(', ') : '';
+        const equalLeft = s.array.slice(0, split).some(v => v === s.pivotVal);
+        const equalRight = s.array.slice(split).some(v => v === s.pivotVal);
+        let equalNote = '';
+        if (equalGroup) {
+          equalNote =
+            `枢軸と等しいグループ<br>　[ ${equalGroup} ]<br><span style="color:#4b5563;">pr + 1 から pl - 1 までが、枢軸と等しい値のグループです。</span>`;
+        } else if (equalLeft && equalRight) {
+          equalNote =
+            `<span style="color:#4b5563;">pivot と等しい値は左右どちらのグループにも含まれています。</span>`;
+        } else if (equalLeft) {
+          equalNote =
+            `<span style="color:#4b5563;">pivot と等しい値はどちらのグループに含めてもよい。この例では左側に含まれています。</span>`;
+        } else if (equalRight) {
+          equalNote =
+            `<span style="color:#4b5563;">pivot と等しい値はどちらのグループに含めてもよい。この例では右側に含まれています。</span>`;
+        } else {
+          equalNote =
+            `<span style="color:#4b5563;">pivot と等しい値が境界付近にない場合もあります。</span>`;
+        }
+        document.getElementById('done-content').innerHTML =
+          `左グループ（≤ ${s.pivotVal}）<br>　[ ${L} ]<br>` +
+          `右グループ（≥ ${s.pivotVal}）<br>　[ ${R} ]<br>` +
+          equalNote;
+      } else {
+        donePanel.style.display = 'none';
+      }
+    }
+
+    // ──────────────────────────────────────────────
+    //  Refresh opacity/current highlight on all rows
+    // ──────────────────────────────────────────────
+    function refreshHighlights() {
+      const rows = container.querySelectorAll('.h-row');
+      const last = rows.length - 1;
+      rows.forEach((row, i) => {
+        row.classList.remove('current', 'near');
+        if (i === last)      row.classList.add('current');
+        else if (i >= last - 2) row.classList.add('near');
+      });
+    }
+
+    // ──────────────────────────────────────────────
+    //  Update progress / buttons
+    // ──────────────────────────────────────────────
+    function updateProgress() {
+      const total = steps.length;
+      document.getElementById('stepInfo').textContent =
+        total ? `ステップ ${cur + 1} / ${total}` : '— / —';
+      document.getElementById('progress-bar').style.width =
+        total ? ((cur / Math.max(1, total - 1)) * 100) + '%' : '0%';
+      document.getElementById('prevBtn').disabled = cur <= 0;
+      document.getElementById('nextBtn').disabled = cur >= steps.length - 1;
+      document.getElementById('playBtn').disabled  = cur >= steps.length - 1;
+    }
+
+    function keepCurrentRowComfortable() {
+      const rows = container.querySelectorAll('.h-row');
+      const row = rows[rows.length - 1];
+      if (!row) return;
+
+      const topPadding = 18;
+      const targetTop = row.offsetTop - Math.max(topPadding, container.clientHeight * 0.42);
+      const maxTop = container.scrollHeight - container.clientHeight;
+      container.scrollTop = Math.max(0, Math.min(targetTop, maxTop));
+    }
+
+    // ──────────────────────────────────────────────
+    //  Step forward: add one row
+    // ──────────────────────────────────────────────
+    function stepForward() {
+      if (cur >= steps.length - 1) return;
+      cur++;
+      const row = buildRow(steps[cur], cur);
+      container.appendChild(row);
+      refreshHighlights();
+      updateSidePanel();
+      updateProgress();
+      
+      setTimeout(keepCurrentRowComfortable, 50);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Step back: remove last row
+    // ──────────────────────────────────────────────
+    function stepBack() {
+      if (cur <= 0) return;
+      const rows = container.querySelectorAll('.h-row');
+      if (rows.length > 0) rows[rows.length - 1].remove();
+      cur--;
+      refreshHighlights();
+      updateSidePanel();
+      updateProgress();
+
+      setTimeout(keepCurrentRowComfortable, 50);
+    }
+
+    // ──────────────────────────────────────────────
+    //  Controls
+    // ──────────────────────────────────────────────
+    function syncPresetToInput() {
+      const preset = document.getElementById('arrayPreset');
+      const inputValue = document.getElementById('arrayInput').value.replace(/\s+/g, '');
+      const matched = Array.from(preset.options).find(option =>
+        option.value !== 'custom' && option.value.replace(/\s+/g, '') === inputValue
+      );
+      preset.value = matched ? matched.value : 'custom';
+    }
+
+    function applyPreset() {
+      const preset = document.getElementById('arrayPreset');
+      if (preset.value === 'custom') return;
+      stopPlay();
+      document.getElementById('arrayInput').value = preset.value;
+      reset();
+    }
+
+    function getArr() {
+      return document.getElementById('arrayInput').value
+        .split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    }
+
+    // ──────────────────────────────────────────────
+    //  Reset
+    // ──────────────────────────────────────────────
+    function reset() {
+      stopPlay();
+      const arr = getArr();
+      if (arr.length < 2) { alert('2要素以上を入力してください'); return; }
+      syncPresetToInput();
+      steps = generateSteps(arr);
+      cur = -1;
+      container.innerHTML = '';
+      document.getElementById('done-panel').style.display = 'none';
+      updateProgress();
+      // auto show first step
+      stepForward();
+    }
+
+    // ──────────────────────────────────────────────
+    //  Randomize
+    // ──────────────────────────────────────────────
+    function randomize() {
+      stopPlay();
+      const n = 7 + Math.floor(Math.random() * 3);
+      const pool = [];
+      while (pool.length < n) {
+        const v = 1 + Math.floor(Math.random() * 20);
+        if (!pool.includes(v)) pool.push(v);
+      }
+      document.getElementById('arrayInput').value = pool.join(', ');
+      document.getElementById('arrayPreset').value = 'custom';
+      reset();
+    }
+
+    function getDelay() {
+      return Math.round(1000 / parseFloat(document.getElementById('speedInput').value));
+    }
+
+    function togglePlay() {
+      if (playing) stopPlay(); else startPlay();
+    }
+    function startPlay() {
+      if (cur >= steps.length - 1) { reset(); return; }
+      playing = true;
+      document.getElementById('playBtn').disabled  = true;
+      document.getElementById('pauseBtn').disabled = false;
+      tick();
+    }
+    function tick() {
+      timer = setTimeout(() => {
+        if (!playing) return;
+        if (cur >= steps.length - 1) { stopPlay(); return; }
+        stepForward();
+        tick();
+      }, getDelay());
+    }
+    function stopPlay() {
+      playing = false;
+      clearTimeout(timer);
+      document.getElementById('playBtn').disabled  = false;
+      document.getElementById('pauseBtn').disabled = true;
+    }
+
+    document.getElementById('speedInput').addEventListener('input', function () {
+      document.getElementById('speedLabel').textContent =
+        parseFloat(this.value).toFixed(1) + 'x';
+    });
+
+    // ── Init ──
+    reset();
+    </script>
+  </body>
+</html>
