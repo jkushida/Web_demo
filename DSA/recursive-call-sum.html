@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>再帰呼び出しの手順</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #fff;
+      --line: #d1d5db;
+      --fg: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-bg: #dbeafe;
+      --return: #dc2626;
+      --return-bg: #fee2e2;
+      --active: #fef08a;
+      --code-bg: #f8fafc;
+      --frame: #f4f7fb;
+      --n-bg: #fdebdc;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      padding: 4px 12px 3px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fff;
+    }
+
+    header p {
+      margin: 0 0 2px;
+      font-size: 12px;
+    }
+
+    header a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    header a:hover { text-decoration: underline; }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    main {
+      min-height: 0;
+      padding: 6px 10px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 6px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, .04);
+    }
+
+    .concept {
+      padding: 6px 10px;
+      display: grid;
+      grid-template-columns: minmax(360px, 1fr) 420px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .formula {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .formula .math {
+      font-family: Georgia, "Times New Roman", serif;
+      font-style: italic;
+      letter-spacing: .02em;
+    }
+
+    .concept-note {
+      margin: 0;
+      padding: 6px 9px;
+      border: 2px solid #ef4444;
+      color: #111827;
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.45;
+      background: #fff;
+    }
+
+    .controls-panel {
+      padding: 5px 9px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    select,
+    input[type="range"],
+    button {
+      font: inherit;
+    }
+
+    select {
+      min-height: 28px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--fg);
+      font-size: 13px;
+    }
+
+    button {
+      min-height: 28px;
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--fg);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    button:hover { background: #f1f5f9; }
+
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+
+    .progress-wrap {
+      flex: 1;
+      min-width: 140px;
+      height: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+
+    #progressBar {
+      width: 0%;
+      height: 100%;
+      background: var(--primary);
+      transition: width .18s;
+    }
+
+    .step-info {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .content-grid {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 8px;
+    }
+
+    .left-stack {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+    }
+
+    .stage-panel {
+      padding: 9px 11px;
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .stage-head h2,
+    .side-panel h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    #stageTitle {
+      color: var(--primary);
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    #stageMessage {
+      margin: 0;
+      padding: 7px 9px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: #1f2937;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .frames-panel {
+      min-height: 0;
+      padding: 10px;
+      overflow: auto;
+    }
+
+    .frames {
+      min-width: max-content;
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 4px 0 8px;
+    }
+
+    .frame-wrap {
+      display: grid;
+      grid-template-columns: 270px auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .frame {
+      position: relative;
+      padding: 13px 9px 8px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: var(--frame);
+      transition: border-color .18s, transform .18s, box-shadow .18s;
+    }
+
+    .frame.active {
+      border-color: var(--primary);
+      box-shadow: 0 8px 18px rgba(37, 99, 235, .14);
+      transform: translateY(-2px);
+    }
+
+    .frame.returning {
+      border-color: var(--return);
+      box-shadow: 0 8px 18px rgba(220, 38, 38, .13);
+    }
+
+    .n-badge {
+      position: absolute;
+      top: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 36px;
+      padding: 3px 8px;
+      border: 2px solid #111827;
+      border-radius: 4px;
+      background: var(--n-bg);
+      text-align: center;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    .frame-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 2px 0 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .code {
+      margin: 0;
+      padding: 6px 0;
+      list-style: none;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      background: #fff;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow: hidden;
+    }
+
+    .code-line {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      column-gap: 7px;
+      align-items: center;
+      min-height: 18px;
+      padding: 0 6px;
+      color: #1f2937;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .code-line.active {
+      background: var(--active);
+      font-weight: 800;
+    }
+
+    .ln {
+      color: #94a3b8;
+      text-align: right;
+      user-select: none;
+    }
+
+    .src {
+      white-space: pre;
+    }
+
+    .kw { color: #7c3aed; font-weight: 800; }
+    .fn { color: #1d4ed8; }
+    .cm { color: #15803d; font-weight: 700; }
+    .ret { color: #c026d3; font-weight: 800; }
+    .num { color: #059669; font-weight: 800; }
+
+    .local {
+      margin-top: 6px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .local-card {
+      padding: 4px 6px;
+      border: 1px solid #dbe3ef;
+      border-radius: 7px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .local-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .local-value {
+      font-size: 17px;
+      font-weight: 900;
+    }
+
+    .return-value {
+      margin-top: 6px;
+      min-height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--return);
+      font-size: 16px;
+      font-weight: 900;
+    }
+
+    .connector {
+      width: 72px;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      gap: 10px;
+    }
+
+    .call-arrow,
+    .return-arrow {
+      width: 70px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      opacity: .2;
+    }
+
+    .call-arrow {
+      border: 2px solid var(--primary);
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+
+    .return-arrow {
+      border: 2px solid var(--return);
+      background: var(--return-bg);
+      color: var(--return);
+    }
+
+    .connector.call-active .call-arrow,
+    .connector.return-active .return-arrow {
+      opacity: 1;
+      animation: pop .72s ease infinite alternate;
+    }
+
+    @keyframes pop {
+      from { transform: translateY(0) scale(1); }
+      to { transform: translateY(-2px) scale(1.04); }
+    }
+
+    .side-stack {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 8px;
+    }
+
+    .side-panel {
+      padding: 9px 10px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .legend-box {
+      width: 13px;
+      height: 13px;
+      border-radius: 3px;
+      border: 2px solid transparent;
+    }
+
+    .stack-list {
+      display: grid;
+      gap: 5px;
+      margin-top: 7px;
+    }
+
+    .stack-item {
+      padding: 5px 7px;
+      border: 1px solid #dbe3ef;
+      border-radius: 7px;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .stack-item.active {
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      color: #1d4ed8;
+    }
+
+    .history {
+      min-height: 0;
+      overflow-y: auto;
+      display: grid;
+      align-content: start;
+      gap: 5px;
+      padding-right: 4px;
+      scrollbar-gutter: stable;
+    }
+
+    .history-row {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 7px;
+      align-items: start;
+      padding: 5px 7px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      color: #374151;
+      font-size: 12px;
+      line-height: 1.35;
+      opacity: .55;
+    }
+
+    .history-row.current {
+      border-color: #93c5fd;
+      background: #eff6ff;
+      opacity: 1;
+      font-weight: 800;
+    }
+
+    .history-step {
+      color: var(--muted);
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 920px) {
+      main {
+        display: block;
+        overflow: auto;
+      }
+
+      .concept,
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .concept,
+      .controls-panel,
+      .content-grid {
+        margin-bottom: 8px;
+      }
+
+      .side-stack {
+        grid-template-rows: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+    <h1>再帰呼び出しの手順</h1>
+  </header>
+
+  <main>
+    <section class="panel concept">
+      <p class="formula"><span class="math">n</span> = <span id="formulaN">3</span> として，
+        <span class="math">S</span><sub id="formulaSub">3</sub> =
+        <span id="formulaText">1 + 2 + 3</span> を求める場合</p>
+      <p class="concept-note">同じ calc_sum 関数だが，それぞれ独立した領域で異なる値の n を持って動作する</p>
+    </section>
+
+    <section class="panel controls-panel">
+      <div class="ctrl-row">
+        <label for="nInput">n =</label>
+        <select id="nInput" onchange="resetDemo()">
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+        <button id="prevBtn" onclick="stepBack()">1ステップ戻る</button>
+        <button id="nextBtn" onclick="stepForward()">1ステップ進む</button>
+        <button id="playBtn" class="primary" onclick="togglePlay()">再生</button>
+        <button id="pauseBtn" onclick="togglePlay()" disabled>一時停止</button>
+        <button onclick="resetDemo()">リセット</button>
+      </div>
+      <div class="ctrl-row">
+        <label>速度
+          <input id="speedInput" type="range" min="0.5" max="4" step="0.5" value="1.5" />
+          <span id="speedLabel">1.5x</span>
+        </label>
+        <div class="progress-wrap"><div id="progressBar"></div></div>
+        <span id="stepInfo" class="step-info">— / —</span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div class="left-stack">
+        <section class="panel stage-panel">
+          <div class="stage-head">
+            <h2>現在の処理</h2>
+            <span id="stageTitle">—</span>
+          </div>
+          <p id="stageMessage">—</p>
+        </section>
+
+        <section class="panel frames-panel">
+          <div id="frames" class="frames"></div>
+        </section>
+      </div>
+
+      <div class="side-stack">
+        <section class="panel side-panel">
+          <h2>凡例</h2>
+          <div class="legend">
+            <div class="legend-item"><span class="legend-box" style="border-color:#2563eb;background:#dbeafe"></span>青: 再帰呼び出し</div>
+            <div class="legend-item"><span class="legend-box" style="border-color:#dc2626;background:#fee2e2"></span>赤: 戻り値を返す</div>
+            <div class="legend-item"><span class="legend-box" style="border-color:#111827;background:#fdebdc"></span>各領域の n</div>
+          </div>
+        </section>
+
+        <section class="panel side-panel">
+          <h2>コールスタック</h2>
+          <div id="stackList" class="stack-list"></div>
+        </section>
+
+        <section class="panel side-panel">
+          <h2>ステップ履歴</h2>
+          <div id="history" class="history"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let steps = [];
+    let current = 0;
+    let playing = false;
+    let timer = null;
+
+    function sumTo(n) {
+      return (n * (n + 1)) / 2;
+    }
+
+    function makeFormula(n) {
+      return Array.from({ length: n }, (_, i) => i + 1).join(" + ");
+    }
+
+    function generateSteps(n) {
+      const built = [];
+      const active = [];
+
+      const pushStep = (type, title, message, extra = {}) => {
+        built.push({
+          type,
+          title,
+          message,
+          activeNs: [...active],
+          ...extra
+        });
+      };
+
+      pushStep("main", "main から呼び出し", `calc_sum(${n}) を呼び出して S${n} を求める`, { line: 14 });
+
+      for (let k = n; k >= 1; k--) {
+        active.push(k);
+        pushStep("enter", `calc_sum(${k}) の領域を作る`, `新しい領域を確保し，この領域の n は ${k} になる`, { focus: k, line: 2 });
+
+        if (k === 1) {
+          pushStep("base-check", "終了条件を確認", "n == 1 なので，これ以上小さい問題には分けない", { focus: k, line: 4 });
+          pushStep("base-return", "S1 を返す", "calc_sum(1) は 1 を返す", { focus: k, line: 5, returns: { [k]: 1 }, returnFrom: k });
+        } else {
+          pushStep("check", "終了条件を確認", `n = ${k} なので n == 1 ではない`, { focus: k, line: 4 });
+          pushStep("call", `calc_sum(${k - 1}) を呼び出す`, `S${k} を求めるために，まず S${k - 1} を求める`, { focus: k, line: 9, callFrom: k, callTo: k - 1 });
+        }
+      }
+
+      for (let k = 2; k <= n; k++) {
+        const child = sumTo(k - 1);
+        const value = sumTo(k);
+        pushStep("combine", `S${k} を計算する`, `calc_sum(${k - 1}) の戻り値 ${child} に ${k} を足して ${value} を作る`, {
+          focus: k,
+          line: 9,
+          returns: Object.fromEntries(Array.from({ length: k - 1 }, (_, i) => [i + 1, sumTo(i + 1)])),
+          sumValue: { n: k, child, value },
+          returnFrom: k - 1,
+          returnTo: k
+        });
+        active.pop();
+        pushStep("return", `S${k} を返す`, `calc_sum(${k}) は ${value} を返す`, {
+          focus: k,
+          line: 11,
+          returns: Object.fromEntries(Array.from({ length: k }, (_, i) => [i + 1, sumTo(i + 1)])),
+          returnFrom: k,
+          returnTo: k + 1 <= n ? k + 1 : null
+        });
+      }
+
+      active.pop();
+      pushStep("finish", "計算完了", `main は calc_sum(${n}) の戻り値 ${sumTo(n)} を受け取る`, {
+        line: 14,
+        returns: Object.fromEntries(Array.from({ length: n }, (_, i) => [i + 1, sumTo(i + 1)])),
+        finalValue: sumTo(n)
+      });
+
+      return built;
+    }
+
+    function codeLines(frameN, activeLine) {
+      const lines = [
+        [1, '<span class="cm"># Snを求める関数</span>'],
+        [2, '<span class="kw">def</span> <span class="fn">calc_sum</span>(n):'],
+        [3, ""],
+        [4, '  <span class="kw">if</span> n == <span class="num">1</span>:'],
+        [5, '    <span class="ret">return</span> <span class="num">1</span>'],
+        [6, ""],
+        [7, '<span class="cm">  # nが1つ小さい部分問題を呼び出す</span>'],
+        [8, '<span class="cm">  # 関数calc_sum(n-1)を呼び出す</span>'],
+        [9, '  Sum = calc_sum(n - <span class="num">1</span>) + n'],
+        [10, ""],
+        [11, '  <span class="ret">return</span> Sum']
+      ];
+
+      return lines.map(([num, html]) => {
+        const li = document.createElement("li");
+        li.className = "code-line" + (num === activeLine ? " active" : "");
+        const ln = document.createElement("span");
+        ln.className = "ln";
+        ln.textContent = num;
+        const code = document.createElement("span");
+        code.className = "src";
+        code.innerHTML = html;
+        li.append(ln, code);
+        return li;
+      });
+    }
+
+    function renderFrame(n, step) {
+      const wrap = document.createElement("div");
+      wrap.className = "frame-wrap";
+
+      const frame = document.createElement("div");
+      const isActive = step.focus === n || (step.type === "finish" && n === Number(document.getElementById("nInput").value));
+      const isReturning = step.returnFrom === n;
+      frame.className = "frame" + (isActive ? " active" : "") + (isReturning ? " returning" : "");
+
+      const badge = document.createElement("div");
+      badge.className = "n-badge";
+      badge.textContent = n;
+
+      const title = document.createElement("div");
+      title.className = "frame-title";
+      const name = document.createElement("span");
+      name.textContent = `calc_sum(${n})`;
+      const local = document.createElement("span");
+      local.textContent = `この領域の n = ${n}`;
+      title.append(name, local);
+
+      const code = document.createElement("ol");
+      code.className = "code";
+      codeLines(n, isActive ? step.line : null).forEach(line => code.appendChild(line));
+
+      const locals = document.createElement("div");
+      locals.className = "local";
+      const nCard = localCard("n", n);
+      const sum = step.returns && step.returns[n] ? step.returns[n] : (step.sumValue && step.sumValue.n === n ? step.sumValue.value : "—");
+      const sumCard = localCard("Sum", sum);
+      locals.append(nCard, sumCard);
+
+      const ret = document.createElement("div");
+      ret.className = "return-value";
+      ret.textContent = step.returns && step.returns[n] ? `${step.returns[n]} (S${n})` : "";
+
+      frame.append(badge, title, code, locals, ret);
+      wrap.appendChild(frame);
+
+      if (n > 1) {
+        const connector = document.createElement("div");
+        connector.className = "connector";
+        if (step.callFrom === n && step.callTo === n - 1) connector.classList.add("call-active");
+        if (step.returnFrom === n - 1 && step.returnTo === n) connector.classList.add("return-active");
+
+        const call = document.createElement("div");
+        call.className = "call-arrow";
+        call.textContent = "呼び出し →";
+
+        const retArrow = document.createElement("div");
+        retArrow.className = "return-arrow";
+        retArrow.textContent = "← 戻り値";
+
+        connector.append(call, retArrow);
+        wrap.appendChild(connector);
+      }
+
+      return wrap;
+    }
+
+    function localCard(label, value) {
+      const card = document.createElement("div");
+      card.className = "local-card";
+      const labelEl = document.createElement("div");
+      labelEl.className = "local-label";
+      labelEl.textContent = label;
+      const valueEl = document.createElement("div");
+      valueEl.className = "local-value";
+      valueEl.textContent = value;
+      card.append(labelEl, valueEl);
+      return card;
+    }
+
+    function render() {
+      const n = Number(document.getElementById("nInput").value);
+      const step = steps[current];
+
+      document.getElementById("formulaN").textContent = n;
+      document.getElementById("formulaSub").textContent = n;
+      document.getElementById("formulaText").textContent = makeFormula(n);
+      document.getElementById("stageTitle").textContent = step.title;
+      document.getElementById("stageMessage").textContent = step.message;
+
+      const frames = document.getElementById("frames");
+      frames.innerHTML = "";
+      for (let k = n; k >= 1; k--) {
+        frames.appendChild(renderFrame(k, step));
+      }
+
+      renderStack(step);
+      renderHistory();
+      updateControls();
+    }
+
+    function renderStack(step) {
+      const stack = document.getElementById("stackList");
+      stack.innerHTML = "";
+
+      if (!step.activeNs.length) {
+        const empty = document.createElement("div");
+        empty.className = "stack-item";
+        empty.textContent = "(空)";
+        stack.appendChild(empty);
+        return;
+      }
+
+      [...step.activeNs].reverse().forEach(value => {
+        const item = document.createElement("div");
+        item.className = "stack-item" + (value === step.focus ? " active" : "");
+        item.textContent = `calc_sum(${value})`;
+        stack.appendChild(item);
+      });
+    }
+
+    function renderHistory() {
+      const history = document.getElementById("history");
+      history.innerHTML = "";
+
+      steps.slice(0, current + 1).forEach((step, index) => {
+        const row = document.createElement("div");
+        row.className = "history-row" + (index === current ? " current" : "");
+        const label = document.createElement("div");
+        label.className = "history-step";
+        label.textContent = `${index + 1}`;
+        const text = document.createElement("div");
+        text.textContent = step.title;
+        row.append(label, text);
+        history.appendChild(row);
+      });
+
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function updateControls() {
+      const total = steps.length;
+      document.getElementById("stepInfo").textContent = `ステップ ${current + 1} / ${total}`;
+      document.getElementById("progressBar").style.width = `${(current / Math.max(1, total - 1)) * 100}%`;
+      document.getElementById("prevBtn").disabled = current <= 0;
+      document.getElementById("nextBtn").disabled = current >= total - 1;
+      document.getElementById("playBtn").disabled = current >= total - 1;
+      document.getElementById("pauseBtn").disabled = !playing;
+    }
+
+    function stepForward() {
+      if (current >= steps.length - 1) return;
+      current += 1;
+      render();
+    }
+
+    function stepBack() {
+      if (current <= 0) return;
+      current -= 1;
+      render();
+    }
+
+    function getDelay() {
+      return Math.round(1000 / Number(document.getElementById("speedInput").value));
+    }
+
+    function startPlay() {
+      if (current >= steps.length - 1) {
+        resetDemo();
+      }
+      playing = true;
+      updateControls();
+      tick();
+    }
+
+    function stopPlay() {
+      playing = false;
+      clearTimeout(timer);
+      updateControls();
+    }
+
+    function togglePlay() {
+      if (playing) stopPlay();
+      else startPlay();
+    }
+
+    function tick() {
+      timer = setTimeout(() => {
+        if (!playing) return;
+        if (current >= steps.length - 1) {
+          stopPlay();
+          return;
+        }
+        stepForward();
+        tick();
+      }, getDelay());
+    }
+
+    function resetDemo() {
+      stopPlay();
+      const n = Number(document.getElementById("nInput").value);
+      steps = generateSteps(n);
+      current = 0;
+      render();
+    }
+
+    document.getElementById("speedInput").addEventListener("input", event => {
+      document.getElementById("speedLabel").textContent = `${Number(event.target.value).toFixed(1)}x`;
+    });
+
+    resetDemo();
+  </script>
+</body>
+</html>

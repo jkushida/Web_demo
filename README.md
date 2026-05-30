@@ -17,6 +17,7 @@
 
 - **再帰・状態空間探索**
   - [Water Jug Problem](https://jkushida.github.io/Web_demo/DSA/water-jug-problem.html) - 4Lと3Lの水差しで2Lを作るシミュレーション
+  - [Recursive Call Sum](https://jkushida.github.io/Web_demo/DSA/recursive-call-sum.html) - calc_sum(n) で再帰呼び出しの領域・呼び出し順・戻り値を可視化
   - [Stairs Recursion](https://jkushida.github.io/Web_demo/DSA/stairs_recursion.html) - 再帰による階段の登り方問題のデモ
   - [Tower of Hanoi](https://jkushida.github.io/Web_demo/DSA/hanoi.html) - ハノイの塔のインタラクティブなデモ
   - [River Crossing](https://jkushida.github.io/Web_demo/DSA/river-crossing.html) - 川渡り問題のシミュレーション
