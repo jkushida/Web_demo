@@ -78,17 +78,18 @@
     }
 
     .concept {
-      padding: 6px 10px;
+      padding: 5px 10px;
       display: grid;
-      grid-template-columns: minmax(360px, 1fr) 420px;
-      gap: 10px;
+      grid-template-columns: auto minmax(360px, 1fr);
+      gap: 12px;
       align-items: center;
     }
 
     .formula {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 800;
+      white-space: nowrap;
     }
 
     .formula .math {
@@ -99,13 +100,16 @@
 
     .concept-note {
       margin: 0;
-      padding: 6px 9px;
+      padding: 4px 8px;
       border: 2px solid #ef4444;
       color: #111827;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
-      line-height: 1.45;
+      line-height: 1.25;
       background: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .controls-panel {
@@ -246,29 +250,124 @@
     }
 
     .frames-panel {
+      position: relative;
       min-height: 0;
-      padding: 10px;
+      padding: 8px 10px 10px;
       overflow: auto;
+    }
+
+    .recursion-scene {
+      position: relative;
+      min-width: max-content;
+      padding: 78px 0 52px;
+    }
+
+    .main-call {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 4;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: #f3f4f6;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 15px;
+      line-height: 1.25;
+      box-shadow: inset 0 -1px 0 rgba(15, 23, 42, .06);
+    }
+
+    .main-call .main-line-no {
+      display: inline-block;
+      min-width: 24px;
+      margin-right: 5px;
+      color: #6b7280;
+      text-align: right;
+    }
+
+    .arrow-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .arrow-layer path {
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .arrow-call {
+      stroke: #3f73c8;
+      stroke-width: 4;
+      opacity: .5;
+    }
+
+    .arrow-return {
+      stroke: #dc0000;
+      stroke-width: 4;
+      opacity: .5;
+    }
+
+    .arrow-muted {
+      opacity: .16;
+    }
+
+    .arrow-active {
+      opacity: 1;
+      filter: drop-shadow(0 2px 4px rgba(37, 99, 235, .25));
+      stroke-dasharray: 12 8;
+      animation: dashFlow .6s linear infinite, arrowPulse .7s ease-in-out infinite alternate;
+    }
+
+    .return-label {
+      position: absolute;
+      z-index: 4;
+      min-width: 72px;
+      transform: translateX(-50%);
+      color: #dc0000;
+      text-align: center;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.08;
+    }
+
+    .main-call-label {
+      position: absolute;
+      z-index: 4;
+      transform: translateX(-50%);
+      padding: 3px 8px;
+      border: 2px solid #3f73c8;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
     }
 
     .frames {
       min-width: max-content;
       display: flex;
       align-items: stretch;
-      gap: 10px;
+      gap: 28px;
       padding: 4px 0 8px;
+      position: relative;
+      z-index: 2;
     }
 
     .frame-wrap {
-      display: grid;
-      grid-template-columns: 270px auto;
-      align-items: center;
-      gap: 10px;
+      width: 260px;
+      position: relative;
     }
 
     .frame {
       position: relative;
-      padding: 13px 9px 8px;
+      padding: 12px 8px 7px;
       border: 2px solid #e5e7eb;
       border-radius: 8px;
       background: var(--frame);
@@ -288,33 +387,57 @@
 
     .n-badge {
       position: absolute;
-      top: -13px;
-      left: 50%;
+      top: -8px;
+      left: 58%;
       transform: translateX(-50%);
       min-width: 36px;
       padding: 3px 8px;
-      border: 2px solid #111827;
+      border: 2px solid #9ca3af;
       border-radius: 4px;
       background: var(--n-bg);
       text-align: center;
       font-size: 20px;
       font-weight: 900;
       line-height: 1;
+      z-index: 5;
+    }
+
+    .n-badge::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: calc(100% - 1px);
+      width: 0;
+      height: 32px;
+      border-left: 3px solid #9ca3af;
+      transform: translateX(-50%);
+    }
+
+    .n-badge::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: calc(100% + 25px);
+      width: 9px;
+      height: 9px;
+      border-right: 3px solid #9ca3af;
+      border-bottom: 3px solid #9ca3af;
+      transform: translateX(-50%) rotate(45deg);
     }
 
     .frame-title {
       display: flex;
       justify-content: space-between;
       gap: 8px;
-      margin: 2px 0 7px;
+      margin: 2px 0 5px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
     }
 
     .code {
       margin: 0;
-      padding: 6px 0;
+      padding: 4px 0;
       list-style: none;
       border: 1px solid #e5e7eb;
       border-radius: 6px;
@@ -328,11 +451,11 @@
       grid-template-columns: 28px 1fr;
       column-gap: 7px;
       align-items: center;
-      min-height: 18px;
+      min-height: 15px;
       padding: 0 6px;
       color: #1f2937;
       font-size: 11px;
-      line-height: 1.25;
+      line-height: 1.2;
     }
 
     .code-line.active {
@@ -357,14 +480,14 @@
     .num { color: #059669; font-weight: 800; }
 
     .local {
-      margin-top: 6px;
+      margin-top: 5px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 6px;
+      gap: 5px;
     }
 
     .local-card {
-      padding: 4px 6px;
+      padding: 3px 6px;
       border: 1px solid #dbe3ef;
       border-radius: 7px;
       background: #fff;
@@ -373,68 +496,28 @@
 
     .local-label {
       color: var(--muted);
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 800;
     }
 
     .local-value {
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 900;
-    }
-
-    .return-value {
-      margin-top: 6px;
-      min-height: 28px;
-      display: grid;
-      place-items: center;
-      border-radius: 8px;
-      background: #fff;
-      color: var(--return);
-      font-size: 16px;
-      font-weight: 900;
-    }
-
-    .connector {
-      width: 72px;
-      display: grid;
-      align-content: center;
-      justify-items: center;
-      gap: 10px;
-    }
-
-    .call-arrow,
-    .return-arrow {
-      width: 70px;
-      height: 28px;
-      display: grid;
-      place-items: center;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 900;
-      opacity: .2;
-    }
-
-    .call-arrow {
-      border: 2px solid var(--primary);
-      background: var(--primary-bg);
-      color: var(--primary);
-    }
-
-    .return-arrow {
-      border: 2px solid var(--return);
-      background: var(--return-bg);
-      color: var(--return);
-    }
-
-    .connector.call-active .call-arrow,
-    .connector.return-active .return-arrow {
-      opacity: 1;
-      animation: pop .72s ease infinite alternate;
     }
 
     @keyframes pop {
       from { transform: translateY(0) scale(1); }
       to { transform: translateY(-2px) scale(1.04); }
+    }
+
+    @keyframes arrowPulse {
+      from { stroke-width: 4; }
+      to { stroke-width: 5.5; }
+    }
+
+    @keyframes dashFlow {
+      from { stroke-dashoffset: 20; }
+      to { stroke-dashoffset: 0; }
     }
 
     .side-stack {
@@ -601,7 +684,11 @@
         </section>
 
         <section class="panel frames-panel">
-          <div id="frames" class="frames"></div>
+          <div id="recursionScene" class="recursion-scene">
+            <div id="mainCall" class="main-call"></div>
+            <div id="frames" class="frames"></div>
+            <svg id="arrowLayer" class="arrow-layer" aria-hidden="true"></svg>
+          </div>
         </section>
       </div>
 
@@ -692,20 +779,13 @@
         });
       }
 
-      active.pop();
-      pushStep("finish", "計算完了", `main は calc_sum(${n}) の戻り値 ${sumTo(n)} を受け取る`, {
-        line: 14,
-        returns: Object.fromEntries(Array.from({ length: n }, (_, i) => [i + 1, sumTo(i + 1)])),
-        finalValue: sumTo(n)
-      });
-
       return built;
     }
 
     function codeLines(frameN, activeLine) {
       const lines = [
         [1, '<span class="cm"># Snを求める関数</span>'],
-        [2, '<span class="kw">def</span> <span class="fn">calc_sum</span>(n):'],
+        [2, '<span class="kw">def</span> <span class="fn">calc_sum</span>(<span class="arg-n">n</span>):'],
         [3, ""],
         [4, '  <span class="kw">if</span> n == <span class="num">1</span>:'],
         [5, '    <span class="ret">return</span> <span class="num">1</span>'],
@@ -720,6 +800,7 @@
       return lines.map(([num, html]) => {
         const li = document.createElement("li");
         li.className = "code-line" + (num === activeLine ? " active" : "");
+        li.dataset.line = num;
         const ln = document.createElement("span");
         ln.className = "ln";
         ln.textContent = num;
@@ -739,6 +820,7 @@
       const isActive = step.focus === n || (step.type === "finish" && n === Number(document.getElementById("nInput").value));
       const isReturning = step.returnFrom === n;
       frame.className = "frame" + (isActive ? " active" : "") + (isReturning ? " returning" : "");
+      frame.dataset.frame = n;
 
       const badge = document.createElement("div");
       badge.className = "n-badge";
@@ -763,32 +845,183 @@
       const sumCard = localCard("Sum", sum);
       locals.append(nCard, sumCard);
 
-      const ret = document.createElement("div");
-      ret.className = "return-value";
-      ret.textContent = step.returns && step.returns[n] ? `${step.returns[n]} (S${n})` : "";
-
-      frame.append(badge, title, code, locals, ret);
+      frame.append(badge, title, code, locals);
       wrap.appendChild(frame);
 
-      if (n > 1) {
-        const connector = document.createElement("div");
-        connector.className = "connector";
-        if (step.callFrom === n && step.callTo === n - 1) connector.classList.add("call-active");
-        if (step.returnFrom === n - 1 && step.returnTo === n) connector.classList.add("return-active");
+      return wrap;
+    }
 
-        const call = document.createElement("div");
-        call.className = "call-arrow";
-        call.textContent = "呼び出し →";
+    function alignBadgesToArguments() {
+      document.querySelectorAll("[data-frame]").forEach(frame => {
+        const badge = frame.querySelector(".n-badge");
+        const arg = frame.querySelector(".arg-n");
+        if (!badge || !arg) return;
 
-        const retArrow = document.createElement("div");
-        retArrow.className = "return-arrow";
-        retArrow.textContent = "← 戻り値";
+        const frameRect = frame.getBoundingClientRect();
+        const argRect = arg.getBoundingClientRect();
+        const argCenter = argRect.left - frameRect.left + argRect.width / 2;
+        badge.style.left = `${argCenter}px`;
+      });
+    }
 
-        connector.append(call, retArrow);
-        wrap.appendChild(connector);
+    function pointInScene(scene, element, xRatio, yRatio) {
+      const sceneRect = scene.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      return {
+        x: rect.left - sceneRect.left + rect.width * xRatio + scene.scrollLeft,
+        y: rect.top - sceneRect.top + rect.height * yRatio + scene.scrollTop
+      };
+    }
+
+    function makePath(className, d, marker) {
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", className);
+      path.setAttribute("d", d);
+      path.setAttribute("marker-end", `url(#${marker})`);
+      return path;
+    }
+
+    function renderArrows(step) {
+      const n = Number(document.getElementById("nInput").value);
+      const scene = document.getElementById("recursionScene");
+      const svg = document.getElementById("arrowLayer");
+      const frames = document.getElementById("frames");
+      const mainCall = document.getElementById("mainCall");
+
+      mainCall.innerHTML = `<div><span class="main-line-no">13</span><span class="cm"># 引数nは${n}</span></div><div><span class="main-line-no">14</span>calc_sum(<span class="num">${n}</span>)</div>`;
+      const topFrameForMain = frames.querySelector("[data-frame]");
+      const frameOffset = topFrameForMain?.offsetLeft ?? 0;
+      mainCall.style.left = `${Math.max(0, frameOffset + 20)}px`;
+
+      const width = Math.max(scene.scrollWidth, scene.clientWidth);
+      const height = Math.max(scene.scrollHeight, scene.clientHeight);
+      svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      svg.setAttribute("width", width);
+      svg.setAttribute("height", height);
+      svg.innerHTML = `
+        <defs>
+          <marker id="arrowHeadCall" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M3,3 L15,9 L3,15" fill="none" stroke="#3f73c8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          </marker>
+          <marker id="arrowHeadReturn" markerWidth="18" markerHeight="18" refX="15" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M3,3 L15,9 L3,15" fill="none" stroke="#dc0000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+          </marker>
+        </defs>`;
+
+      const makeLabel = (x, y, html) => {
+        const label = document.createElement("div");
+        label.className = "return-label";
+        label.style.left = `${x}px`;
+        label.style.top = `${y}px`;
+        label.innerHTML = html;
+        scene.appendChild(label);
+      };
+
+      const makeMainCallLabel = (x, y) => {
+        const label = document.createElement("div");
+        label.className = "main-call-label";
+        label.style.left = `${x}px`;
+        label.style.top = `${y}px`;
+        label.textContent = "main から呼び出し";
+        scene.appendChild(label);
+      };
+
+      scene.querySelectorAll(".return-label, .main-call-label").forEach(label => label.remove());
+
+      const firstFrame = scene.querySelector(`[data-frame="${n}"]`);
+      if (firstFrame) {
+        const firstLine2 = firstFrame.querySelector('[data-line="2"] .src');
+        const end = firstLine2 ? pointInScene(scene, firstLine2, .34, .05) : pointInScene(scene, firstFrame, .50, .10);
+        const start = { x: end.x, y: pointInScene(scene, mainCall, .70, 1).y };
+        const mainActive = step.type === "main" || (step.type === "enter" && step.focus === n);
+        const d = `M ${start.x} ${start.y + 4} L ${end.x} ${end.y}`;
+        svg.appendChild(makePath("arrow-call" + (mainActive ? " arrow-active" : " arrow-muted"), d, "arrowHeadCall"));
+        if (mainActive) {
+          makeMainCallLabel(end.x + 130, Math.max(start.y + 8, end.y - 30));
+        }
       }
 
-      return wrap;
+      for (let k = n; k >= 2; k--) {
+        const parent = scene.querySelector(`[data-frame="${k}"]`);
+        const child = scene.querySelector(`[data-frame="${k - 1}"]`);
+        if (!parent || !child) continue;
+
+        const parentLine9 = parent.querySelector('[data-line="9"]');
+        const parentLine9Src = parent.querySelector('[data-line="9"] .src');
+        const childLine2Src = child.querySelector('[data-line="2"] .src');
+        const childReturnLine = child.querySelector(`[data-line="${k - 1 === 1 ? 5 : 11}"]`);
+        if (!parentLine9 || !parentLine9Src || !childLine2Src || !childReturnLine) continue;
+
+        const callStart = pointInScene(scene, parentLine9Src, .58, .05);
+        const callEnd = pointInScene(scene, childLine2Src, .30, .78);
+        const callActive = step.callFrom === k && step.callTo === k - 1;
+        const callHasHappened = child.classList.contains("returning")
+          || step.activeNs.includes(k - 1)
+          || Boolean(step.returns && step.returns[k - 1])
+          || callActive;
+        if (callHasHappened) {
+          svg.appendChild(makePath(
+            "arrow-call" + (callActive ? " arrow-active" : " arrow-muted"),
+            `M ${callStart.x} ${callStart.y} L ${callEnd.x} ${callEnd.y}`,
+            "arrowHeadCall"
+          ));
+        }
+
+        const returnStart = pointInScene(scene, childReturnLine, .42, .9);
+        const sceneRect = scene.getBoundingClientRect();
+        const parentCode = parent.querySelector(".code").getBoundingClientRect();
+        const childCode = child.querySelector(".code").getBoundingClientRect();
+        const bottom = Math.max(parentCode.bottom, childCode.bottom) - sceneRect.top + scene.scrollTop + 12;
+        const returnEnd = pointInScene(scene, parentLine9, .50, .70);
+        const returnActive = (step.returnFrom === k - 1 && step.returnTo === k) || (step.sumValue && step.sumValue.n === k);
+        const returnHasHappened = Boolean(step.returns && step.returns[k - 1]) || returnActive;
+        if (returnHasHappened) {
+          svg.appendChild(makePath(
+            "arrow-return" + (returnActive ? " arrow-active" : " arrow-muted"),
+            `M ${returnStart.x} ${returnStart.y} L ${returnStart.x} ${bottom} L ${returnEnd.x} ${bottom} L ${returnEnd.x} ${returnEnd.y}`,
+            "arrowHeadReturn"
+          ));
+        }
+        if (returnHasHappened && step.returns && step.returns[k - 1]) {
+          makeLabel((returnStart.x + returnEnd.x) / 2 + 8, bottom + 6, `${step.returns[k - 1]}<br>(S<sub>${k - 1}</sub>)`);
+        }
+      }
+
+      const topFrame = scene.querySelector(`[data-frame="${n}"]`);
+      const topLine11 = topFrame?.querySelector('[data-line="11"]');
+      if (topFrame && topLine11 && step.returns && step.returns[n]) {
+        const start = pointInScene(scene, topLine11, .42, .9);
+        const topRect = topFrame.getBoundingClientRect();
+        const sceneRect = scene.getBoundingClientRect();
+        const bottom = topRect.bottom - sceneRect.top + scene.scrollTop + 28;
+        const topReturnActive = step.returnFrom === n || step.type === "finish";
+        svg.appendChild(makePath(
+          "arrow-return" + (topReturnActive ? " arrow-active" : " arrow-muted"),
+          `M ${start.x} ${start.y} L ${start.x} ${bottom}`,
+          "arrowHeadReturn"
+        ));
+        if (topReturnActive) {
+          makeLabel(start.x, bottom + 6, `${step.returns[n]}<br>(S<sub>${n}</sub>)`);
+        }
+      }
+    }
+
+    function visibleFrames(step, n) {
+      const visible = new Set(step.activeNs);
+
+      if (step.focus) visible.add(step.focus);
+      if (step.callFrom) visible.add(step.callFrom);
+      if (step.callTo) visible.add(step.callTo);
+      if (step.returnFrom) visible.add(step.returnFrom);
+      if (step.returnTo) visible.add(step.returnTo);
+      if (step.sumValue) visible.add(step.sumValue.n);
+      if (step.returns) {
+        Object.keys(step.returns).forEach(key => visible.add(Number(key)));
+      }
+
+      return Array.from(visible)
+        .filter(value => value >= 1 && value <= n)
+        .sort((a, b) => b - a);
     }
 
     function localCard(label, value) {
@@ -816,9 +1049,11 @@
 
       const frames = document.getElementById("frames");
       frames.innerHTML = "";
-      for (let k = n; k >= 1; k--) {
+      visibleFrames(step, n).forEach(k => {
         frames.appendChild(renderFrame(k, step));
-      }
+      });
+      alignBadgesToArguments();
+      renderArrows(step);
 
       renderStack(step);
       renderHistory();
