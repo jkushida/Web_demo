@@ -106,7 +106,14 @@
       }
 
       .array-input {
-        width: min(260px, 100%);
+        width: 100%;
+      }
+
+      .array-choice-row {
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 6px;
+        align-items: center;
       }
 
       #randomBtn {
@@ -115,8 +122,16 @@
 
       input[type="text"],
       input[type="range"],
+      select,
       button {
         font: inherit;
+      }
+
+      select {
+        padding: 7px 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
       }
 
       input[type="text"] {
@@ -676,8 +691,15 @@
           <section class="panel controls-panel" aria-label="controls">
             <div class="controls compact">
               <div class="control-row array-row">
-                <label class="array-label">配列：スライド例は 9 個
-                  <input id="arrayInput" class="array-input" type="text" value="5, 7, 1, 4, 6, 2, 3, 9, 8" />
+                <label class="array-label">配列
+                  <span class="array-choice-row">
+                    <select id="presetSelect" aria-label="配列例">
+                      <option value="slide">スライド例</option>
+                      <option value="worst">最悪例</option>
+                      <option value="custom">直接入力</option>
+                    </select>
+                    <input id="arrayInput" class="array-input" type="text" value="5, 7, 1, 4, 6, 2, 3, 9, 8" />
+                  </span>
                 </label>
                 <button id="randomBtn">乱数生成</button>
               </div>
@@ -726,6 +748,7 @@
 
     <script>
       const arrayInput = document.getElementById('arrayInput');
+      const presetSelect = document.getElementById('presetSelect');
       const speedInput = document.getElementById('speedInput');
       const speedLabel = document.getElementById('speedLabel');
       const randomBtn = document.getElementById('randomBtn');
@@ -754,7 +777,12 @@
       const pathStateBox = document.getElementById('pathStateBox');
       const arrayStateBox = document.getElementById('arrayStateBox');
 
-      const DEFAULT_VALUES = [5, 7, 1, 4, 6, 2, 3, 9, 8];
+      const ARRAY_PRESETS = {
+        slide: [5, 7, 1, 4, 6, 2, 3, 9, 8],
+        // 中央 pivot でも分割が 9:0, 8:0, ... に近く偏る例。
+        worst: [1, 4, 6, 8, 9, 5, 3, 7, 2]
+      };
+      const DEFAULT_VALUES = ARRAY_PRESETS.slide;
 
       const codeLines = new Map();
       for (let line = 1; line <= 6; line += 1) {
@@ -1290,6 +1318,7 @@
 
       randomBtn.addEventListener('click', () => {
         const values = randomValues();
+        presetSelect.value = 'custom';
         arrayInput.value = values.join(', ');
         resetState(values);
       });
@@ -1335,7 +1364,15 @@
       });
 
       arrayInput.addEventListener('change', () => {
+        presetSelect.value = 'custom';
         applyInput();
+      });
+
+      presetSelect.addEventListener('change', () => {
+        if (presetSelect.value === 'custom') return;
+        const values = ARRAY_PRESETS[presetSelect.value];
+        arrayInput.value = values.join(', ');
+        resetState(values);
       });
 
       speedLabel.textContent = `${Number(speedInput.value).toFixed(2)}x`;
