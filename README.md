@@ -46,6 +46,7 @@
     - [Merge Sort Animation](https://jkushida.github.io/Web_demo/DSA/merge-sort-animation.html) - 配列を半分ずつに分割し，左右を整列してからマージする手順を可視化
     - [Quick Sort Partition](https://jkushida.github.io/Web_demo/DSA/quick-sort-partition.html) - pivot を基準に pl/pr を動かし、分割の決め方をステップごとに可視化
     - [Quick Sort Animation](https://jkushida.github.io/Web_demo/DSA/quick-sort-animation.html) - 中央の要素を pivot として、pl/pr で分割を繰り返すクイックソートを可視化
+    - [Non-Recursive Quick Sort](https://jkushida.github.io/Web_demo/DSA/quick-sort-non-recursive.html) - スタックに範囲を push/pop しながら，非再帰版クイックソートの処理順を可視化
     - [Heap Sort Visualizer](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - 最大ヒープの構築からソートまでの過程を木構造で可視化
   - 比較によらないソート
     - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 値を対応する bucket に振り分けてから順に回収する流れを可視化

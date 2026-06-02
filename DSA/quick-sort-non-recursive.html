@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>非再帰版クイックソート</title>
+    <style>
+      :root {
+        --fg: #111827;
+        --muted: #6b7280;
+        --line: #d1d5db;
+        --soft-line: #e5e7eb;
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --blue: #2563eb;
+        --blue-soft: #dbeafe;
+        --orange: #ea580c;
+        --orange-soft: #ffedd5;
+        --purple: #7c3aed;
+        --purple-soft: #ede9fe;
+        --green: #16a34a;
+        --green-soft: #dcfce7;
+        --red: #dc2626;
+        --red-soft: #fee2e2;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        flex: 0 0 auto;
+        padding: 4px 12px 3px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+      }
+
+      header p {
+        margin: 0 0 1px;
+        font-size: 11px;
+      }
+
+      header a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      header a:hover { text-decoration: underline; }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.25;
+      }
+
+      main {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 4px;
+        padding: 4px 8px 8px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      }
+
+      .summary {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(300px, 34%);
+        gap: 6px;
+        padding: 4px 10px;
+      }
+
+      .rules {
+        margin: 0;
+        padding-left: 17px;
+        font-size: 11px;
+        line-height: 1.18;
+        columns: 2;
+        column-gap: 22px;
+      }
+
+      .rules li {
+        margin: 0;
+        break-inside: avoid;
+      }
+
+      .green { color: var(--green); font-weight: 800; }
+      .orange { color: var(--orange); font-weight: 800; }
+      .purple { color: var(--purple); font-weight: 800; }
+      .red { color: var(--red); font-weight: 800; }
+
+      .note {
+        align-self: center;
+        padding: 5px 10px;
+        border: 2px solid #ef4444;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        padding: 4px 10px;
+      }
+
+      .control-lines {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        align-items: center;
+        min-width: 0;
+      }
+
+      .control-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+      }
+
+      input,
+      button,
+      select {
+        font: inherit;
+      }
+
+      select,
+      input[type="text"] {
+        height: 25px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        padding: 3px 8px;
+        font-size: 12px;
+      }
+
+      input[type="text"] {
+        width: min(330px, 34vw);
+      }
+
+      input[type="range"] {
+        width: 150px;
+      }
+
+      button {
+        min-height: 25px;
+        padding: 2px 9px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--fg);
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover { background: #f1f5f9; }
+
+      button.primary {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .step-count {
+        align-self: end;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(720px, 1fr) 300px;
+        gap: 6px;
+      }
+
+      .tree-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        padding: 6px 8px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 3px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .message {
+        padding: 5px 9px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .array-wrap {
+        display: grid;
+        gap: 4px;
+        margin-bottom: 8px;
+        overflow-x: auto;
+      }
+
+      .indices,
+      .values {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 46px;
+        gap: 3px;
+        justify-content: center;
+      }
+
+      .idx {
+        height: 18px;
+        color: #0070c0;
+        font-size: 16px;
+        font-style: italic;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .cell {
+        position: relative;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 1.8px solid #111827;
+        background: #fff;
+        font-size: 24px;
+        font-weight: 900;
+      }
+
+      .cell.in-range { background: #f8fafc; }
+      .cell.left-part { background: #eff6ff; border-color: #60a5fa; }
+      .cell.right-part { background: #fff7ed; border-color: #fb923c; }
+      .cell.pivot {
+        background: var(--purple-soft);
+        border-color: var(--purple);
+        color: var(--purple);
+      }
+      .cell.swapped {
+        animation: swapPulse 0.65s ease-in-out;
+      }
+
+      @keyframes swapPulse {
+        0%, 100% { box-shadow: none; transform: translateY(0); }
+        45% { box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.25); transform: translateY(-2px); }
+      }
+
+      .range-bar {
+        position: relative;
+        height: 34px;
+        margin: 0 auto 6px;
+        max-width: 390px;
+      }
+
+      .bar {
+        position: absolute;
+        top: 9px;
+        height: 10px;
+        border-bottom: 2px solid var(--orange);
+        border-left: 2px solid var(--orange);
+        border-right: 2px solid var(--orange);
+      }
+
+      .bar-label {
+        position: absolute;
+        top: 18px;
+        transform: translateX(-50%);
+        color: var(--orange);
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .tree-stage {
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .tree-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .tree-link {
+        fill: none;
+        stroke: var(--purple);
+        stroke-width: 2;
+        stroke-dasharray: 7 7;
+        opacity: 0.75;
+      }
+
+      .tree-nodes {
+        position: absolute;
+        inset: 0;
+      }
+
+      .tree-node {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: grid;
+        gap: 3px;
+        justify-items: center;
+      }
+
+      .tree-node.current .tree-array-cell {
+        background: #fef3c7;
+      }
+
+      .tree-node.sorted .tree-array-cell {
+        background: #fce7d6;
+        box-shadow: inset 0 0 0 1px #fed7aa;
+      }
+
+      .tree-label {
+        padding: 1px 7px;
+        background: #eeeeee;
+        color: var(--purple);
+        font-size: 15px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .tree-label.pending {
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .tree-index-row,
+      .tree-array-row {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 0;
+        justify-content: center;
+      }
+
+      .tree-index {
+        width: 30px;
+        height: 16px;
+        color: #0070c0;
+        font-size: 15px;
+        font-style: italic;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .tree-array-cell {
+        width: 30px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border: 1.7px solid #111827;
+        border-right-width: 0;
+        background: #fff;
+        font-size: 20px;
+        font-weight: 900;
+      }
+
+      .tree-array-cell:last-child {
+        border-right-width: 1.7px;
+      }
+
+      .right {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: 220px minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .stack-panel,
+      .history-panel,
+      .code-panel {
+        padding: 8px 10px;
+      }
+
+      .stack-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 4px;
+      }
+
+      .stack-area {
+        position: relative;
+        min-height: 150px;
+        display: grid;
+        align-content: end;
+        justify-items: center;
+        padding: 14px 18px 8px;
+        border-radius: 8px;
+        background: #fbfdff;
+        overflow: hidden;
+      }
+
+      .stack-body {
+        position: relative;
+        width: 112px;
+        min-height: 126px;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        border-left: 3px solid #111827;
+        border-right: 3px solid #111827;
+        border-bottom: 3px solid #111827;
+        padding: 3px;
+      }
+
+      .stack-item {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 38px;
+        border: 1px solid #2b6cb0;
+        background: #dcfce7;
+        color: #0070c0;
+        font-size: 20px;
+        font-style: italic;
+        font-weight: 900;
+      }
+
+      .stack-item span {
+        display: grid;
+        place-items: center;
+        border-right: 1px solid #2b6cb0;
+      }
+
+      .stack-item span:last-child { border-right: 0; }
+
+      .stack-item.flash {
+        animation: itemFlash 0.75s ease-in-out;
+      }
+
+      @keyframes itemFlash {
+        0%, 100% { filter: none; }
+        45% { filter: brightness(1.15); transform: translateY(-2px); }
+      }
+
+      .stack-arrow {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        font-size: 48px;
+        font-weight: 900;
+        line-height: 1;
+      }
+
+      .stack-arrow.push {
+        top: 18px;
+        color: #fb923c;
+      }
+
+      .stack-arrow.pop {
+        top: 18px;
+        color: #3b82f6;
+      }
+
+      .stack-area.is-push .stack-arrow.push,
+      .stack-area.is-pop .stack-arrow.pop {
+        display: block;
+        animation: arrowMove 0.75s ease-in-out infinite;
+      }
+
+      @keyframes arrowMove {
+        0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.7; }
+        50% { transform: translateX(-50%) translateY(10px); opacity: 1; }
+      }
+
+      .stack-area.is-pop .stack-arrow.pop {
+        animation-name: arrowPop;
+      }
+
+      @keyframes arrowPop {
+        0%, 100% { transform: translateX(-50%) translateY(10px); opacity: 0.7; }
+        50% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+
+      .stack-caption {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .history-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .history {
+        min-height: 0;
+        overflow: auto;
+        display: grid;
+        align-content: start;
+        gap: 1px;
+        padding-right: 2px;
+      }
+
+      .history-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        align-items: center;
+        padding: 1px 4px;
+        border: 0;
+        border-radius: 0;
+        color: #111827;
+        font-size: 17px;
+        font-weight: 800;
+      }
+
+      .history-item.current {
+        background: #f3f4f6;
+        color: var(--purple);
+      }
+
+      .history-item.pop {
+        color: var(--purple);
+      }
+
+      .history-arrow {
+        width: 100%;
+        height: 100%;
+        padding-left: 4px;
+        overflow: auto;
+      }
+
+      .code {
+        margin: 0;
+        padding: 8px 0;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #f8fafc;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        overflow: auto;
+      }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        padding: 0 8px;
+        white-space: pre;
+      }
+
+      .code-line.active {
+        background: #fef08a;
+        font-weight: 900;
+      }
+
+      .code-line .ln {
+        color: #94a3b8;
+        user-select: none;
+      }
+
+      .mini-list {
+        display: grid;
+        gap: 5px;
+      }
+
+      .mini-card {
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .mini-card strong {
+        display: block;
+        margin-bottom: 3px;
+      }
+
+      .range-chip {
+        display: inline-block;
+        margin: 1px 3px 1px 0;
+        padding: 2px 6px;
+        border-radius: 999px;
+        background: var(--green-soft);
+        color: #166534;
+      }
+
+      .empty {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      @media (max-width: 1050px) {
+        html,
+        body { overflow: auto; height: auto; min-height: 100vh; }
+        main { display: block; }
+        .summary,
+        .controls,
+        .workspace,
+        .right {
+          display: grid;
+          grid-template-columns: 1fr;
+          margin-bottom: 6px;
+        }
+        input[type="text"] { width: min(100%, 420px); }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>非再帰版クイックソート</h1>
+    </header>
+
+    <main>
+      <section class="panel summary">
+        <ol class="rules">
+          <li>ソート範囲の <span class="green">{先頭, 末尾}</span> をスタックに <span class="orange">Push</span></li>
+          <li>スタックの一番上の <span class="green">{先頭, 末尾}</span> を <span class="purple">Pop</span></li>
+          <li>その範囲を中央の pivot で分割し，左側・右側の範囲を作る</li>
+          <li>要素数が2個以上なら，左側，右側の順に <span class="orange">Push</span></li>
+          <li>スタックが空になるまで同じ処理を繰り返す</li>
+        </ol>
+        <div class="note">同じ分割処理を使い，未処理の範囲をスタックで管理する</div>
+      </section>
+
+      <section class="panel controls">
+        <div class="control-lines">
+          <div class="control-row">
+            <label>配列 a =
+              <select id="presetSelect">
+                <option value="slide">スライド例</option>
+                <option value="sorted">ソート済み</option>
+                <option value="reverse">逆順</option>
+                <option value="direct">直接入力</option>
+              </select>
+            </label>
+            <input id="arrayInput" type="text" value="6, 5, 4, 2, 7, 3, 1, 8" />
+            <button id="randomBtn" type="button">乱数生成</button>
+            <button id="prevBtn" type="button">1ステップ戻る</button>
+            <button id="nextBtn" type="button">1ステップ進む</button>
+            <button id="playBtn" class="primary" type="button">再生</button>
+            <button id="pauseBtn" type="button">一時停止</button>
+            <button id="resetBtn" type="button">リセット</button>
+          </div>
+          <div class="control-row">
+            <label>速度 <input id="speedInput" type="range" min="0.6" max="2.4" value="1.4" step="0.1" /></label>
+            <span id="speedLabel" class="empty">1.4x</span>
+          </div>
+        </div>
+        <div id="stepCount" class="step-count">ステップ 1 / 1</div>
+      </section>
+
+      <section class="workspace">
+        <section class="panel tree-panel">
+          <div class="section-head">
+            <h2 class="section-title">ソートが完了するまでの手順</h2>
+            <div id="rangeInfo" class="empty"></div>
+          </div>
+          <div id="message" class="message"></div>
+          <div id="treeStage" class="tree-stage">
+            <svg id="treeSvg" class="tree-svg" viewBox="0 0 1000 620" preserveAspectRatio="none"></svg>
+            <div id="treeNodes" class="tree-nodes"></div>
+          </div>
+        </section>
+
+        <aside class="right">
+          <section class="panel stack-panel">
+            <div class="section-head">
+              <h2 class="section-title">スタック</h2>
+              <div id="stackAction" class="empty"></div>
+            </div>
+            <div id="stackArea" class="stack-area">
+              <div class="stack-arrow push">↓</div>
+              <div class="stack-arrow pop">↑</div>
+              <div id="stackBody" class="stack-body"></div>
+            </div>
+            <div class="stack-caption">上から Pop</div>
+          </section>
+
+          <section class="panel code-panel">
+            <div class="section-head">
+              <h2 class="section-title">操作順</h2>
+            </div>
+            <div class="history-arrow">
+              <div id="history" class="history"></div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const presets = {
+        slide: [6, 5, 4, 2, 7, 3, 1, 8],
+        sorted: [1, 2, 3, 4, 5, 6, 7, 8],
+        reverse: [8, 7, 6, 5, 4, 3, 2, 1],
+      };
+
+      const codeLines = [
+        "def quick_sort_non_recursive(a):",
+        "  stack = []",
+        "  stack.push({0, len(a)-1})",
+        "  while stack is not empty:",
+        "    left, right = stack.pop()",
+        "    pl, pr = partition(a, left, right)",
+        "    if left < pr:  stack.push({left, pr})",
+        "    if pl < right: stack.push({pl, right})",
+      ];
+
+      const els = {
+        presetSelect: document.getElementById("presetSelect"),
+        arrayInput: document.getElementById("arrayInput"),
+        randomBtn: document.getElementById("randomBtn"),
+        prevBtn: document.getElementById("prevBtn"),
+        nextBtn: document.getElementById("nextBtn"),
+        playBtn: document.getElementById("playBtn"),
+        pauseBtn: document.getElementById("pauseBtn"),
+        resetBtn: document.getElementById("resetBtn"),
+        speedInput: document.getElementById("speedInput"),
+        speedLabel: document.getElementById("speedLabel"),
+        stepCount: document.getElementById("stepCount"),
+        rangeInfo: document.getElementById("rangeInfo"),
+        message: document.getElementById("message"),
+        treeStage: document.getElementById("treeStage"),
+        treeSvg: document.getElementById("treeSvg"),
+        treeNodes: document.getElementById("treeNodes"),
+        stackAction: document.getElementById("stackAction"),
+        stackArea: document.getElementById("stackArea"),
+        stackBody: document.getElementById("stackBody"),
+        history: document.getElementById("history"),
+      };
+
+      let steps = [];
+      let current = 0;
+      let timer = null;
+
+      function parseArray() {
+        const values = els.arrayInput.value
+          .split(/[,\s]+/)
+          .map((v) => v.trim())
+          .filter(Boolean)
+          .map(Number);
+        if (values.length < 2 || values.some((v) => !Number.isFinite(v))) {
+          return presets.slide.slice();
+        }
+        return values.slice(0, 12);
+      }
+
+      function cloneStack(stack) {
+        return stack.map((pair) => pair.slice());
+      }
+
+      function describeRange(pair) {
+        return `{${pair[0]},${pair[1]}}`;
+      }
+
+      function partition(a, left, right) {
+        let pl = left;
+        let pr = right;
+        const pivotIndex = Math.floor((left + right) / 2);
+        const pivot = a[pivotIndex];
+        const swaps = [];
+
+        while (pl <= pr) {
+          while (a[pl] < pivot) pl += 1;
+          while (a[pr] > pivot) pr -= 1;
+          if (pl <= pr) {
+            swaps.push([pl, pr]);
+            [a[pl], a[pr]] = [a[pr], a[pl]];
+            pl += 1;
+            pr -= 1;
+          }
+        }
+
+        return { pl, pr, pivot, pivotIndex, swaps };
+      }
+
+      function makeStep(kind, data) {
+        steps.push({
+          kind,
+          array: data.array.slice(),
+          stack: cloneStack(data.stack),
+          range: data.range ? data.range.slice() : null,
+          pivot: data.pivot ?? null,
+          pivotIndex: data.pivotIndex ?? null,
+          leftRange: data.leftRange ? data.leftRange.slice() : null,
+          rightRange: data.rightRange ? data.rightRange.slice() : null,
+          pushed: data.pushed ? data.pushed.map((p) => p.slice()) : [],
+          popped: data.popped ? data.popped.slice() : null,
+          swaps: data.swaps ? data.swaps.map((p) => p.slice()) : [],
+          message: data.message,
+          codeLine: data.codeLine,
+          action: data.action || "",
+          log: data.log,
+          tree: data.tree ? cloneTree(data.tree) : [],
+          currentNode: data.currentNode || null,
+        });
+      }
+
+      function cloneTree(nodes) {
+        return nodes.map((node) => ({
+          id: node.id,
+          range: node.range.slice(),
+          values: node.values.slice(),
+          pivot: node.pivot,
+          order: node.order,
+          parent: node.parent,
+          depth: node.depth,
+          state: node.state,
+        }));
+      }
+
+      function rangeKey(range) {
+        return `${range[0]}-${range[1]}`;
+      }
+
+      function rangeValues(a, range) {
+        return a.slice(range[0], range[1] + 1);
+      }
+
+      function buildSteps(initialArray) {
+        steps = [];
+        const a = initialArray.slice();
+        const stack = [];
+        const tree = [];
+        const nodeByRange = new Map();
+        const parentByRange = new Map();
+        let popOrder = 0;
+
+        function ensureNode(range, parent, depth) {
+          const key = rangeKey(range);
+          let node = nodeByRange.get(key);
+          if (!node) {
+            node = {
+              id: key,
+              range: range.slice(),
+              values: rangeValues(a, range),
+              pivot: null,
+              order: null,
+              parent,
+              depth,
+              state: "pending",
+            };
+            nodeByRange.set(key, node);
+            tree.push(node);
+          }
+          node.parent = parent;
+          node.depth = depth;
+          return node;
+        }
+
+        function childDepth(parentId) {
+          const parent = tree.find((node) => node.id === parentId);
+          return parent ? parent.depth + 1 : 0;
+        }
+
+        function addChild(parentId, range) {
+          const node = ensureNode(range, parentId, childDepth(parentId));
+          node.state = range[0] === range[1] ? "leaf" : "pending";
+          parentByRange.set(rangeKey(range), parentId);
+        }
+
+        ensureNode([0, a.length - 1], null, 0);
+
+        makeStep("start", {
+          array: a,
+          stack,
+          message: "最初に，配列全体の {先頭, 末尾} をスタックへ Push します。",
+          codeLine: 2,
+          action: "準備",
+          log: "開始",
+          tree,
+        });
+
+        stack.push([0, a.length - 1]);
+        makeStep("push", {
+          array: a,
+          stack,
+          pushed: [[0, a.length - 1]],
+          range: [0, a.length - 1],
+          message: `{0,${a.length - 1}} を Push。これで配列全体を処理対象にします。`,
+          codeLine: 3,
+          action: `Push {0,${a.length - 1}}`,
+          log: `push={0,${a.length - 1}}`,
+          tree,
+        });
+
+        while (stack.length > 0) {
+          const range = stack.pop();
+          const [left, right] = range;
+          makeStep("pop", {
+            array: a,
+            stack,
+            range,
+            popped: range,
+            message: `${describeRange(range)} を Pop。この範囲を中央の pivot で分割します。`,
+            codeLine: 5,
+            action: `Pop ${describeRange(range)}`,
+            log: `pop=${describeRange(range)}`,
+            tree,
+            currentNode: rangeKey(range),
+          });
+
+          const result = partition(a, left, right);
+          const leftRange = left < result.pr ? [left, result.pr] : null;
+          const rightRange = result.pl < right ? [result.pl, right] : null;
+          const nodeParent = parentByRange.get(rangeKey(range)) || null;
+          const nodeDepth = nodeParent ? childDepth(nodeParent) : 0;
+          const node = ensureNode(range, nodeParent, nodeDepth);
+          popOrder += 1;
+          node.pivot = result.pivot;
+          node.order = popOrder;
+          node.state = "partitioned";
+          if (left <= result.pr) addChild(node.id, [left, result.pr]);
+          if (result.pl <= right) addChild(node.id, [result.pl, right]);
+          if (right - left === 1) {
+            addChild(node.id, [left, left]);
+            addChild(node.id, [right, right]);
+          }
+          makeStep("partition", {
+            array: a,
+            stack,
+            range,
+            pivot: result.pivot,
+            pivotIndex: result.pivotIndex,
+            leftRange,
+            rightRange,
+            swaps: result.swaps,
+            message: `${describeRange(range)} を分割。pivot = ${result.pivot}，左 ${leftRange ? describeRange(leftRange) : "なし"}，右 ${rightRange ? describeRange(rightRange) : "なし"}。`,
+            codeLine: 6,
+            action: `分割 ${describeRange(range)}`,
+            log: `partition ${describeRange(range)}, pivot=${result.pivot}`,
+            tree,
+            currentNode: node.id,
+          });
+
+          if (leftRange) {
+            stack.push(leftRange);
+            makeStep("push", {
+              array: a,
+              stack,
+              range: leftRange,
+              pivot: result.pivot,
+              pivotIndex: result.pivotIndex,
+              pushed: [leftRange],
+              message: `左側 ${describeRange(leftRange)} は要素数が2個以上なので Push します。`,
+              codeLine: 7,
+              action: `左をPush ${describeRange(leftRange)}`,
+              log: `push=${describeRange(leftRange)}`,
+              tree,
+              currentNode: rangeKey(leftRange),
+            });
+          }
+
+          if (rightRange) {
+            stack.push(rightRange);
+            makeStep("push", {
+              array: a,
+              stack,
+              range: rightRange,
+              pivot: result.pivot,
+              pivotIndex: result.pivotIndex,
+              pushed: [rightRange],
+              message: `右側 ${describeRange(rightRange)} は要素数が2個以上なので Push します。後にPushした右側が次にPopされます。`,
+              codeLine: 8,
+              action: `右をPush ${describeRange(rightRange)}`,
+              log: `push=${describeRange(rightRange)}`,
+              tree,
+              currentNode: rangeKey(rightRange),
+            });
+          }
+        }
+
+        makeStep("done", {
+          array: a,
+          stack,
+          message: "スタックが空になったので，すべての範囲の処理が完了しました。",
+          codeLine: 4,
+          action: "完了",
+          log: "done",
+          tree,
+        });
+      }
+
+      function rangeContains(range, i) {
+        return range && range[0] <= i && i <= range[1];
+      }
+
+      function renderArray(step) {
+        const indices = step.array.map((_, i) => `<div class="idx">${i}</div>`).join("");
+        const values = step.array
+          .map((v, i) => {
+            const classes = ["cell"];
+            if (rangeContains(step.range, i)) classes.push("in-range");
+            if (rangeContains(step.leftRange, i)) classes.push("left-part");
+            if (rangeContains(step.rightRange, i)) classes.push("right-part");
+            if (step.pivotIndex === i) classes.push("pivot");
+            if (step.swaps.some(([a, b]) => a === i || b === i)) classes.push("swapped");
+            return `<div class="${classes.join(" ")}">${v}</div>`;
+          })
+          .join("");
+        els.arrayView.innerHTML = `<div class="indices">${indices}</div><div class="values">${values}</div>`;
+      }
+
+      function renderRangeBar(step) {
+        const n = step.array.length;
+        if (!step.range) {
+          els.rangeBar.innerHTML = "";
+          return;
+        }
+        const cell = 46 + 3;
+        const total = n * cell - 3;
+        const left = (step.range[0] * cell / total) * 100;
+        const width = (((step.range[1] - step.range[0] + 1) * cell - 3) / total) * 100;
+        els.rangeBar.innerHTML = `
+          <div class="bar" style="left:${left}%;width:${width}%"></div>
+          <div class="bar-label" style="left:${left + width / 2}%">処理範囲 ${describeRange(step.range)}</div>
+        `;
+      }
+
+      const slideTreePositions = {
+        "0-7": { x: 500, y: 50 },
+        "0-1": { x: 120, y: 180 },
+        "2-7": { x: 590, y: 180 },
+        "0-0": { x: 75, y: 292 },
+        "1-1": { x: 220, y: 292 },
+        "2-5": { x: 445, y: 318 },
+        "6-7": { x: 850, y: 320 },
+        "6-6": { x: 835, y: 435 },
+        "7-7": { x: 935, y: 435 },
+        "2-3": { x: 320, y: 440 },
+        "4-5": { x: 610, y: 440 },
+        "2-2": { x: 275, y: 535 },
+        "3-3": { x: 390, y: 535 },
+        "4-4": { x: 555, y: 535 },
+        "5-5": { x: 695, y: 535 },
+      };
+
+      function usesSlideTreeLayout(step) {
+        const root = step.tree.find((node) => node.id === "0-7");
+        return root && root.values.join(",") === presets.slide.join(",");
+      }
+
+      function treePosition(node, n, useSlideLayout) {
+        if (useSlideLayout && slideTreePositions[node.id]) {
+          return slideTreePositions[node.id];
+        }
+        const center = (node.range[0] + node.range[1]) / 2;
+        const spread = Math.max(n - 1, 1);
+        return {
+          x: 95 + (center / spread) * 810,
+          y: 60 + node.depth * 120,
+        };
+      }
+
+      function renderTree(step) {
+        const n = step.array.length;
+        const nodes = step.tree;
+        const byId = new Map(nodes.map((node) => [node.id, node]));
+        const useSlideLayout = usesSlideTreeLayout(step);
+        const links = nodes
+          .filter((node) => node.parent && byId.has(node.parent))
+          .map((node) => {
+            const from = treePosition(byId.get(node.parent), n, useSlideLayout);
+            const to = treePosition(node, n, useSlideLayout);
+            return `<line class="tree-link" x1="${from.x}" y1="${from.y + 26}" x2="${to.x}" y2="${to.y - 28}"></line>`;
+          })
+          .join("");
+        els.treeSvg.innerHTML = links;
+        els.treeNodes.innerHTML = nodes
+          .map((node) => {
+            const pos = treePosition(node, n, useSlideLayout);
+            const indexRow = node.values
+              .map((_, i) => `<div class="tree-index">${node.range[0] + i}</div>`)
+              .join("");
+            const valueRow = node.values
+              .map((value) => `<div class="tree-array-cell">${value}</div>`)
+              .join("");
+            const label = node.order
+              ? `<div class="tree-label">${node.order}. pop=${describeRange(node.range)} pivot=${node.pivot}</div>`
+              : node.parent && node.range[0] !== node.range[1]
+                ? `<div class="tree-label pending">${describeRange(node.range)}</div>`
+                : "";
+            const nodeClasses = ["tree-node"];
+            if (node.id === step.currentNode) nodeClasses.push("current");
+            if (step.kind === "done" && node.range[0] === node.range[1]) nodeClasses.push("sorted");
+            return `
+              <div class="${nodeClasses.join(" ")}" style="left:${pos.x / 10}%;top:${pos.y / 6.2}%">
+                ${label}
+                <div class="tree-index-row">${indexRow}</div>
+                <div class="tree-array-row">${valueRow}</div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function renderStack(step) {
+        const items = step.stack
+          .map((pair, index) => {
+            const isTop = index === step.stack.length - 1;
+            const isFlash = step.pushed.some((p) => p[0] === pair[0] && p[1] === pair[1]) || (step.kind === "pop" && isTop);
+            return `<div class="stack-item ${isFlash ? "flash" : ""}"><span>${pair[0]}</span><span>${pair[1]}</span></div>`;
+          })
+          .join("");
+        els.stackBody.innerHTML = items || `<div class="empty" style="text-align:center;margin:auto;">空</div>`;
+        els.stackArea.classList.toggle("is-push", step.kind === "push");
+        els.stackArea.classList.toggle("is-pop", step.kind === "pop");
+        els.stackAction.textContent = step.action;
+      }
+
+      function renderCode(step) {
+        if (!els.codeView) return;
+        els.codeView.innerHTML = codeLines
+          .map((line, i) => `
+            <div class="code-line ${i + 1 === step.codeLine ? "active" : ""}">
+              <span class="ln">${i + 1}</span><span>${escapeHtml(line)}</span>
+            </div>
+          `)
+          .join("");
+      }
+
+      function renderHistory() {
+        if (!els.history) return;
+        const operationSteps = steps
+          .map((step, index) => ({ step, index }))
+          .filter(({ step }) => step.kind === "push" || step.kind === "pop");
+        let letterCode = 96;
+        let previousKind = "";
+        els.history.innerHTML = operationSteps
+          .map(({ step, index }, orderIndex) => {
+            if (orderIndex === 0 || !(step.kind === "push" && previousKind === "push")) {
+              letterCode += 1;
+            }
+            previousKind = step.kind;
+            const letter = String.fromCharCode(letterCode);
+            const text = step.kind === "push"
+              ? `(${letter}) push=${describeRange(step.pushed[0] || step.range)}`
+              : `(${letter}) pop=${describeRange(step.popped || step.range)}`;
+            return `<div class="history-item ${step.kind} ${index === current ? "current" : ""}">${text}</div>`;
+          })
+          .join("");
+        const active = els.history.querySelector(".current");
+        if (active) active.scrollIntoView({ block: "nearest" });
+      }
+
+      function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, (c) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        })[c]);
+      }
+
+      function render() {
+        const step = steps[current];
+        renderTree(step);
+        renderStack(step);
+        renderCode(step);
+        renderHistory(step);
+        els.message.textContent = step.message;
+        els.rangeInfo.textContent = step.range ? `処理範囲 ${describeRange(step.range)}` : "";
+        els.stepCount.textContent = `ステップ ${current + 1} / ${steps.length}`;
+        els.prevBtn.disabled = current === 0;
+        els.nextBtn.disabled = current === steps.length - 1;
+        els.playBtn.disabled = current === steps.length - 1;
+      }
+
+      function rebuild() {
+        stop();
+        buildSteps(parseArray());
+        current = 0;
+        render();
+      }
+
+      function next() {
+        if (current < steps.length - 1) {
+          current += 1;
+          render();
+        } else {
+          stop();
+        }
+      }
+
+      function prev() {
+        stop();
+        if (current > 0) {
+          current -= 1;
+          render();
+        }
+      }
+
+      function play() {
+        if (timer || current >= steps.length - 1) return;
+        timer = setInterval(next, 1400 / Number(els.speedInput.value));
+      }
+
+      function stop() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      function randomArray() {
+        const values = Array.from({ length: 8 }, (_, i) => i + 1);
+        for (let i = values.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [values[i], values[j]] = [values[j], values[i]];
+        }
+        els.presetSelect.value = "direct";
+        els.arrayInput.value = values.join(", ");
+        rebuild();
+      }
+
+      els.presetSelect.addEventListener("change", () => {
+        const key = els.presetSelect.value;
+        if (presets[key]) els.arrayInput.value = presets[key].join(", ");
+        rebuild();
+      });
+      els.arrayInput.addEventListener("change", () => {
+        els.presetSelect.value = "direct";
+        rebuild();
+      });
+      els.randomBtn.addEventListener("click", randomArray);
+      els.prevBtn.addEventListener("click", prev);
+      els.nextBtn.addEventListener("click", () => {
+        stop();
+        next();
+      });
+      els.playBtn.addEventListener("click", play);
+      els.pauseBtn.addEventListener("click", stop);
+      els.resetBtn.addEventListener("click", rebuild);
+      els.speedInput.addEventListener("input", () => {
+        els.speedLabel.textContent = `${Number(els.speedInput.value).toFixed(1)}x`;
+        if (timer) {
+          stop();
+          play();
+        }
+      });
+
+      rebuild();
+    </script>
+  </body>
+</html>
