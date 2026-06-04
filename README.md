@@ -52,23 +52,22 @@ individual demos remain subject to their respective licenses.
   - [Tower of Hanoi](https://jkushida.github.io/Web_demo/DSA/hanoi.html) - ハノイの塔のインタラクティブなデモ
   - [River Crossing](https://jkushida.github.io/Web_demo/DSA/river-crossing.html) - 川渡り問題のシミュレーション
 
-- **探索・数え上げ・ハッシュ**
-  - [Euclidean Algorithm Visualizer](https://jkushida.github.io/Web_demo/DSA/euclidean-algorithm.html) - ユークリッドの互除法で最大公約数を求める過程を可視化
+- **探索・ハッシュ**
   - [Sentinel Search Comparison](https://jkushida.github.io/Web_demo/DSA/sentinel-search.html) - 番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化
   - [Binary Search Visualization](https://jkushida.github.io/Web_demo/DSA/binary-search.html) - ソート済み配列からターゲットを絞り込む二分探索の過程を、ツリー状の可視化と擬似コードで表示
   - [Hash Search](https://jkushida.github.io/Web_demo/DSA/hash-search.html) - ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化
   - [DFS Stack Animation](https://jkushida.github.io/Web_demo/DSA/depth-first-search-stack.html) - 深さ優先探索の探索順とスタックによるバックトラックを可視化
   - [Maze Search (BFS/DFS)](https://jkushida.github.io/Web_demo/DSA/maze-search.html) - 幅優先/深さ優先で迷路を探索。探索木とログを動的表示
 
-- **線形データ構造**
+- **データ構造**
   - [Singly Linked List](https://jkushida.github.io/Web_demo/DSA/singly-linked-list.html) - 単方向リストの挿入・削除で、nextポインタのつなぎ替えをステップごとに可視化
-
-- **木・グラフ**
   - [Huffman Coding](https://jkushida.github.io/Web_demo/DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
-  - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
-  - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
   - [BST Insertion (Array)](https://jkushida.github.io/Web_demo/DSA/bst-insertion-array.html) - 配列 tree[10] で表した二分探索木に値を追加する手順を、擬似コードと木構造で可視化
   - [BST / AVL Rotation Visualizer](https://jkushida.github.io/Web_demo/DSA/bst-avl-rotation.html) - 同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化
+
+- **木・グラフ**
+  - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
+  - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
 
 - **ソート**
   - 比較によるソート
@@ -85,6 +84,10 @@ individual demos remain subject to their respective licenses.
     - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 値を対応する bucket に振り分けてから順に回収する流れを可視化
     - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 1の位から100の位まで安定に桁ごとの並べ替えを可視化
     - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - counts と累積和を使って tmp を作る流れを可視化
+
+- **数理・信号処理**
+  - [Euclidean Algorithm Visualizer](https://jkushida.github.io/Web_demo/DSA/euclidean-algorithm.html) - ユークリッドの互除法で最大公約数を求める過程を可視化
+  - [Fourier Epicycles](https://jkushida.github.io/Web_demo/DSA/fourier-epicycles.html) - 手描き軌跡のフーリエ復元
 
 ### 進化計算 <a id="ec"></a>
 - [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ
@@ -112,4 +115,3 @@ individual demos remain subject to their respective licenses.
 - [リアルタイムFFT+スペクトログラム](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-spec-plot.html) - 波形・スペクトラム・スペクトログラムを同時表示
 - [音声コマンド認識（TF.js + Chart）](https://jkushida.github.io/Web_demo/Audio/speech-commands-chart.html) - 音声コマンドの認識結果を可視化
 - [リアルタイム日本語スピーチ→テキスト（Web Speech API）](https://jkushida.github.io/Web_demo/Audio/ja-speech-to-text.html) - 日本語音声をブラウザで逐次認識し、テキストを表示
-- [Fourier Epicycles](https://jkushida.github.io/Web_demo/DSA/fourier-epicycles.html) - 手描き軌跡のフーリエ復元
