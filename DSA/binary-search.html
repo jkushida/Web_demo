@@ -68,9 +68,10 @@
 
     .controls-grid {
       display: grid;
-      grid-template-columns: 1fr auto auto;
+      grid-template-columns: minmax(280px, 520px) auto auto;
       gap: 12px;
       align-items: flex-end;
+      justify-content: start;
     }
 
     .field { display: flex; flex-direction: column; gap: 4px; }
@@ -164,10 +165,10 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .array-row { display: flex; gap: 2px; justify-content: flex-start; flex-wrap: wrap; }
-    .cell-container { display: flex; flex-direction: column; align-items: center; width: 44px; }
+    .cell-container { display: flex; flex-direction: column; align-items: center; width: 36px; }
     .index-label { font-size: 11px; color: var(--muted); }
     .cell {
-      width: 40px;
+      width: 32px;
       height: 40px;
       border: 1.5px solid var(--line);
       border-radius: 6px;
