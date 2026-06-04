@@ -67,6 +67,7 @@ individual demos remain subject to their respective licenses.
   - [Huffman Coding](https://jkushida.github.io/Web_demo/DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
   - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
   - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
+  - [BST Insertion (Array)](https://jkushida.github.io/Web_demo/DSA/bst-insertion-array.html) - 配列 tree[10] で表した二分探索木に値を追加する手順を、擬似コードと木構造で可視化
   - [BST / AVL Rotation Visualizer](https://jkushida.github.io/Web_demo/DSA/bst-avl-rotation.html) - 同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化
 
 - **ソート**
