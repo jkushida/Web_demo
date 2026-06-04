@@ -1,0 +1,2281 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>配列で表現した二分木の深さ優先探索（前順・中順・後順）</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #64748b;
+        --line: #d7deea;
+        --soft-line: #e8edf5;
+        --primary: #2563eb;
+        --primary-soft: #dbeafe;
+        --green: #15803d;
+        --green-soft: #dcfce7;
+        --red: #dc2626;
+        --red-soft: #fee2e2;
+        --orange: #c2410c;
+        --orange-soft: #ffedd5;
+        --yellow: #a16207;
+        --yellow-soft: #fef9c3;
+        --peach: #f7dfcf;
+        --code-bg: #f8fafc;
+        --code-active: #e0f2fe;
+        --shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      header {
+        display: none;
+        padding: 4px 12px 5px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+      }
+
+      header p {
+        margin: 0 0 2px;
+        font-size: 11px;
+      }
+
+      a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.25;
+      }
+
+      main {
+        width: min(1660px, 100%);
+        height: 100%;
+        min-height: 0;
+        margin: 0 auto;
+        padding: 3px 6px 5px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .panel {
+        min-width: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      .intro {
+        padding: 3px 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .intro-copy {
+        min-width: 0;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .intro h1 {
+        flex: 0 0 auto;
+        font-size: 14px;
+        white-space: nowrap;
+      }
+
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .sequence-badge {
+        padding: 3px 8px;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        background: var(--green-soft);
+        color: var(--green);
+        font-size: 11px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .controls {
+        padding: 3px 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .button-row,
+      .setting-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        min-height: 24px;
+        padding: 2px 9px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover {
+        background: #f1f5f9;
+      }
+
+      button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      input[type="range"] {
+        width: 130px;
+        accent-color: var(--primary);
+      }
+
+      select {
+        min-height: 24px;
+        max-width: 240px;
+        padding: 2px 26px 2px 8px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .step-counter {
+        min-width: 124px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .progress-wrap {
+        grid-column: 1 / -1;
+        height: 4px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--green));
+        transition: width 0.18s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(700px, 1.08fr) minmax(520px, 0.92fr);
+        gap: 6px;
+      }
+
+      .left-stack,
+      .right-stack {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        gap: 6px;
+      }
+
+      .left-stack {
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+      }
+
+      .right-stack {
+        grid-template-rows: minmax(350px, 0.58fr) minmax(260px, 0.42fr);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 5px 8px 3px;
+        border-bottom: 1px solid var(--soft-line);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .head-note {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .tree-panel,
+      .data-panel,
+      .code-panel,
+      .stack-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .data-panel {
+        display: block;
+      }
+
+      .data-body {
+        padding: 5px 8px 6px;
+        display: grid;
+        gap: 5px;
+      }
+
+      .data-head-tools {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .tree-select-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .data-code {
+        margin: 0;
+        overflow-x: auto;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: #111827;
+        font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 800;
+        white-space: pre;
+        padding: 6px 8px;
+      }
+
+      .code-panel {
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .tree-stage {
+        position: relative;
+        min-height: 0;
+        margin: 4px 6px 6px;
+        overflow: hidden;
+        border: 1px solid var(--soft-line);
+        border-radius: 9px;
+        background: #fff;
+      }
+
+      svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+
+      .edge {
+        stroke-width: 4;
+        stroke-linecap: round;
+        transition: stroke-width 0.18s ease, opacity 0.18s ease;
+      }
+
+      .edge.left {
+        stroke: #3056d3;
+      }
+
+      .edge.right {
+        stroke: var(--red);
+      }
+
+      .edge.dim {
+        opacity: 0.34;
+      }
+
+      .edge.active {
+        stroke-width: 7;
+        filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.28));
+      }
+
+      .edge.done {
+        stroke: var(--green);
+        opacity: 1;
+      }
+
+      .edge-label {
+        font-size: 21px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .edge-label.left {
+        fill: #3056d3;
+      }
+
+      .edge-label.right {
+        fill: var(--red);
+      }
+
+      .node circle {
+        fill: #fff;
+        stroke: #737373;
+        stroke-width: 3;
+        filter: drop-shadow(0 2px 5px rgba(15, 23, 42, 0.16));
+        transition: fill 0.18s ease, stroke 0.18s ease, stroke-width 0.18s ease;
+      }
+
+      .node text {
+        fill: #263240;
+        font-size: 28px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+      }
+
+      .node.visited circle {
+        fill: var(--scope-bg);
+        stroke: var(--scope-line);
+        stroke-width: 4;
+      }
+
+      .node.next circle {
+        fill: var(--scope-bg);
+        stroke: var(--scope-line);
+        stroke-dasharray: 7 6;
+        stroke-width: 4;
+      }
+
+      .node.current circle {
+        stroke-dasharray: none;
+        stroke-width: 6;
+      }
+
+      .node.returning circle {
+        fill: var(--scope-active, var(--yellow-soft));
+        stroke: var(--scope-line, var(--yellow));
+        stroke-width: 6;
+      }
+
+      .node.current circle {
+        fill: var(--scope-active, var(--yellow-soft));
+        stroke: var(--scope-line, var(--yellow));
+      }
+
+      .tree-head-tools {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .node-legend {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        color: #1f2937;
+        font-size: 11px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .node-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .legend-dot {
+        width: 12px;
+        height: 12px;
+        border: 2px solid #737373;
+        border-radius: 999px;
+        background: #fff;
+      }
+
+      .legend-dot.current {
+        border-color: #111827;
+        background: conic-gradient(#fed7aa, #cffafe, #e0e7ff, #dcfce7, #ffe4e6, #ede9fe, #fed7aa);
+      }
+
+      .legend-dot.visited {
+        border-color: #64748b;
+        background: conic-gradient(#fff7ed, #ecfeff, #eef2ff, #f0fdf4, #fff1f2, #f5f3ff, #fefce8);
+      }
+
+      .legend-dot.next {
+        border-color: #64748b;
+        border-style: dashed;
+        background: conic-gradient(#fff7ed, #ecfeff, #eef2ff, #f0fdf4, #fff1f2, #f5f3ff, #fefce8);
+      }
+
+      .array-panel {
+        overflow: hidden;
+      }
+
+      .array-grid {
+        padding: 6px 8px 8px;
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        min-width: 560px;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 12px;
+      }
+
+      th,
+      td {
+        height: 27px;
+        border: 1px solid var(--soft-line);
+        text-align: center;
+        font-weight: 800;
+      }
+
+      th {
+        background: #fff;
+      }
+
+      th:first-child,
+      td:first-child {
+        width: 76px;
+        background: #f8fafc;
+        color: #1f2937;
+        font-weight: 900;
+      }
+
+      tr.left-row td:first-child {
+        color: #3056d3;
+      }
+
+      tr.right-row td:first-child {
+        color: var(--red);
+      }
+
+      td.empty {
+        color: var(--muted);
+      }
+
+      td.active-left,
+      td.active-right {
+        position: relative;
+        font-weight: 900;
+      }
+
+      th.active-col,
+      td.active-col {
+        background: var(--yellow-soft);
+        color: var(--yellow);
+        box-shadow: inset 0 0 0 2px var(--yellow);
+      }
+
+      td.active-left {
+        --cell-accent: #3056d3;
+        background: #eff6ff;
+        color: #3056d3;
+      }
+
+      td.active-right {
+        --cell-accent: var(--red);
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      td.active-left::after,
+      td.active-right::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          linear-gradient(90deg, var(--cell-accent) 50%, transparent 0) repeat-x,
+          linear-gradient(90deg, var(--cell-accent) 50%, transparent 0) repeat-x,
+          linear-gradient(0deg, var(--cell-accent) 50%, transparent 0) repeat-y,
+          linear-gradient(0deg, var(--cell-accent) 50%, transparent 0) repeat-y;
+        background-size: 10px 2px, 10px 2px, 2px 10px, 2px 10px;
+        background-position: 0 0, 0 100%, 0 0, 100% 0;
+      }
+
+      td.active-moving::after {
+        animation: table-wave 620ms linear infinite;
+      }
+
+      @keyframes table-wave {
+        to {
+          background-position: 10px 0, -10px 100%, 0 -10px, 100% 10px;
+        }
+      }
+
+      .order-panel {
+        padding: 4px 8px 5px;
+        overflow: hidden;
+      }
+
+      .order-title {
+        margin: 0 0 2px;
+        color: #111827;
+        font: 16px/1.05 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .order-row {
+        width: fit-content;
+        min-width: 48px;
+        max-width: 100%;
+        min-height: 42px;
+        padding: 4px 7px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        border: 2px solid #111827;
+        border-radius: 10px;
+        background: var(--peach);
+      }
+
+      .order-slot {
+        width: 31px;
+        height: 31px;
+        flex: 0 0 auto;
+        display: grid;
+        place-items: center;
+        border: 2px solid #111827;
+        border-radius: 999px;
+        background: #fff;
+        color: #000;
+        font-size: 17px;
+        font-weight: 900;
+      }
+
+      .order-slot.empty {
+        border-style: dashed;
+        color: transparent;
+      }
+
+      .order-slot.current {
+        border-color: var(--green);
+        background: var(--green-soft);
+        color: var(--green);
+        transform: translateY(-1px);
+      }
+
+      .code-card {
+        min-height: 0;
+        margin: 4px 6px 6px;
+        overflow: auto;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: #111827;
+        font: 12px/1.31 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .code-line {
+        display: block;
+        min-width: max-content;
+        padding: 0 8px;
+        border-left: 4px solid transparent;
+        white-space: pre;
+      }
+
+      .code-line.active {
+        border-left-color: var(--primary);
+        background: var(--code-active);
+        font-weight: 900;
+      }
+
+      .code-line.current-scope {
+        border-left-color: var(--scope-line);
+        background: var(--scope-bg);
+      }
+
+      .code-line.current-scope.active {
+        border-left-color: var(--scope-line);
+        background: var(--scope-active);
+        font-weight: 900;
+      }
+
+      .scope-0 {
+        --scope-bg: #fff7ed;
+        --scope-active: #fed7aa;
+        --scope-line: #c2410c;
+      }
+
+      .scope-1 {
+        --scope-bg: #ecfeff;
+        --scope-active: #cffafe;
+        --scope-line: #0891b2;
+      }
+
+      .scope-2 {
+        --scope-bg: #eef2ff;
+        --scope-active: #e0e7ff;
+        --scope-line: #4f46e5;
+      }
+
+      .scope-3 {
+        --scope-bg: #f0fdf4;
+        --scope-active: #dcfce7;
+        --scope-line: #15803d;
+      }
+
+      .scope-4 {
+        --scope-bg: #fff1f2;
+        --scope-active: #ffe4e6;
+        --scope-line: #be123c;
+      }
+
+      .scope-5 {
+        --scope-bg: #f5f3ff;
+        --scope-active: #ede9fe;
+        --scope-line: #7c3aed;
+      }
+
+      .scope-6 {
+        --scope-bg: #fefce8;
+        --scope-active: #fef08a;
+        --scope-line: #ca8a04;
+      }
+
+      .scope-7 {
+        --scope-bg: #fdf2f8;
+        --scope-active: #fbcfe8;
+        --scope-line: #db2777;
+      }
+
+      .scope-8 {
+        --scope-bg: #ecfdf5;
+        --scope-active: #bbf7d0;
+        --scope-line: #16a34a;
+      }
+
+      .scope-9 {
+        --scope-bg: #fef2f2;
+        --scope-active: #fecaca;
+        --scope-line: #dc2626;
+      }
+
+      .scope-10 {
+        --scope-bg: #f0f9ff;
+        --scope-active: #bae6fd;
+        --scope-line: #0284c7;
+      }
+
+      .scope-11 {
+        --scope-bg: #faf5ff;
+        --scope-active: #e9d5ff;
+        --scope-line: #9333ea;
+      }
+
+      .scope-12 {
+        --scope-bg: #fffbeb;
+        --scope-active: #fde68a;
+        --scope-line: #d97706;
+      }
+
+      .scope-13 {
+        --scope-bg: #f5f5f4;
+        --scope-active: #e7e5e4;
+        --scope-line: #57534e;
+      }
+
+      .scope-14 {
+        --scope-bg: #eff6ff;
+        --scope-active: #bfdbfe;
+        --scope-line: #2563eb;
+      }
+
+      .code-append-bubble {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 14px;
+        padding: 3px 8px;
+        border: 2px solid #7c3aed;
+        border-radius: 999px;
+        background: #ede9fe;
+        color: #6d28d9;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+        vertical-align: middle;
+        box-shadow: 0 4px 10px rgba(124, 58, 237, 0.16);
+        animation: move-pop 760ms ease forwards;
+      }
+
+      .code-skip-bubble {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 14px;
+        padding: 3px 8px;
+        border: 2px solid #64748b;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+        vertical-align: middle;
+        white-space: nowrap;
+        box-shadow: 0 4px 10px rgba(71, 85, 105, 0.14);
+        animation: move-pop 760ms ease forwards;
+      }
+
+      .code-loop-done-bubble {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 14px;
+        padding: 3px 8px;
+        border: 2px solid #0e7490;
+        border-radius: 999px;
+        background: #ecfeff;
+        color: #155e75;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+        vertical-align: middle;
+        white-space: nowrap;
+        box-shadow: 0 4px 10px rgba(14, 116, 144, 0.14);
+        animation: move-pop 760ms ease forwards;
+      }
+
+      .code-return-bubble {
+        display: inline-flex;
+        align-items: center;
+        margin-left: 0;
+        padding: 3px 8px;
+        border: 2px solid var(--yellow);
+        border-radius: 999px;
+        background: var(--yellow-soft);
+        color: var(--yellow);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+        vertical-align: middle;
+        white-space: nowrap;
+        box-shadow: 0 4px 10px rgba(161, 98, 7, 0.16);
+        animation: move-pop 760ms ease forwards;
+      }
+
+      .code-pos-badge {
+        display: inline-block;
+        margin-left: 10px;
+        padding: 1px 10px 2px;
+        border: 1px solid var(--scope-line, var(--yellow));
+        border-radius: 999px;
+        background: var(--scope-active, var(--yellow-soft));
+        color: var(--scope-line, var(--yellow));
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.25;
+        pointer-events: none;
+        vertical-align: middle;
+      }
+
+      .code-i-badge {
+        display: inline-block;
+        margin-left: 10px;
+        padding: 1px 10px 2px;
+        border: 1px solid #93c5fd;
+        border-radius: 999px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.25;
+        pointer-events: none;
+        vertical-align: middle;
+      }
+
+      .code-i-badge.right-child {
+        border-color: #fca5a5;
+        background: #fee2e2;
+        color: var(--red);
+      }
+
+      @keyframes move-pop {
+        0% {
+          opacity: 0;
+          transform: translateY(8px) scale(0.82);
+        }
+        18% {
+          opacity: 1;
+          transform: translateY(-2px) scale(1.06);
+        }
+        72% {
+          opacity: 1;
+          transform: translateY(-2px) scale(1);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .line-no {
+        display: inline-block;
+        width: 24px;
+        color: #7b8798;
+      }
+
+      .kw { color: #7c3aed; }
+      .fn { color: #9a5b00; }
+      .vr { color: #0f4aa8; }
+      .cm { color: #07872a; font-weight: 900; }
+      .num { color: #047857; }
+
+      .stack-panel {
+        padding-bottom: 4px;
+      }
+
+      .stack-content {
+        min-height: 0;
+        padding: 4px 8px 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .message-box {
+        min-height: 39px;
+        padding: 4px 8px;
+        display: flex;
+        align-items: flex-start;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+      }
+
+      #currentMessage {
+        margin: 0;
+        color: #1f2937;
+        font-size: 11.5px;
+        font-weight: 850;
+        line-height: 1.25;
+        min-height: calc(11.5px * 1.25 * 2);
+      }
+
+      .state-grid {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(130px, 0.72fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .life-timeline {
+        min-height: 154px;
+        max-height: none;
+        overflow: hidden;
+        padding: 6px 9px;
+        border: 1px solid #111827;
+        border-radius: 8px;
+        background: #242424;
+        color: #f8fafc;
+        font: 11.5px/1.32 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 800;
+      }
+
+      .life-timeline.dense {
+        min-height: 212px;
+        padding: 5px 8px;
+        font-size: 9.5px;
+        line-height: 1.12;
+      }
+
+      .life-empty {
+        height: 56px;
+        display: grid;
+        place-items: center;
+        color: #cbd5e1;
+        font-weight: 900;
+      }
+
+      .life-row {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        min-height: 18px;
+      }
+
+      .life-timeline.dense .life-row {
+        grid-template-columns: 58px minmax(0, 1fr);
+        gap: 5px;
+        min-height: 12px;
+      }
+
+      .life-row + .life-row {
+        margin-top: 2px;
+      }
+
+      .life-timeline.dense .life-row + .life-row {
+        margin-top: 1px;
+      }
+
+      .life-name {
+        color: var(--scope-active, #fff);
+        white-space: nowrap;
+      }
+
+      .life-flow {
+        min-width: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding-left: calc(var(--life-depth) * 26px);
+        white-space: nowrap;
+      }
+
+      .life-timeline.dense .life-flow {
+        gap: 4px;
+        padding-left: calc(var(--life-depth) * 16px);
+      }
+
+      .life-birth {
+        color: var(--scope-active, #cbd5e1);
+      }
+
+      .life-line {
+        width: var(--life-width);
+        max-width: 158px;
+        height: 2px;
+        flex: 0 0 auto;
+        border-radius: 999px;
+        background: var(--scope-line, #38bdf8);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--scope-line, #38bdf8) 28%, transparent);
+      }
+
+      .life-timeline.dense .life-line {
+        max-width: 116px;
+      }
+
+      .life-state {
+        min-width: 54px;
+        padding: 1px 6px 2px;
+        border-radius: 999px;
+        border: 1px solid #38bdf8;
+        background: rgba(56, 189, 248, 0.12);
+        color: #7dd3fc;
+        font-size: 10.5px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .life-timeline.dense .life-state {
+        min-width: 42px;
+        padding: 0 4px 1px;
+        font-size: 9px;
+      }
+
+      .life-row.dead .life-line {
+        background: color-mix(in srgb, var(--scope-line, #6b7280) 34%, #6b7280);
+        box-shadow: none;
+      }
+
+      .life-row.dead .life-state {
+        border-color: #6b7280;
+        background: rgba(107, 114, 128, 0.16);
+        color: #cbd5e1;
+      }
+
+      .life-row.current .life-name,
+      .life-row.current .life-birth {
+        color: var(--scope-active, #fef3c7);
+      }
+
+      .life-row.current .life-line {
+        height: 3px;
+        background: var(--scope-line, #facc15);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--scope-line, #facc15) 22%, transparent);
+      }
+
+      .life-row.current .life-state {
+        border-color: #facc15;
+        background: rgba(250, 204, 21, 0.18);
+        color: #fef3c7;
+      }
+
+      .call-stack,
+      .step-list {
+        min-height: 0;
+        overflow: auto;
+      }
+
+      .call-stack {
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        gap: 4px;
+        padding: 6px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fbfdff;
+      }
+
+      .call-frame {
+        min-height: 25px;
+        padding: 3px 5px;
+        border: 1px solid var(--primary);
+        border-radius: 7px;
+        background: var(--primary-soft);
+        color: #1d4ed8;
+        font: 12px/1.25 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .call-frame.top {
+        border-color: var(--yellow);
+        background: var(--yellow-soft);
+        color: var(--yellow);
+      }
+
+      .empty-stack {
+        margin: auto;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .step-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 4px;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 25px minmax(0, 1fr);
+        gap: 6px;
+        align-items: center;
+        padding: 4px 6px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .step-item:hover {
+        border-color: #bfdbfe;
+        background: #f8fbff;
+      }
+
+      .step-item.active {
+        border-color: var(--primary);
+        background: #eff6ff;
+      }
+
+      .step-no {
+        width: 22px;
+        height: 22px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #475569;
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      .step-item.active .step-no {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .step-main {
+        min-width: 0;
+      }
+
+      .step-title {
+        color: var(--ink);
+        font-size: 11px;
+        font-weight: 900;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .step-meta {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      @media (max-width: 980px) {
+        html,
+        body {
+          height: auto;
+          min-height: 100%;
+          overflow: auto;
+        }
+
+        body {
+          display: block;
+        }
+
+        main {
+          height: auto;
+        }
+
+        .intro,
+        .controls,
+        .workspace,
+        .state-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .right-stack,
+        .left-stack {
+          grid-template-rows: auto;
+        }
+
+        .tree-stage {
+          min-height: 440px;
+        }
+
+        .code-card {
+          max-height: 420px;
+        }
+
+        .call-stack {
+          min-height: 92px;
+        }
+
+        .step-list {
+          max-height: 280px;
+        }
+
+        .step-counter {
+          text-align: left;
+        }
+      }
+
+      @media (max-width: 620px) {
+        main {
+          padding: 8px;
+        }
+
+        .intro-copy {
+          align-items: flex-start;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .intro h1 {
+          font-size: 14px;
+        }
+
+        .intro p,
+        .sequence-badge {
+          font-size: 11px;
+        }
+
+        .order-title {
+          font-size: 16px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>配列で表現した二分木の深さ優先探索（前順・中順・後順）</h1>
+    </header>
+
+    <main>
+      <section class="panel intro">
+        <div class="intro-copy">
+          <h1>配列で表現した二分木の深さ優先探索（前順・中順・後順）</h1>
+          <p id="introText">再帰関数 <strong>search</strong> で深さ優先探索を行い、ノードを訪問したらすぐに <strong>node_order</strong> の末尾へ追加します。子ノードは表の左から右の順に再帰呼び出しします。</p>
+        </div>
+        <div id="sequenceBadge" class="sequence-badge">行きがけ順: 0 → 1 → 3 → 6 → 4 → 2 → 5</div>
+      </section>
+
+      <section class="panel controls" aria-label="操作">
+        <div class="button-row">
+          <button id="playBtn" class="primary" type="button">▶ 再生</button>
+          <button id="prevBtn" type="button">← 前へ</button>
+          <button id="nextBtn" type="button">次へ →</button>
+          <button id="resetBtn" type="button">↺ リセット</button>
+          <label for="speedRange">速度
+            <input id="speedRange" type="range" min="350" max="1500" step="50" value="760" />
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="traversalSelect">走査順
+            <select id="traversalSelect">
+              <option value="preorder">行きがけ順</option>
+              <option value="inorder">通りがけ順（中順）</option>
+              <option value="postorder">帰りがけ順</option>
+            </select>
+          </label>
+          <span id="stepCounter" class="step-counter">手順 0 / 0</span>
+        </div>
+        <div class="progress-wrap" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="left-stack">
+          <article class="panel data-panel">
+            <div class="section-head">
+              <h2>2次元リストによる木構造の定義</h2>
+              <div class="data-head-tools">
+                <label class="tree-select-row" for="treeSelect">
+                  木データ
+                  <select id="treeSelect">
+                    <option value="0">例1: スライドの木</option>
+                    <option value="1">例2: 完全二分木</option>
+                    <option value="2">例3: 変形した木</option>
+                  </select>
+                </label>
+                <span class="head-note">完成済みの入力</span>
+              </div>
+            </div>
+            <div class="data-body">
+              <pre id="treeCode" class="data-code">tree = [[1, 2], [3, 4], [5], [6], [], [], []]</pre>
+            </div>
+          </article>
+
+          <article class="panel tree-panel">
+            <div class="section-head">
+              <h2>木構造のグラフ表示</h2>
+              <div class="tree-head-tools">
+                <div class="node-legend" aria-label="ノード状態の凡例">
+                  <span><i class="legend-dot"></i>未訪問</span>
+                  <span><i class="legend-dot current"></i>現在の pos</span>
+                  <span><i class="legend-dot visited"></i>追加済み</span>
+                  <span><i class="legend-dot next"></i>現在の i</span>
+                </div>
+                <span id="statusText" class="head-note">開始前</span>
+              </div>
+            </div>
+            <div class="tree-stage">
+              <svg id="treeSvg" viewBox="0 0 760 560" role="img" aria-label="走査する木"></svg>
+            </div>
+          </article>
+
+          <section class="panel order-panel">
+            <h2 class="order-title">node_order</h2>
+            <div id="orderRow" class="order-row" aria-label="探索順リスト"></div>
+          </section>
+
+          <article class="panel array-panel">
+            <div class="array-grid">
+              <table aria-label="2次元リストによる木構造">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <aside class="right-stack">
+          <section class="panel code-panel">
+            <div class="section-head">
+              <h2>再帰関数 search による実装</h2>
+              <span id="codeNote" class="head-note">line 16</span>
+            </div>
+            <pre id="codeCard" class="code-card" aria-label="Pythonコード"></pre>
+          </section>
+
+          <section class="panel stack-panel">
+            <div class="section-head">
+              <h2>再帰呼び出しと手順</h2>
+              <span id="stackNote" class="head-note">call stack</span>
+            </div>
+            <div class="stack-content">
+              <div class="message-box">
+                <p id="currentMessage">search(0) を呼び出して、ルートから探索を始めます。</p>
+              </div>
+              <div id="lifeTimeline" class="life-timeline" aria-label="search呼び出しの寿命"></div>
+              <div class="state-grid">
+                <div id="callStack" class="call-stack" aria-label="再帰呼び出しスタック"></div>
+                <ol id="stepList" class="step-list" aria-label="手順ログ"></ol>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const treeVariants = [
+        {
+          label: "例1: スライドの木",
+          data: [[1, 2], [3, 4], [5], [6], [], [], []]
+        },
+        {
+          label: "例2: 完全二分木",
+          data: [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10], [11, 12], [13, 14], [], [], [], [], [], [], [], []]
+        },
+        {
+          label: "例3: 変形した木",
+          data: [[1, 2], [3, 4], [7], [], [5, 6], [], [], []]
+        }
+      ];
+
+      let tree = [];
+      let children = [];
+      let nodePositions = {};
+      let traversalMode = "preorder";
+      let traversalOrder = [];
+
+      const traversalConfigs = {
+        preorder: {
+          label: "行きがけ順",
+          intro: '再帰関数 <strong>search</strong> で深さ優先探索を行い、ノードを訪問したらすぐに <strong>node_order</strong> の末尾へ追加します。子ノードは表の左から右の順に再帰呼び出しします。',
+          line: { enter: 5, append: 7, loop: 10, call: 12, return: 13, start: 16 },
+          lines: [
+            { no: 1, html: '<span class="cm"># 探索したノードを格納するリスト</span>' },
+            { no: 2, html: '<span class="vr">node_order</span> = []' },
+            { no: 3, html: "" },
+            { no: 4, html: '<span class="cm"># 行きがけ順</span>' },
+            { no: 5, html: '<span class="kw">def</span> <span class="fn">search</span>(<span class="vr">pos</span>):' },
+            { no: 6, html: '    <span class="cm"># 訪問したノードposをnode_order(の末尾)に追加</span>' },
+            { no: 7, html: '    <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
+            { no: 8, html: "" },
+            { no: 9, html: '    <span class="cm"># 子ノードを調べる</span>' },
+            { no: 10, html: '    <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="vr">tree</span>[<span class="vr">pos</span>]:' },
+            { no: 11, html: '        <span class="cm"># 再帰呼び出し</span>' },
+            { no: 12, html: '        <span class="fn">search</span>(<span class="vr">i</span>)' },
+            { no: 13, html: "    " },
+            { no: 14, html: "" },
+            { no: 15, html: '<span class="cm"># ルートから開始（引数はノード）</span>' },
+            { no: 16, html: '<span class="fn">search</span>(<span class="num">0</span>)' }
+          ]
+        },
+        inorder: {
+          label: "通りがけ順（中順）",
+          intro: '再帰関数 <strong>search</strong> で深さ優先探索を行い、左の子を先に調べ、次に <strong>node_order</strong> へ追加し、最後に右の子を調べます。',
+          line: {
+            enter: 5,
+            append: 8,
+            loop: 6,
+            call: 7,
+            return: 17,
+            start: 19,
+            scopeEnd: 17,
+            branch: { two: 6, one: 11, none: 15 },
+            callLines: { leftTwo: 7, rightTwo: 9, one: 12 },
+            appendLines: { two: 8, one: 13, none: 16 }
+          },
+          lines: [
+            { no: 1, html: '<span class="cm"># 探索したノードを格納するリスト</span>' },
+            { no: 2, html: '<span class="vr">node_order</span> = []' },
+            { no: 3, html: "" },
+            { no: 4, html: '<span class="cm"># 通りがけ順（中順）</span>' },
+            { no: 5, html: '<span class="kw">def</span> <span class="fn">search</span>(<span class="vr">pos</span>):' },
+            { no: 6, html: '    <span class="kw">if</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">2</span>:' },
+            { no: 7, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">0</span>])' },
+            { no: 8, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
+            { no: 9, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">1</span>])' },
+            { no: 10, html: "" },
+            { no: 11, html: '    <span class="kw">elif</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">1</span>:' },
+            { no: 12, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">0</span>])' },
+            { no: 13, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
+            { no: 14, html: "" },
+            { no: 15, html: '    <span class="kw">else</span>:' },
+            { no: 16, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
+            { no: 17, html: "    " },
+            { no: 18, html: '<span class="cm"># ルートから開始（引数はノード）</span>' },
+            { no: 19, html: '<span class="fn">search</span>(<span class="num">0</span>)' }
+          ]
+        },
+        postorder: {
+          label: "帰りがけ順",
+          intro: '再帰関数 <strong>search</strong> で深さ優先探索を行い、子ノードを先に再帰呼び出しします。子をすべて調べ終えてから <strong>node_order</strong> の末尾へ追加します。',
+          line: { enter: 5, append: 12, loop: 7, call: 9, return: 13, start: 15 },
+          lines: [
+            { no: 1, html: '<span class="cm"># 探索したノードを格納するリスト</span>' },
+            { no: 2, html: '<span class="vr">node_order</span> = []' },
+            { no: 3, html: "" },
+            { no: 4, html: '<span class="cm"># 帰りがけ順</span>' },
+            { no: 5, html: '<span class="kw">def</span> <span class="fn">search</span>(<span class="vr">pos</span>):' },
+            { no: 6, html: '    <span class="cm"># 子ノードを調べる</span>' },
+            { no: 7, html: '    <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="vr">tree</span>[<span class="vr">pos</span>]:' },
+            { no: 8, html: '        <span class="cm"># 再帰呼び出し</span>' },
+            { no: 9, html: '        <span class="fn">search</span>(<span class="vr">i</span>)' },
+            { no: 10, html: "" },
+            { no: 11, html: '    <span class="cm"># 子ノードを調べ終えてから追加</span>' },
+            { no: 12, html: '    <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
+            { no: 13, html: "    " },
+            { no: 14, html: '<span class="cm"># ルートから開始（引数はノード）</span>' },
+            { no: 15, html: '<span class="fn">search</span>(<span class="num">0</span>)' }
+          ]
+        }
+      };
+
+      const treeSvg = document.getElementById("treeSvg");
+      const treeSelect = document.getElementById("treeSelect");
+      const traversalSelect = document.getElementById("traversalSelect");
+      const treeCode = document.getElementById("treeCode");
+      const sequenceBadge = document.getElementById("sequenceBadge");
+      const introText = document.getElementById("introText");
+      const tableHead = document.getElementById("tableHead");
+      const tableBody = document.getElementById("tableBody");
+      const orderRow = document.getElementById("orderRow");
+      const codeCard = document.getElementById("codeCard");
+      const playBtn = document.getElementById("playBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const speedRange = document.getElementById("speedRange");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const statusText = document.getElementById("statusText");
+      const codeNote = document.getElementById("codeNote");
+      const stackNote = document.getElementById("stackNote");
+      const currentMessage = document.getElementById("currentMessage");
+      const lifeTimeline = document.getElementById("lifeTimeline");
+      const callStack = document.getElementById("callStack");
+      const stepList = document.getElementById("stepList");
+
+      let steps = [];
+      let lifetimes = [];
+      let currentStep = 0;
+      let playing = false;
+      let timer = null;
+
+      function createSvgElement(name, attrs = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+      }
+
+      function edgeKey(from, to) {
+        return `${from}-${to}`;
+      }
+
+      function cloneTree(treeData) {
+        return treeData.map((items) => [...items]);
+      }
+
+      function buildChildren(treeData) {
+        return treeData.flatMap((items, from) => {
+          return items.map((to, index) => ({
+            from,
+            to,
+            side: index === 0 ? "left" : "right"
+          }));
+        });
+      }
+
+      function buildTraversalOrder(treeData, mode) {
+        const result = [];
+        const seen = new Set();
+
+        function visit(pos) {
+          if (seen.has(pos) || !treeData[pos]) return;
+          seen.add(pos);
+          if (mode === "preorder") result.push(pos);
+          if (mode === "inorder") {
+            if (treeData[pos][0] !== undefined) visit(treeData[pos][0]);
+            result.push(pos);
+            if (treeData[pos][1] !== undefined) visit(treeData[pos][1]);
+            return;
+          }
+          treeData[pos].forEach(visit);
+          if (mode === "postorder") result.push(pos);
+        }
+
+        visit(0);
+        return result;
+      }
+
+      function buildNodePositions(treeData) {
+        const positions = {};
+        const seen = new Set();
+        let maxDepth = 0;
+
+        function place(pos, depth, x) {
+          if (seen.has(pos) || !treeData[pos]) return;
+          seen.add(pos);
+          maxDepth = Math.max(maxDepth, depth);
+          positions[pos] = { x, depth };
+          const offset = Math.max(46, 178 / 2 ** depth);
+          (treeData[pos] ?? []).forEach((child, index) => {
+            place(child, depth + 1, x + (index === 0 ? -offset : offset));
+          });
+        }
+
+        place(0, 0, 380);
+
+        const yTop = 50;
+        const yBottom = 88;
+        const yGap = maxDepth === 0 ? 0 : Math.min(132, (560 - yTop - yBottom) / maxDepth);
+
+        return Object.fromEntries(Object.entries(positions).map(([id, pos]) => {
+          return [id, { x: pos.x, y: yTop + pos.depth * yGap }];
+        }));
+      }
+
+      function formatTree(treeData) {
+        const parts = treeData.map((items) => `[${items.join(", ")}]`);
+        if (parts.length <= 8) return `tree = [${parts.join(", ")}]`;
+        return `tree = [${parts.slice(0, 6).join(", ")},\n        ${parts.slice(6).join(", ")}]`;
+      }
+
+      function applyTreeVariant(index) {
+        const variantIndex = Number(index) || 0;
+        const variant = treeVariants[variantIndex] ?? treeVariants[0];
+        const config = traversalConfigs[traversalMode];
+        treeSelect.value = String(variantIndex);
+        traversalSelect.value = traversalMode;
+        tree = cloneTree(variant.data);
+        children = buildChildren(tree);
+        nodePositions = buildNodePositions(tree);
+        traversalOrder = buildTraversalOrder(tree, traversalMode);
+        treeCode.textContent = formatTree(tree);
+        sequenceBadge.textContent = `${config.label}: ${traversalOrder.join(" → ")}`;
+        introText.innerHTML = config.intro;
+        steps = buildSteps();
+        lifetimes = buildLifetimes(steps);
+        setStep(0);
+      }
+
+      function makeSnapshot(type, title, message, state, extra = {}) {
+        return {
+          type,
+          title,
+          message,
+          stack: [...state.stack],
+          order: [...state.order],
+          visited: [...state.visited],
+          line: extra.line,
+          current: extra.current ?? state.stack[state.stack.length - 1] ?? null,
+          next: extra.next ?? null,
+          activeEdge: extra.activeEdge ?? null,
+          tableCol: extra.tableCol ?? null,
+          tableRow: extra.tableRow ?? null,
+          badgeLine: extra.badgeLine ?? null,
+          childAccess: extra.childAccess ?? null,
+          loopDoneLine: extra.loopDoneLine ?? null,
+          missingSide: extra.missingSide ?? null,
+          status: extra.status ?? title
+        };
+      }
+
+      function buildSteps() {
+        const config = traversalConfigs[traversalMode];
+        const line = config.line;
+        const state = { stack: [], order: [], visited: [] };
+        const snapshots = [
+          makeSnapshot(
+            "start",
+            "search(0) を開始",
+            `${line.start}行目の search(0) を実行して、ルートから探索を始めます。`,
+            state,
+            { line: line.start, status: "search(0) 開始" }
+          )
+        ];
+
+        function appendNode(pos, message, appendLine = line.append) {
+          state.order.push(pos);
+          state.visited.push(pos);
+          snapshots.push(makeSnapshot(
+            "append",
+            `ノード ${pos} を追加`,
+            message,
+            state,
+            { line: appendLine, current: pos, tableCol: pos }
+          ));
+        }
+
+        function addReturnStep(pos, childList) {
+          const missingRight = childList.length === 1;
+          snapshots.push(makeSnapshot(
+            "return",
+            `search(${pos}) は消滅`,
+            childList.length === 0
+              ? `子がないため最後まで到達し、search(${pos}) は消滅して呼び出し元へ戻ります。`
+              : missingRight
+                ? `右の子がないことを確認したので、search(${pos}) は消滅し、1つ前の呼び出しへ戻ります。`
+                : `ノード ${pos} の子をすべて調べ終えたので search(${pos}) は消滅し、1つ前の呼び出しへ戻ります。`,
+            state,
+            {
+              line: line.return,
+              current: pos,
+              tableCol: pos,
+              status: "消滅"
+            }
+          ));
+        }
+
+        function addChildStep(pos, child, row, branchLine, callLine, childAccess) {
+          snapshots.push(makeSnapshot(
+            "loop",
+            `${row === "left" ? "左" : "右"}の子 ${child} を選ぶ`,
+            `${childAccess} の ${child} を取り出します。`,
+            state,
+            {
+              line: branchLine,
+              current: pos,
+              next: child,
+              activeEdge: edgeKey(pos, child),
+              tableCol: pos,
+              tableRow: row,
+              badgeLine: branchLine,
+              childAccess,
+              status: `${pos} → ${child}`
+            }
+          ));
+          snapshots.push(makeSnapshot(
+            "call",
+            `search(${child}) を呼ぶ`,
+            `子ノード ${child} に進むため、search(${child}) を再帰呼び出しします。`,
+            state,
+            {
+              line: callLine,
+              current: pos,
+              next: child,
+              activeEdge: edgeKey(pos, child),
+              tableCol: pos,
+              tableRow: row,
+              badgeLine: branchLine,
+              childAccess,
+              status: `再帰呼び出し`
+            }
+          ));
+        }
+
+        function addDirectCallStep(pos, child, row, callLine, childAccess) {
+          snapshots.push(makeSnapshot(
+            "call",
+            `search(${child}) を呼ぶ`,
+            `次に ${childAccess} の ${child} へ進むため、search(${child}) を再帰呼び出しします。`,
+            state,
+            {
+              line: callLine,
+              current: pos,
+              next: child,
+              activeEdge: edgeKey(pos, child),
+              tableCol: pos,
+              tableRow: row,
+              badgeLine: callLine,
+              childAccess,
+              status: `再帰呼び出し`
+            }
+          ));
+        }
+
+        function visit(pos, from = null, row = null) {
+          state.stack.push(pos);
+          snapshots.push(makeSnapshot(
+            "enter",
+            `search(${pos}) に入る`,
+            `ノード ${pos} を引数 pos として、search の処理を開始します。`,
+            state,
+            {
+              line: line.enter,
+              current: pos,
+              activeEdge: from !== null ? edgeKey(from, pos) : null,
+              tableCol: pos
+            }
+          ));
+
+          if (traversalMode === "preorder") {
+            appendNode(pos, `訪問したので node_order.append(${pos}) を実行します。`);
+          }
+
+          const childList = tree[pos] ?? [];
+          if (childList.length === 0) {
+            snapshots.push(makeSnapshot(
+              "leaf",
+              `ノード ${pos} は終端`,
+              `tree[${pos}] は空なので、for 文の中には入りません。`,
+              state,
+              { line: line.loop, current: pos, tableCol: pos, status: "子なし" }
+            ));
+          }
+
+          childList.forEach((child, childIndex) => {
+            const row = childIndex === 0 ? "left" : "right";
+            snapshots.push(makeSnapshot(
+              "loop",
+              `${row === "left" ? "左" : "右"}の子 ${child} を選ぶ`,
+              `for 文で tree[${pos}] の ${childIndex + 1} 番目の子 ${child} を取り出します。`,
+              state,
+              {
+                line: line.loop,
+                current: pos,
+                next: child,
+                activeEdge: edgeKey(pos, child),
+                tableCol: pos,
+                tableRow: row,
+                status: `${pos} → ${child}`
+              }
+            ));
+            snapshots.push(makeSnapshot(
+              "call",
+              `search(${child}) を呼ぶ`,
+              `子ノード ${child} に進むため、search(${child}) を再帰呼び出しします。`,
+              state,
+              {
+                line: line.call,
+                current: pos,
+                next: child,
+                activeEdge: edgeKey(pos, child),
+                tableCol: pos,
+                tableRow: row,
+                status: `再帰呼び出し`
+              }
+            ));
+            visit(child, pos, row);
+          });
+
+          if (childList.length > 0) {
+            const missingRight = childList.length === 1;
+            if (missingRight) {
+              snapshots.push(makeSnapshot(
+                "missing-right",
+                `ノード ${pos} に右の子はない`,
+                `tree[${pos}] に右の子はありません。i に NaN が入るのではなく、次の i が作られません。`,
+                state,
+                {
+                  line: line.loop,
+                  current: pos,
+                  tableCol: pos,
+                  tableRow: "right",
+                  missingSide: "right",
+                  status: "右の子なし"
+                }
+              ));
+            }
+          }
+
+          if (traversalMode === "postorder") {
+            appendNode(
+              pos,
+              childList.length === 0
+                ? `子がないので、最後に node_order.append(${pos}) を実行します。`
+                : `子ノードをすべて調べ終えたので、node_order.append(${pos}) を実行します。`
+            );
+          }
+
+          const missingRight = childList.length === 1;
+          snapshots.push(makeSnapshot(
+            "return",
+            `search(${pos}) は消滅`,
+            childList.length === 0
+              ? `子がないため最後まで到達し、search(${pos}) は消滅して呼び出し元へ戻ります。`
+              : missingRight
+                ? `右の子がないことを確認したので、search(${pos}) は消滅し、1つ前の呼び出しへ戻ります。`
+                : `ノード ${pos} の子をすべて調べ終えたので search(${pos}) は消滅し、1つ前の呼び出しへ戻ります。`,
+            state,
+            {
+              line: line.return,
+              current: pos,
+              tableCol: pos,
+              status: "消滅"
+            }
+          ));
+          state.stack.pop();
+        }
+
+        function visitInorder(pos, from = null, row = null) {
+          state.stack.push(pos);
+          snapshots.push(makeSnapshot(
+            "enter",
+            `search(${pos}) に入る`,
+            `ノード ${pos} を引数 pos として、search の処理を開始します。`,
+            state,
+            {
+              line: line.enter,
+              current: pos,
+              activeEdge: from !== null ? edgeKey(from, pos) : null,
+              tableCol: pos
+            }
+          ));
+
+          const childList = tree[pos] ?? [];
+          if (childList.length === 2) {
+            const [leftChild, rightChild] = childList;
+            addChildStep(pos, leftChild, "left", line.branch.two, line.callLines.leftTwo, "tree[pos][0]");
+            visitInorder(leftChild, pos, "left");
+            appendNode(pos, `左の子を調べ終えたので、node_order.append(${pos}) を実行します。`, line.appendLines.two);
+            addDirectCallStep(pos, rightChild, "right", line.callLines.rightTwo, "tree[pos][1]");
+            visitInorder(rightChild, pos, "right");
+          } else if (childList.length === 1) {
+            const leftChild = childList[0];
+            addChildStep(pos, leftChild, "left", line.branch.one, line.callLines.one, "tree[pos][0]");
+            visitInorder(leftChild, pos, "left");
+            appendNode(pos, `左の子を調べ終えたので、node_order.append(${pos}) を実行します。`, line.appendLines.one);
+          } else {
+            snapshots.push(makeSnapshot(
+              "leaf",
+              `ノード ${pos} は終端`,
+              `tree[${pos}] は空なので、子ノードはありません。この後 node_order.append(${pos}) を実行します。`,
+              state,
+              { line: line.branch.none, current: pos, tableCol: pos, status: "子なし" }
+            ));
+            appendNode(pos, `子がないので、node_order.append(${pos}) を実行します。`, line.appendLines.none);
+          }
+
+          addReturnStep(pos, childList);
+          state.stack.pop();
+        }
+
+        if (traversalMode === "inorder") {
+          visitInorder(0);
+        } else {
+          visit(0);
+        }
+        snapshots.push(makeSnapshot(
+          "done",
+          "探索完了",
+          `すべての再帰呼び出しが終わり、${config.label}の node_order が完成しました。`,
+          state,
+          { line: line.start, current: null, status: "完了" }
+        ));
+        return snapshots;
+      }
+
+      function buildLifetimes(stepItems) {
+        const byNode = new Map();
+        stepItems.forEach((step, index) => {
+          step.stack.forEach((pos, depth) => {
+            if (!byNode.has(pos)) {
+              byNode.set(pos, {
+                pos,
+                birth: index,
+                death: index,
+                depth
+              });
+            }
+            const lifetime = byNode.get(pos);
+            lifetime.death = index;
+          });
+        });
+        return [...byNode.values()].sort((a, b) => a.birth - b.birth);
+      }
+
+      function renderTree(step) {
+        treeSvg.innerHTML = "";
+        const edgeLayer = createSvgElement("g");
+        const labelLayer = createSvgElement("g");
+        const nodeLayer = createSvgElement("g");
+
+        const visitedSet = new Set(step.visited);
+        const stackSet = new Set(step.stack);
+
+        children.forEach(({ from, to, side }) => {
+          const key = edgeKey(from, to);
+          const start = nodePositions[from];
+          const end = nodePositions[to];
+          const line = createSvgElement("line", {
+            x1: start.x,
+            y1: start.y + 28,
+            x2: end.x,
+            y2: end.y - 28,
+            class: `edge ${side}`
+          });
+          if (visitedSet.has(to)) line.classList.add("done");
+          if (step.activeEdge === key) line.classList.add("active");
+          if (step.activeEdge && step.activeEdge !== key) line.classList.add("dim");
+          edgeLayer.appendChild(line);
+
+          const label = createSvgElement("text", {
+            x: (start.x + end.x) / 2 + (side === "left" ? -8 : 8),
+            y: (start.y + end.y) / 2 - 8,
+            class: `edge-label ${side}`
+          });
+          label.textContent = side === "left" ? "L" : "R";
+          labelLayer.appendChild(label);
+        });
+
+        Object.entries(nodePositions).sort(([a], [b]) => Number(a) - Number(b)).forEach(([idText, pos]) => {
+          const id = Number(idText);
+          const group = createSvgElement("g", {
+            id: `node-${id}`,
+            class: `node scope-${id}`,
+            transform: `translate(${pos.x} ${pos.y})`
+          });
+          if (visitedSet.has(id)) group.classList.add("visited");
+          if (step.next === id) group.classList.add("next");
+          if (step.current === id && step.type !== "return") group.classList.add("current");
+          if (step.current === id && step.type === "return") group.classList.add("returning");
+          if (stackSet.has(id)) group.setAttribute("aria-label", `search(${id}) の呼び出し中`);
+
+          group.appendChild(createSvgElement("circle", { r: 28 }));
+          const text = createSvgElement("text");
+          text.textContent = id;
+          group.appendChild(text);
+          nodeLayer.appendChild(group);
+        });
+
+        treeSvg.append(edgeLayer, labelLayer, nodeLayer);
+      }
+
+      function renderTable(step) {
+        const headers = ["親", ...tree.map((_, index) => index)];
+        tableHead.innerHTML = `<tr>${headers.map((value, index) => {
+          const isActive = index > 0 && index - 1 === step.tableCol;
+          return `<th class="${isActive ? "active-col" : ""}">${value}</th>`;
+        }).join("")}</tr>`;
+
+        const left = tree.map((items) => items[0] ?? NaN);
+        const right = tree.map((items) => items[1] ?? NaN);
+        const rows = [
+          { id: "left", label: "左の子", values: left, activeClass: "active-left" },
+          { id: "right", label: "右の子", values: right, activeClass: "active-right" }
+        ];
+
+        tableBody.innerHTML = rows.map((row) => {
+          const cells = row.values.map((value, index) => {
+            const activeCol = index === step.tableCol;
+            const activeChild = activeCol && row.id === step.tableRow;
+            const isEmpty = Number.isNaN(value);
+            const activeEmpty = activeCol && isEmpty && (step.type === "leaf" || step.type === "missing-right");
+            const display = Number.isNaN(value) ? "NaN" : String(value);
+            const classes = [
+              isEmpty ? "empty" : "",
+              activeCol ? row.activeClass : "",
+              activeChild || activeEmpty ? "active-moving" : ""
+            ].filter(Boolean).join(" ");
+            return `<td class="${classes}">${display}</td>`;
+          }).join("");
+          return `<tr class="${row.id}-row"><td>${row.label}</td>${cells}</tr>`;
+        }).join("");
+      }
+
+      function renderOrder(step) {
+        const currentValue = step.type === "append" ? step.current : null;
+        orderRow.innerHTML = step.order.map((value, index) => {
+          const classes = ["order-slot"];
+          if (value === currentValue && index === step.order.length - 1) classes.push("current");
+          return `<span class="${classes.join(" ")}">${value}</span>`;
+        }).join("");
+      }
+
+      function renderCode(step) {
+        const activeLine = step.line;
+        const config = traversalConfigs[traversalMode];
+        const codeLines = config.lines;
+        const lineMap = config.line;
+        const scopeEnd = lineMap.scopeEnd ?? lineMap.return;
+        codeCard.innerHTML = codeLines.map((line) => {
+          const classes = ["code-line"];
+          if (step.current !== null && line.no >= lineMap.enter && line.no <= scopeEnd) {
+            classes.push("current-scope", `scope-${step.current}`);
+          }
+          if (line.no === activeLine) classes.push("active");
+          const posBadge = line.no === lineMap.enter && step.current !== null
+            ? `<span class="code-pos-badge scope-${step.current}">現在の pos = ${step.current}</span>`
+            : "";
+          const childBadgeLine = step.badgeLine ?? lineMap.loop;
+          const childLabel = step.tableRow === "right" ? "右の子" : "左の子";
+          const childBadgeText = traversalMode === "inorder"
+            ? `対象 = ${step.childAccess ?? "tree[pos]"} = ${step.next}（${childLabel}）`
+            : `現在の i = ${step.next}（${childLabel}）`;
+          const iBadge = line.no === childBadgeLine && (step.type === "loop" || step.type === "call") && step.next !== null
+            ? `<span class="code-i-badge ${step.tableRow === "right" ? "right-child" : ""}">${childBadgeText}</span>`
+            : "";
+          const appendBubble = step.type === "append" && line.no === step.line
+            ? `<span class="code-append-bubble">追加</span>`
+            : "";
+          const skipBubble = step.type === "leaf" && line.no === step.line
+            ? `<span class="code-skip-bubble">子なし</span>`
+            : "";
+          const missingRightText = traversalMode === "inorder" ? "右の子なし" : "右の子なし（iなし）";
+          const missingRightBubble = step.type === "missing-right" && line.no === step.line
+            ? `<span class="code-skip-bubble">${missingRightText}</span>`
+            : "";
+          const loopDoneLine = step.loopDoneLine ?? (traversalMode !== "inorder" ? lineMap.loop : null);
+          const loopDoneBubble = (step.type === "return" || (traversalMode === "postorder" && step.type === "append")) && line.no === loopDoneLine
+            ? `<span class="code-loop-done-bubble">for文は実行済み</span>`
+            : "";
+          const returnBubble = step.type === "return" && line.no === lineMap.return
+            ? `<span class="code-return-bubble">search(${step.current}) は消滅</span>`
+            : "";
+          return `<span class="${classes.join(" ")}"><span class="line-no">${line.no}</span>${line.html}${posBadge}${iBadge}${appendBubble}${skipBubble}${missingRightBubble}${loopDoneBubble}${returnBubble}</span>`;
+        }).join("");
+        codeNote.textContent = `line ${activeLine || "-"}`;
+      }
+
+      function renderStack(step) {
+        callStack.innerHTML = "";
+        if (step.stack.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty-stack";
+          empty.textContent = "空";
+          callStack.appendChild(empty);
+          return;
+        }
+        step.stack.forEach((value, index) => {
+          const frame = document.createElement("div");
+          frame.className = "call-frame" + (index === step.stack.length - 1 ? " top" : "");
+          frame.textContent = `search(${value})`;
+          callStack.appendChild(frame);
+        });
+      }
+
+      function renderLifetimes(step, stepIndex) {
+        const visible = lifetimes.filter((lifetime) => lifetime.birth <= stepIndex);
+        if (visible.length === 0) {
+          lifeTimeline.classList.remove("dense");
+          lifeTimeline.innerHTML = `<div class="life-empty">search はまだ生まれていません</div>`;
+          return;
+        }
+
+        lifeTimeline.classList.toggle("dense", visible.length > 9);
+        lifeTimeline.innerHTML = visible.map((lifetime) => {
+          const dead = stepIndex >= lifetime.death;
+          const alive = step.stack.includes(lifetime.pos) && !dead;
+          const current = step.current === lifetime.pos;
+          const span = Math.max(1, lifetime.death - lifetime.birth);
+          const width = Math.min(158, 34 + span * 5);
+          const stateText = dead ? "消滅" : current ? "アクティブ" : "生存中";
+          const classes = [
+            "life-row",
+            `scope-${lifetime.pos}`,
+            alive ? "alive" : "",
+            dead ? "dead" : "",
+            current ? "current" : ""
+          ].filter(Boolean).join(" ");
+          return `
+            <div class="${classes}" style="--life-depth: ${lifetime.depth}; --life-width: ${width}px">
+              <span class="life-name">search(${lifetime.pos})</span>
+              <span class="life-flow">
+                <span class="life-birth">誕生</span>
+                <span class="life-line"></span>
+                <span class="life-state">${stateText}</span>
+              </span>
+            </div>
+          `;
+        }).join("");
+      }
+
+      function renderStepList() {
+        stepList.innerHTML = steps.map((step, index) => {
+          return `
+            <li class="step-item ${index === currentStep ? "active" : ""}" data-index="${index}">
+              <span class="step-no">${index}</span>
+              <span class="step-main">
+                <span class="step-title">${step.title}</span>
+                <span class="step-meta">行 ${step.line || "-"} / ${step.order.length ? step.order.join(" → ") : "未追加"}</span>
+              </span>
+            </li>
+          `;
+        }).join("");
+
+        stepList.querySelectorAll(".step-item").forEach((item) => {
+          item.addEventListener("click", () => {
+            stopPlaying();
+            setStep(Number(item.dataset.index));
+          });
+        });
+
+        const active = stepList.querySelector(".step-item.active");
+        active?.scrollIntoView({ block: "nearest" });
+      }
+
+      function setStep(index) {
+        currentStep = Math.max(0, Math.min(index, steps.length - 1));
+        const step = steps[currentStep];
+        renderTree(step);
+        renderTable(step);
+        renderOrder(step);
+        renderCode(step);
+        renderStack(step);
+        renderLifetimes(step, currentStep);
+        renderStepList();
+        currentMessage.textContent = step.message;
+        statusText.textContent = step.status;
+        stackNote.textContent = step.stack.length ? `深さ ${step.stack.length}` : "call stack";
+        stepCounter.textContent = `手順 ${currentStep} / ${steps.length - 1}`;
+        progressBar.style.width = `${(currentStep / (steps.length - 1)) * 100}%`;
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = currentStep >= steps.length - 1;
+        if (currentStep >= steps.length - 1) stopPlaying();
+      }
+
+      function stepForward() {
+        setStep(currentStep + 1);
+      }
+
+      function stepBack() {
+        setStep(currentStep - 1);
+      }
+
+      function stopPlaying() {
+        playing = false;
+        clearInterval(timer);
+        timer = null;
+        playBtn.textContent = "▶ 再生";
+      }
+
+      function startPlaying() {
+        if (currentStep >= steps.length - 1) setStep(0);
+        playing = true;
+        playBtn.textContent = "⏸ 停止";
+        timer = setInterval(stepForward, Number(speedRange.value));
+      }
+
+      function togglePlay() {
+        if (playing) {
+          stopPlaying();
+        } else {
+          startPlaying();
+        }
+      }
+
+      playBtn.addEventListener("click", togglePlay);
+      nextBtn.addEventListener("click", () => {
+        stopPlaying();
+        stepForward();
+      });
+      prevBtn.addEventListener("click", () => {
+        stopPlaying();
+        stepBack();
+      });
+      resetBtn.addEventListener("click", () => {
+        stopPlaying();
+        setStep(0);
+      });
+      treeSelect.addEventListener("change", () => {
+        stopPlaying();
+        applyTreeVariant(treeSelect.value);
+      });
+      traversalSelect.addEventListener("change", () => {
+        stopPlaying();
+        traversalMode = traversalSelect.value;
+        applyTreeVariant(treeSelect.value);
+      });
+      speedRange.addEventListener("input", () => {
+        if (!playing) return;
+        stopPlaying();
+        startPlaying();
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight") {
+          event.preventDefault();
+          stopPlaying();
+          stepForward();
+        }
+        if (event.key === "ArrowLeft") {
+          event.preventDefault();
+          stopPlaying();
+          stepBack();
+        }
+        if (event.key === " ") {
+          event.preventDefault();
+          togglePlay();
+        }
+      });
+
+      applyTreeVariant(0);
+    </script>
+  </body>
+</html>

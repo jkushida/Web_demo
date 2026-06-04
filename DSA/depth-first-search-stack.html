@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>深さ優先探索とスタック</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #d6deeb;
+        --soft-line: #e6ebf2;
+        --primary: #2563eb;
+        --primary-soft: #dbeafe;
+        --orange: #ea7a1a;
+        --orange-soft: #fff0dc;
+        --green: #16803c;
+        --green-soft: #dcfce7;
+        --red: #c2410c;
+        --red-soft: #ffedd5;
+        --code-bg: #111827;
+        --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      header {
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+        padding: 4px 12px 5px;
+      }
+
+      header p {
+        margin: 0 0 2px;
+        font-size: 11px;
+      }
+
+      header a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      header a:hover {
+        text-decoration: underline;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      main {
+        width: min(1440px, 100%);
+        min-height: 0;
+        height: 100%;
+        margin: 0 auto;
+        padding: 6px 8px 8px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      .intro {
+        padding: 6px 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .mode-badge {
+        padding: 5px 9px;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        background: var(--orange-soft);
+        color: #9a4312;
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .controls {
+        padding: 6px 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .button-row,
+      .setting-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover {
+        background: #f1f5f9;
+      }
+
+      button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      input[type="range"] {
+        width: 150px;
+        accent-color: var(--primary);
+      }
+
+      .step-counter {
+        min-width: 114px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .progress-wrap {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--orange));
+        transition: width 0.2s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(560px, 1fr) minmax(320px, 400px);
+        gap: 8px;
+        align-items: stretch;
+      }
+
+      .visual-panel {
+        min-width: 0;
+        min-height: 0;
+        padding: 8px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .status-text {
+        color: var(--primary);
+        font-size: 13px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .graph-stage {
+        position: relative;
+        min-height: 0;
+        height: 100%;
+        overflow: hidden;
+        border: 1px solid var(--soft-line);
+        border-radius: 9px;
+        background:
+          linear-gradient(180deg, rgba(255, 240, 220, 0.82) 0 30%, rgba(255, 255, 255, 0.96) 30% 100%),
+          #fff;
+      }
+
+      svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .edge {
+        stroke: #4b5563;
+        stroke-width: 6;
+        stroke-linecap: round;
+        opacity: 0.88;
+        transition: stroke 0.25s ease, opacity 0.25s ease, stroke-dasharray 0.25s ease;
+      }
+
+      .edge.on-stack {
+        stroke: var(--primary);
+        opacity: 1;
+      }
+
+      .edge.backtrack {
+        stroke: var(--red);
+        stroke-dasharray: 12 10;
+        animation: dashMove 0.7s linear infinite;
+      }
+
+      @keyframes dashMove {
+        to {
+          stroke-dashoffset: -22;
+        }
+      }
+
+      .node {
+        cursor: pointer;
+      }
+
+      .node circle {
+        fill: #fff6ea;
+        stroke: #f59e0b;
+        stroke-width: 6;
+        filter: drop-shadow(0 7px 10px rgba(234, 122, 26, 0.28));
+        transition: fill 0.22s ease, stroke 0.22s ease, r 0.22s ease, opacity 0.22s ease;
+      }
+
+      .node text {
+        fill: #374151;
+        font-size: 32px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+      }
+
+      .node.discovered circle {
+        fill: var(--orange-soft);
+      }
+
+      .node.on-stack circle {
+        fill: var(--primary-soft);
+        stroke: var(--primary);
+      }
+
+      .node.current circle {
+        fill: #fff7ad;
+        stroke: #d97706;
+        r: 45;
+        animation: nodePulse 0.9s ease-in-out infinite;
+      }
+
+      .node.done circle {
+        fill: var(--green-soft);
+        stroke: var(--green);
+      }
+
+      .node.next circle {
+        stroke-dasharray: 10 7;
+      }
+
+      @keyframes nodePulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.04);
+        }
+      }
+
+      .node .visit-ring {
+        fill: none;
+        stroke: var(--orange);
+        stroke-width: 5;
+        opacity: 0;
+        transition: opacity 0.22s ease;
+      }
+
+      .node.current .visit-ring,
+      .node.done .visit-ring {
+        opacity: 1;
+      }
+
+      .floating-note {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        max-width: min(620px, calc(100% - 24px));
+        padding: 6px 8px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #1f2937;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.5;
+      }
+
+      .side-grid {
+        min-width: 0;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: minmax(245px, 0.9fr) minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .stack-panel,
+      .steps-panel,
+      .code-panel {
+        padding: 8px;
+      }
+
+      .stack-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(148px, 1fr) auto auto auto;
+        gap: 4px;
+      }
+
+      .stack-action {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .stack-action.push {
+        color: var(--orange);
+      }
+
+      .stack-action.pop {
+        color: var(--primary);
+      }
+
+      .stack-action.done {
+        color: var(--green);
+      }
+
+      .stack-area {
+        position: relative;
+        min-height: 150px;
+        display: grid;
+        align-content: end;
+        justify-items: center;
+        padding: 12px 16px 8px;
+        border-radius: 8px;
+        background: #fbfdff;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+
+      .stack-body {
+        position: relative;
+        z-index: 1;
+        width: min(132px, 48vw);
+        min-height: 116px;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        border-left: 5px solid #111827;
+        border-right: 5px solid #111827;
+        border-bottom: 5px solid #111827;
+        padding: 4px;
+      }
+
+      .stack-empty {
+        margin: auto;
+        color: var(--muted);
+        font-size: 16px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .stack-item {
+        height: 30px;
+        border: 1px solid #2b6cb0;
+        background: #dcfce7;
+        color: #0070c0;
+        display: grid;
+        place-items: center;
+        font-size: 19px;
+        font-style: italic;
+        font-weight: 900;
+        animation: itemFlash 0.42s ease-out;
+      }
+
+      .stack-item.top {
+        background: #d1fae5;
+        outline: 3px solid rgba(37, 99, 235, 0.22);
+      }
+
+      @keyframes itemFlash {
+        0%, 100% { filter: none; }
+        45% { filter: brightness(1.14); transform: translateY(-2px); }
+      }
+
+      .stack-arrow {
+        position: absolute;
+        left: 50%;
+        top: 12px;
+        transform: translateX(-50%);
+        display: none;
+        font-size: 44px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+      }
+
+      .stack-arrow.push {
+        color: #fb923c;
+      }
+
+      .stack-arrow.pop {
+        color: #3b82f6;
+      }
+
+      .stack-area.is-push .stack-arrow.push,
+      .stack-area.is-pop .stack-arrow.pop {
+        display: block;
+        animation: arrowMove 0.75s ease-in-out infinite;
+      }
+
+      @keyframes arrowMove {
+        0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.7; }
+        50% { transform: translateX(-50%) translateY(10px); opacity: 1; }
+      }
+
+      .stack-area.is-pop .stack-arrow.pop {
+        animation-name: arrowPop;
+      }
+
+      @keyframes arrowPop {
+        0%, 100% { transform: translateX(-50%) translateY(10px); opacity: 0.7; }
+        50% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+
+      .stack-caption {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .stack-meta {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .meta-card {
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .meta-label {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .meta-value {
+        min-height: 18px;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .action-value.push {
+        color: var(--primary);
+      }
+
+      .action-value.pop {
+        color: var(--red);
+      }
+
+      .action-value.done {
+        color: var(--green);
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px 10px;
+        margin-top: 0;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .legend i {
+        width: 12px;
+        height: 12px;
+        border: 2px solid;
+        border-radius: 999px;
+        display: inline-block;
+      }
+
+      .legend .cur {
+        background: #fff7ad;
+        border-color: #d97706;
+      }
+
+      .legend .stk {
+        background: var(--primary-soft);
+        border-color: var(--primary);
+      }
+
+      .legend .fin {
+        background: var(--green-soft);
+        border-color: var(--green);
+      }
+
+      .steps-list {
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 5px;
+        min-height: 0;
+        max-height: none;
+        overflow: auto;
+      }
+
+      .steps-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 8px;
+        align-items: start;
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .step-item:hover {
+        border-color: #bfdbfe;
+        background: #f8fbff;
+      }
+
+      .step-item.active {
+        border-color: var(--primary);
+        background: #eff6ff;
+      }
+
+      .step-no {
+        width: 24px;
+        height: 24px;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #4b5563;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .step-item.active .step-no {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .step-title {
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.25;
+      }
+
+      .step-note {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .bottom-grid {
+        display: none;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+        gap: 10px;
+      }
+
+      .code-panel {
+        overflow: hidden;
+      }
+
+      .code-lines {
+        margin: 8px 0 0;
+        padding: 10px;
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: #dbeafe;
+        font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        overflow: auto;
+      }
+
+      .code-line {
+        display: block;
+        padding: 1px 6px;
+        border-radius: 5px;
+        white-space: pre;
+      }
+
+      .code-line.active {
+        background: #1e40af;
+        color: #fff;
+      }
+
+      .code-comment {
+        color: #93c5fd;
+      }
+
+      .explain-panel {
+        padding: 10px 12px;
+      }
+
+      .explain-panel p {
+        margin: 8px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .mini-flow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+
+      .pill {
+        padding: 5px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 999px;
+        background: #fff;
+        color: #344054;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .pill strong {
+        color: var(--orange);
+      }
+
+      @media (max-width: 980px) {
+        html,
+        body {
+          height: auto;
+          min-height: 100%;
+          overflow: auto;
+        }
+
+        body {
+          display: block;
+        }
+
+        main {
+          height: auto;
+        }
+
+        .intro,
+        .controls,
+        .workspace,
+        .bottom-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .step-counter {
+          text-align: left;
+        }
+
+        .visual-panel {
+          grid-template-rows: auto minmax(330px, 1fr);
+        }
+
+        .graph-stage,
+        svg {
+          min-height: 330px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        main {
+          padding: 8px;
+        }
+
+        h1 {
+          font-size: 18px;
+        }
+
+        .stack-meta {
+          grid-template-columns: 1fr;
+        }
+
+        .stack-area {
+          min-height: 204px;
+          margin-top: 4px;
+        }
+
+        .floating-note {
+          position: static;
+          max-width: none;
+          margin: 0 8px 8px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>深さ優先探索（DFS）とスタック</h1>
+    </header>
+
+    <main>
+      <section class="panel intro">
+        <p>
+          木を左から右へ深く探索し、行き止まりではスタックから取り出して親へ戻ります。ここでは再帰呼び出しと同じ動きを、明示的なスタック操作として表示します。
+        </p>
+        <div class="mode-badge">探索順: A → B → D → E → C → F → G</div>
+      </section>
+
+      <section class="panel controls" aria-label="操作">
+        <div class="button-row">
+          <button id="playBtn" class="primary" type="button">▶ 再生</button>
+          <button id="prevBtn" type="button">← 前へ</button>
+          <button id="nextBtn" type="button">次へ →</button>
+          <button id="resetBtn" type="button">↺ リセット</button>
+          <label for="speedRange">速度
+            <input id="speedRange" type="range" min="350" max="1600" step="50" value="850" />
+          </label>
+        </div>
+        <div class="setting-row">
+          <span id="stepCounter" class="step-counter">手順 0 / 14</span>
+        </div>
+        <div class="progress-wrap" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <div class="panel visual-panel">
+          <div class="section-head">
+            <h2 class="section-title">探索木</h2>
+            <span id="statusText" class="status-text">開始前</span>
+          </div>
+          <div class="graph-stage">
+            <svg id="treeSvg" viewBox="0 0 760 430" role="img" aria-label="DFSの探索木">
+              <g id="edgeLayer"></g>
+              <g id="nodeLayer"></g>
+            </svg>
+            <div id="message" class="floating-note">空のスタックから開始します。再生または「次へ」で A を push します。</div>
+          </div>
+        </div>
+
+        <div class="side-grid">
+          <section class="panel stack-panel">
+            <div class="section-head">
+              <h2 class="section-title">スタック</h2>
+              <div id="actionValue" class="stack-action action-value">待機</div>
+            </div>
+            <div id="stackArea" class="stack-area" aria-label="スタック">
+              <div class="stack-arrow push">↓</div>
+              <div class="stack-arrow pop">↑</div>
+              <div id="stackBody" class="stack-body"></div>
+            </div>
+            <div class="stack-caption">上から Pop</div>
+            <div class="stack-meta">
+              <div class="meta-card">
+                <span class="meta-label">スタック内容</span>
+                <div id="stackValue" class="meta-value">空</div>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">次に調べる子</span>
+                <div id="nextValue" class="meta-value">A</div>
+              </div>
+            </div>
+            <div class="legend" aria-label="凡例">
+              <span><i class="cur"></i>現在位置</span>
+              <span><i class="stk"></i>スタック上</span>
+              <span><i class="fin"></i>探索完了</span>
+            </div>
+          </section>
+
+          <section class="panel steps-panel">
+            <div class="section-head">
+              <h2 class="section-title">操作ログ</h2>
+              <span class="status-text">クリックで移動</span>
+            </div>
+            <ol id="stepsList" class="steps-list"></ol>
+          </section>
+        </div>
+      </section>
+
+      <section class="bottom-grid">
+        <section class="panel explain-panel">
+          <h2 class="section-title">DFSの考え方</h2>
+          <p>
+            DFSは「進める子があれば深く進む」「進めなければ戻る」を繰り返します。スタックの一番上が現在位置で、子を見つけたら push、未訪問の子がなくなったら pop します。
+          </p>
+          <div class="mini-flow" aria-label="探索順">
+            <span class="pill"><strong>Push</strong> A</span>
+            <span class="pill"><strong>Push</strong> B</span>
+            <span class="pill"><strong>Push</strong> D</span>
+            <span class="pill"><strong>Pop</strong> D</span>
+            <span class="pill"><strong>Push</strong> E</span>
+            <span class="pill"><strong>Backtrack</strong> B</span>
+            <span class="pill"><strong>Push</strong> C</span>
+            <span class="pill"><strong>Push</strong> F</span>
+            <span class="pill"><strong>Push</strong> G</span>
+          </div>
+        </section>
+
+        <section class="panel code-panel">
+          <h2 class="section-title">明示的スタック版の擬似コード</h2>
+          <pre class="code-lines" aria-label="DFS擬似コード"><code id="pseudoCode"></code></pre>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const nodes = {
+        A: { x: 380, y: 72, children: ["B", "C"] },
+        B: { x: 225, y: 206, children: ["D", "E"] },
+        C: { x: 535, y: 206, children: ["F", "G"] },
+        D: { x: 125, y: 345, children: [] },
+        E: { x: 305, y: 345, children: [] },
+        F: { x: 465, y: 345, children: [] },
+        G: { x: 645, y: 345, children: [] }
+      };
+
+      const edges = [
+        ["A", "B"],
+        ["A", "C"],
+        ["B", "D"],
+        ["B", "E"],
+        ["C", "F"],
+        ["C", "G"]
+      ];
+
+      const snapshots = [
+        {
+          title: "開始前",
+          action: "待機",
+          actionKind: "",
+          stack: [],
+          current: null,
+          done: [],
+          discovered: [],
+          next: "A",
+          activeEdge: null,
+          backtrackEdge: null,
+          codeLine: 1,
+          message: "空のスタックから開始します。再生または「次へ」で A を push します。"
+        },
+        {
+          title: "手順1: Aを追加",
+          action: "Push A",
+          actionKind: "push",
+          stack: ["A"],
+          current: "A",
+          done: [],
+          discovered: ["A"],
+          next: "B",
+          activeEdge: null,
+          backtrackEdge: null,
+          codeLine: 2,
+          message: "開始ノード A をスタックに積みます。TOP は A です。"
+        },
+        {
+          title: "手順2: Bへ進む",
+          action: "Push B",
+          actionKind: "push",
+          stack: ["A", "B"],
+          current: "B",
+          done: [],
+          discovered: ["A", "B"],
+          next: "D",
+          activeEdge: ["A", "B"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "A の未訪問の子 B を見つけたので push し、さらに深く進みます。"
+        },
+        {
+          title: "手順3: Dへ進む",
+          action: "Push D",
+          actionKind: "push",
+          stack: ["A", "B", "D"],
+          current: "D",
+          done: [],
+          discovered: ["A", "B", "D"],
+          next: "なし",
+          activeEdge: ["B", "D"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "B の左の子 D を push します。D には子がないため、次は戻ります。"
+        },
+        {
+          title: "手順4: Dを取り出す",
+          action: "Pop D",
+          actionKind: "pop",
+          stack: ["A", "B"],
+          current: "B",
+          done: ["D"],
+          discovered: ["A", "B", "D"],
+          next: "E",
+          activeEdge: ["A", "B"],
+          backtrackEdge: ["B", "D"],
+          codeLine: 7,
+          message: "D は行き止まりなので pop します。スタックの TOP は親の B に戻ります。"
+        },
+        {
+          title: "手順5: Eへ進む",
+          action: "Push E",
+          actionKind: "push",
+          stack: ["A", "B", "E"],
+          current: "E",
+          done: ["D"],
+          discovered: ["A", "B", "D", "E"],
+          next: "なし",
+          activeEdge: ["B", "E"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "B にはまだ未訪問の子 E があるため、E を push して探索します。"
+        },
+        {
+          title: "手順6: Eを取り出す",
+          action: "Pop E",
+          actionKind: "pop",
+          stack: ["A", "B"],
+          current: "B",
+          done: ["D", "E"],
+          discovered: ["A", "B", "D", "E"],
+          next: "なし",
+          activeEdge: ["A", "B"],
+          backtrackEdge: ["B", "E"],
+          codeLine: 7,
+          message: "E も行き止まりです。E を pop して B へ戻ります。"
+        },
+        {
+          title: "手順7: Bを取り出す",
+          action: "Pop B",
+          actionKind: "pop",
+          stack: ["A"],
+          current: "A",
+          done: ["B", "D", "E"],
+          discovered: ["A", "B", "D", "E"],
+          next: "C",
+          activeEdge: null,
+          backtrackEdge: ["A", "B"],
+          codeLine: 7,
+          message: "B の子はすべて探索済みです。B を pop して A へ戻ります。"
+        },
+        {
+          title: "手順8: Cへ進む",
+          action: "Push C",
+          actionKind: "push",
+          stack: ["A", "C"],
+          current: "C",
+          done: ["B", "D", "E"],
+          discovered: ["A", "B", "D", "E", "C"],
+          next: "F",
+          activeEdge: ["A", "C"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "A の次の未訪問の子 C を push します。左側の部分木は完了しています。"
+        },
+        {
+          title: "手順9: Fへ進む",
+          action: "Push F",
+          actionKind: "push",
+          stack: ["A", "C", "F"],
+          current: "F",
+          done: ["B", "D", "E"],
+          discovered: ["A", "B", "D", "E", "C", "F"],
+          next: "なし",
+          activeEdge: ["C", "F"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "C の左の子 F を push します。F には子がないため、次は戻ります。"
+        },
+        {
+          title: "手順10: Fを取り出す",
+          action: "Pop F",
+          actionKind: "pop",
+          stack: ["A", "C"],
+          current: "C",
+          done: ["B", "D", "E", "F"],
+          discovered: ["A", "B", "D", "E", "C", "F"],
+          next: "G",
+          activeEdge: ["A", "C"],
+          backtrackEdge: ["C", "F"],
+          codeLine: 7,
+          message: "F を pop し、C に戻ります。まだ G が残っています。"
+        },
+        {
+          title: "手順11: Gへ進む",
+          action: "Push G",
+          actionKind: "push",
+          stack: ["A", "C", "G"],
+          current: "G",
+          done: ["B", "D", "E", "F"],
+          discovered: ["A", "B", "D", "E", "C", "F", "G"],
+          next: "なし",
+          activeEdge: ["C", "G"],
+          backtrackEdge: null,
+          codeLine: 5,
+          message: "C の右の子 G を push します。これで全ノードが発見されました。"
+        },
+        {
+          title: "手順12: Gを取り出す",
+          action: "Pop G",
+          actionKind: "pop",
+          stack: ["A", "C"],
+          current: "C",
+          done: ["B", "D", "E", "F", "G"],
+          discovered: ["A", "B", "D", "E", "C", "F", "G"],
+          next: "なし",
+          activeEdge: ["A", "C"],
+          backtrackEdge: ["C", "G"],
+          codeLine: 7,
+          message: "G を pop して C に戻ります。C の子はすべて探索済みです。"
+        },
+        {
+          title: "手順13: Cを取り出す",
+          action: "Pop C",
+          actionKind: "pop",
+          stack: ["A"],
+          current: "A",
+          done: ["B", "C", "D", "E", "F", "G"],
+          discovered: ["A", "B", "D", "E", "C", "F", "G"],
+          next: "なし",
+          activeEdge: null,
+          backtrackEdge: ["A", "C"],
+          codeLine: 7,
+          message: "C の部分木も完了したため、C を pop して A に戻ります。"
+        },
+        {
+          title: "手順14: Aを取り出して完了",
+          action: "Pop A",
+          actionKind: "done",
+          stack: [],
+          current: null,
+          done: ["A", "B", "C", "D", "E", "F", "G"],
+          discovered: ["A", "B", "D", "E", "C", "F", "G"],
+          next: "なし",
+          activeEdge: null,
+          backtrackEdge: null,
+          codeLine: 8,
+          message: "スタックが空になり、DFS が完了しました。探索順は A, B, D, E, C, F, G です。"
+        }
+      ];
+
+      const codeLines = [
+        "stack = []",
+        "push(stack, A)",
+        "while stack is not empty:",
+        "  v = top(stack)",
+        "  if v has an unvisited child u:",
+        "    push(stack, u)",
+        "  else:",
+        "    pop(stack)  # backtrack"
+      ];
+
+      const edgeLayer = document.getElementById("edgeLayer");
+      const nodeLayer = document.getElementById("nodeLayer");
+      const stackArea = document.getElementById("stackArea");
+      const stackBody = document.getElementById("stackBody");
+      const stepsList = document.getElementById("stepsList");
+      const pseudoCode = document.getElementById("pseudoCode");
+      const playBtn = document.getElementById("playBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const speedRange = document.getElementById("speedRange");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const statusText = document.getElementById("statusText");
+      const message = document.getElementById("message");
+      const actionValue = document.getElementById("actionValue");
+      const stackValue = document.getElementById("stackValue");
+      const nextValue = document.getElementById("nextValue");
+
+      let currentStep = 0;
+      let timer = null;
+
+      function createSvgElement(tag, attrs = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", tag);
+        Object.entries(attrs).forEach(([key, value]) => {
+          element.setAttribute(key, String(value));
+        });
+        return element;
+      }
+
+      function edgeKey(edge) {
+        return edge ? edge.join("-") : "";
+      }
+
+      function buildGraph() {
+        edges.forEach(([from, to]) => {
+          const a = nodes[from];
+          const b = nodes[to];
+          const line = createSvgElement("line", {
+            id: `edge-${from}-${to}`,
+            class: "edge",
+            x1: a.x,
+            y1: a.y,
+            x2: b.x,
+            y2: b.y
+          });
+          edgeLayer.appendChild(line);
+        });
+
+        Object.entries(nodes).forEach(([id, node]) => {
+          const group = createSvgElement("g", {
+            id: `node-${id}`,
+            class: "node",
+            transform: `translate(${node.x} ${node.y})`,
+            role: "button",
+            tabindex: 0,
+            "aria-label": `ノード ${id}`
+          });
+          const ring = createSvgElement("circle", { class: "visit-ring", r: 50 });
+          const circle = createSvgElement("circle", { r: 40 });
+          const text = createSvgElement("text", { y: 2 });
+          text.textContent = id;
+          group.appendChild(ring);
+          group.appendChild(circle);
+          group.appendChild(text);
+          group.addEventListener("click", () => jumpToNode(id));
+          group.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              jumpToNode(id);
+            }
+          });
+          nodeLayer.appendChild(group);
+        });
+      }
+
+      function renderCode(activeLine) {
+        pseudoCode.innerHTML = codeLines
+          .map((line, index) => {
+            const lineNo = index + 1;
+            const escaped = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const className = lineNo === activeLine ? "code-line active" : "code-line";
+            return `<span class="${className}">${String(lineNo).padStart(2, " ")}  ${escaped}</span>`;
+          })
+          .join("");
+      }
+
+      function buildSteps() {
+        stepsList.innerHTML = "";
+        snapshots.forEach((snapshot, index) => {
+          const item = document.createElement("li");
+          item.className = "step-item";
+          item.dataset.index = String(index);
+          item.innerHTML = `
+            <span class="step-no">${index}</span>
+            <span>
+              <span class="step-title">${snapshot.title}</span>
+              <span class="step-note">${snapshot.action} / stack: ${snapshot.stack.length ? snapshot.stack.join(" → ") : "空"}</span>
+            </span>
+          `;
+          item.addEventListener("click", () => {
+            stopAutoPlay();
+            setStep(index);
+          });
+          stepsList.appendChild(item);
+        });
+      }
+
+      function jumpToNode(id) {
+        const found = snapshots.findIndex((snapshot) => snapshot.current === id);
+        if (found >= 0) {
+          stopAutoPlay();
+          setStep(found);
+        }
+      }
+
+      function setStep(index) {
+        currentStep = Math.max(0, Math.min(index, snapshots.length - 1));
+        renderSnapshot();
+      }
+
+      function renderSnapshot() {
+        const snapshot = snapshots[currentStep];
+        const stackSet = new Set(snapshot.stack);
+        const doneSet = new Set(snapshot.done);
+        const discoveredSet = new Set(snapshot.discovered);
+        const activeEdge = edgeKey(snapshot.activeEdge);
+        const backtrackEdge = edgeKey(snapshot.backtrackEdge);
+
+        edges.forEach(([from, to]) => {
+          const edge = document.getElementById(`edge-${from}-${to}`);
+          const key = `${from}-${to}`;
+          edge.setAttribute("class", "edge");
+          if (stackSet.has(from) && stackSet.has(to)) edge.classList.add("on-stack");
+          if (key === activeEdge) edge.classList.add("on-stack");
+          if (key === backtrackEdge) edge.classList.add("backtrack");
+        });
+
+        Object.keys(nodes).forEach((id) => {
+          const node = document.getElementById(`node-${id}`);
+          node.setAttribute("class", "node");
+          if (discoveredSet.has(id)) node.classList.add("discovered");
+          if (stackSet.has(id)) node.classList.add("on-stack");
+          if (doneSet.has(id)) node.classList.add("done");
+          if (snapshot.current === id) node.classList.add("current");
+          if (snapshot.next === id) node.classList.add("next");
+        });
+
+        renderStack(snapshot);
+        renderCode(snapshot.codeLine);
+        renderMeta(snapshot);
+        renderProgress(snapshot);
+        syncStepList();
+      }
+
+      function renderStack(snapshot) {
+        const stack = snapshot.stack;
+        stackBody.innerHTML = "";
+        stack.forEach((id, index) => {
+          const item = document.createElement("div");
+          item.className = "stack-item";
+          if (index === stack.length - 1) item.classList.add("top");
+          item.textContent = id;
+          stackBody.appendChild(item);
+        });
+
+        if (stack.length === 0) {
+          stackBody.innerHTML = `<div class="stack-empty">空</div>`;
+        }
+
+        stackArea.classList.toggle("is-push", snapshot.actionKind === "push");
+        stackArea.classList.toggle("is-pop", snapshot.actionKind === "pop");
+      }
+
+      function renderMeta(snapshot) {
+        statusText.textContent = snapshot.title;
+        message.textContent = snapshot.message;
+        actionValue.textContent = snapshot.action;
+        actionValue.className = `stack-action action-value ${snapshot.actionKind}`;
+        stackValue.textContent = snapshot.stack.length ? snapshot.stack.join(" → ") : "空";
+        nextValue.textContent = snapshot.next;
+      }
+
+      function renderProgress() {
+        const maxStep = snapshots.length - 1;
+        stepCounter.textContent = `手順 ${currentStep} / ${maxStep}`;
+        progressBar.style.width = `${(currentStep / maxStep) * 100}%`;
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = currentStep === maxStep;
+      }
+
+      function syncStepList() {
+        stepsList.querySelectorAll(".step-item").forEach((item) => {
+          const isActive = Number(item.dataset.index) === currentStep;
+          item.classList.toggle("active", isActive);
+          if (isActive) keepStepVisible(item);
+        });
+      }
+
+      function keepStepVisible(item) {
+        const itemTop = item.offsetTop - stepsList.offsetTop;
+        const itemBottom = itemTop + item.offsetHeight;
+        const viewTop = stepsList.scrollTop;
+        const viewBottom = viewTop + stepsList.clientHeight;
+
+        if (itemTop < viewTop) {
+          stepsList.scrollTop = itemTop;
+        } else if (itemBottom > viewBottom) {
+          stepsList.scrollTop = itemBottom - stepsList.clientHeight;
+        }
+      }
+
+      function startAutoPlay() {
+        if (timer) return;
+        playBtn.textContent = "一時停止";
+        timer = window.setInterval(() => {
+          if (currentStep >= snapshots.length - 1) {
+            stopAutoPlay();
+            return;
+          }
+          setStep(currentStep + 1);
+        }, Number(speedRange.value));
+      }
+
+      function stopAutoPlay() {
+        if (!timer) return;
+        window.clearInterval(timer);
+        timer = null;
+        playBtn.textContent = "▶ 再生";
+      }
+
+      playBtn.addEventListener("click", () => {
+        if (timer) {
+          stopAutoPlay();
+          return;
+        }
+        if (currentStep >= snapshots.length - 1) setStep(0);
+        startAutoPlay();
+      });
+
+      prevBtn.addEventListener("click", () => {
+        stopAutoPlay();
+        setStep(currentStep - 1);
+      });
+
+      nextBtn.addEventListener("click", () => {
+        stopAutoPlay();
+        setStep(currentStep + 1);
+      });
+
+      resetBtn.addEventListener("click", () => {
+        stopAutoPlay();
+        setStep(0);
+      });
+
+      speedRange.addEventListener("input", () => {
+        if (timer) {
+          stopAutoPlay();
+          startAutoPlay();
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight") {
+          stopAutoPlay();
+          setStep(currentStep + 1);
+        } else if (event.key === "ArrowLeft") {
+          stopAutoPlay();
+          setStep(currentStep - 1);
+        } else if (event.key === " ") {
+          event.preventDefault();
+          playBtn.click();
+        }
+      });
+
+      buildGraph();
+      buildSteps();
+      renderSnapshot();
+    </script>
+  </body>
+</html>
