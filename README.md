@@ -1,6 +1,36 @@
-# Webデモ
+# Web_demo
 
-このリポジトリは、さまざまなウェブデモをまとめたものです。
+Educational web applications for computer science education.
+
+## Purpose
+
+This repository contains interactive web materials used in university courses.
+The demos help students learn algorithms, programming, machine learning, AI,
+media processing, and related computer science topics through hands-on
+visualization.
+
+## Features
+
+- Algorithm visualization
+- AI and machine learning demonstrations
+- Programming and data structure exercises
+- Interactive browser-based educational materials
+
+## Audience
+
+University students studying computer science, programming, and AI.
+
+## Website
+
+https://jkushida.github.io/Web_demo/index.html
+
+## License
+
+MIT License
+
+Original code and educational materials in this repository are released under
+the MIT License. Third-party libraries, models, and external resources used by
+individual demos remain subject to their respective licenses.
 
 ## 目次
 
@@ -27,6 +57,7 @@
   - [Sentinel Search Comparison](https://jkushida.github.io/Web_demo/DSA/sentinel-search.html) - 番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化
   - [Binary Search Visualization](https://jkushida.github.io/Web_demo/DSA/binary-search.html) - ソート済み配列からターゲットを絞り込む二分探索の過程を、ツリー状の可視化と擬似コードで表示
   - [Hash Search](https://jkushida.github.io/Web_demo/DSA/hash-search.html) - ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化
+  - [DFS Stack Animation](https://jkushida.github.io/Web_demo/DSA/depth-first-search-stack.html) - 深さ優先探索の探索順とスタックによるバックトラックを可視化
   - [Maze Search (BFS/DFS)](https://jkushida.github.io/Web_demo/DSA/maze-search.html) - 幅優先/深さ優先で迷路を探索。探索木とログを動的表示
 
 - **線形データ構造**
@@ -34,6 +65,7 @@
 
 - **木・グラフ**
   - [Huffman Coding](https://jkushida.github.io/Web_demo/DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
+  - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
   - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
   - [BST / AVL Rotation Visualizer](https://jkushida.github.io/Web_demo/DSA/bst-avl-rotation.html) - 同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化
 
