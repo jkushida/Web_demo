@@ -5,143 +5,692 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Heap Sort Visualizer</title>
     <style>
-      :root { --bg:#ffffff; --fg:#111827; --muted:#6b7280; --accent:#2563eb; --warn:#f59e0b; --err:#f43f5e; --ok:#16a34a; --tree-h: clamp(220px, 42vh, 420px); --log-h: clamp(120px, 28vh, 240px); }
-      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: var(--bg); color: var(--fg); }
-      header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
-      h1 { font-size: 18px; margin: 0; }
-      main { padding: 16px 20px; display: grid; gap: 16px; }
-      .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: center; }
-      .controls label { color: var(--muted); font-size: 12px; }
-      .controls input[type="range"] { width: 160px; accent-color: var(--accent); }
-      .controls button { background: #ffffff; color: #111827; border: 1px solid #d1d5db; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-      .controls button:hover { background: #f9fafb; border-color: #cbd5e1; }
-      .controls button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3); }
-      .controls button:disabled { opacity: .6; cursor: not-allowed; }
-      .viz-row { display: grid; grid-template-columns: minmax(240px, 30vw) 1fr; gap: 16px; align-items: stretch; }
-      @media (max-width: 900px) { .viz-row { grid-template-columns: 1fr; } }
-      .tree-wrap { height: var(--tree-h); border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; background: #ffffff; }
-      .explain { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; font-size: 14px; max-height: var(--tree-h); overflow: auto; }
-      .explain h2 { margin: 0 0 8px; font-size: 14px; }
-      .explain ul { margin: 0 0 8px 16px; padding: 0; }
-      .explain code { background: #f3f4f6; color: #111827; border: 1px solid #e5e7eb; }
-      /* tree styles */
+      :root {
+        --bg: #f6f8fb;
+        --panel: #ffffff;
+        --fg: #111827;
+        --muted: #64748b;
+        --line: #d8dee9;
+        --accent: #2563eb;
+        --accent-soft: #dbeafe;
+        --warn: #f59e0b;
+        --warn-soft: #fff7ed;
+        --err: #ef4444;
+        --err-soft: #fee2e2;
+        --fixed: #e0f2fe;
+        --fixed-border: #38bdf8;
+        --tree-h: clamp(300px, 48vh, 470px);
+        --log-h: clamp(82px, 14vh, 130px);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+        transition: background 180ms ease;
+      }
+      body.phase-build { background: #f0fdf4; }
+      body.phase-sort { background: #fff7ed; }
+      header {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        padding: 5px 12px;
+        border-bottom: 1px solid var(--line);
+        background: #fff;
+      }
+      header p { margin: 0; font-size: 12px; white-space: nowrap; }
+      h1 { font-size: 18px; margin: 0; line-height: 1.2; }
+      h2 { margin: 0; font-size: 14px; }
+      main {
+        width: min(1440px, 100%);
+        margin: 0 auto;
+        padding: 6px 10px;
+        display: grid;
+        gap: 4px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+        min-width: 0;
+      }
+      .guide {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 10px;
+      }
+      .guide ol {
+        margin: 0;
+        padding-left: 1.25em;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 3px 12px;
+        font-size: 12px;
+        line-height: 1.28;
+      }
+      .guide-note {
+        border: 2px solid var(--err);
+        padding: 4px 8px;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
+        background: #fff;
+      }
+      .green { color: #16a34a; font-weight: 800; }
+      .orange { color: #ea580c; font-weight: 800; }
+      .purple { color: #7c3aed; font-weight: 800; }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 6px;
+        align-items: center;
+        padding: 3px 8px;
+        min-width: 0;
+      }
+      .controls label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .control-field {
+        display: inline-flex;
+        gap: 4px;
+        align-items: center;
+        min-height: 24px;
+      }
+      .controls input[type="range"] {
+        width: 92px;
+        accent-color: var(--accent);
+      }
+      .controls button,
+      .log-actions button {
+        background: #ffffff;
+        color: #111827;
+        border: 1px solid #cbd5e1;
+        padding: 3px 7px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      #btnPlay { background: var(--accent); border-color: var(--accent); color: #fff; }
+      .controls button:hover,
+      .log-actions button:hover { background: #f8fafc; }
+      #btnPlay:hover { background: #1d4ed8; }
+      .controls button:focus-visible,
+      .log-actions button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+      }
+      .controls button:disabled { opacity: .55; cursor: not-allowed; }
+      .state-badge {
+        display: inline-flex;
+        gap: 6px;
+        align-items: baseline;
+        padding: 4px 8px;
+        border: 1px solid #dbe3ef;
+        border-radius: 7px;
+        background: #f8fafc;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      body.phase-build .state-badge {
+        border-color: #86efac;
+        background: #dcfce7;
+      }
+      body.phase-sort .state-badge {
+        border-color: #fdba74;
+        background: #ffedd5;
+      }
+      .state-badge strong { color: var(--fg); }
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 4px;
+      }
+      .array-panel { padding: 6px 10px; }
+      .array-view {
+        display: flex;
+        gap: 4px;
+        align-items: end;
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 0 0 4px;
+      }
+      .array-cell {
+        flex: 0 0 40px;
+        display: grid;
+        grid-template-rows: 15px 34px;
+        place-items: center;
+      }
+      .array-cell .idx {
+        color: #0070c0;
+        font-style: italic;
+        font-weight: 800;
+        font-size: 12px;
+      }
+      .array-cell .value {
+        width: 40px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        border: 2px solid #111827;
+        border-radius: 4px;
+        background: #fff;
+        font-size: 16px;
+        font-weight: 900;
+        line-height: 1;
+      }
+      .array-cell.compare .value { background: #fef3c7; border-color: var(--warn); }
+      .array-cell.swap .value { background: var(--err-soft); border-color: var(--err); color: #991b1b; }
+      .array-cell.fixed .value { background: var(--fixed); border-color: var(--fixed-border); }
+      .array-boundary {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      .message-box {
+        border: 1px solid #bfdbfe;
+        background: #eff6ff;
+        border-radius: 7px;
+        padding: 5px 8px;
+        font-weight: 800;
+        line-height: 1.3;
+        font-size: 13px;
+      }
+      body.phase-build .message-box {
+        border-color: #86efac;
+        background: #f0fdf4;
+      }
+      body.phase-sort .message-box {
+        border-color: #fdba74;
+        background: #fff7ed;
+      }
+      .swap-popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        width: max-content;
+        max-width: calc(100vw - 28px);
+        transform: translate(-50%, -50%);
+        padding: 5px 10px;
+        border: 2px solid var(--err);
+        border-radius: 999px;
+        background: #fff4f4;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.18);
+        color: var(--err);
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.2;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .swap-popup.show {
+        animation: swap-pop 1400ms ease forwards;
+      }
+      .swap-popup code {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #b91c1c;
+        font-size: 11px;
+        font-weight: 900;
+      }
+      .swap-popup .role {
+        color: #991b1b;
+        font-weight: 900;
+      }
+      .swap-popup .arrow {
+        color: #2563eb;
+        padding: 0 4px;
+      }
+      @keyframes swap-pop {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.82);
+        }
+        18% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1.08);
+        }
+        70% {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, calc(-50% - 10px)) scale(0.96);
+        }
+      }
+      .viz-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(540px, 38vw);
+        gap: 6px;
+        align-items: stretch;
+        min-width: 0;
+      }
+      .tree-wrap {
+        min-height: 0;
+        height: var(--tree-h);
+        padding: 7px;
+      }
+      .tree-status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 0 0 4px;
+      }
+      .tree-canvas {
+        height: calc(100% - 58px);
+        min-height: 240px;
+      }
       #heapTree { width: 100%; height: 100%; display: block; }
       .edge { stroke: #9ca3af; stroke-width: 2; }
-      .edge.active { stroke-width: 3; }
-      .node { fill: #e5e7eb; stroke: #9ca3af; stroke-width: 1; }
-      .node.compare { fill: var(--warn); }
-      .node.swap { fill: var(--err); }
-      .node.heap-fixed { fill: #f3f4f6; }
-      .node-label { font-size: 10px; fill: #111827; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
-      .idx-label { font-size: 9px; fill: #6b7280; text-anchor: middle; dominant-baseline: hanging; pointer-events: none; }
-      .legend { display: flex; gap: 16px; color: var(--muted); font-size: 12px; }
-      .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: middle; }
-      .small { color: var(--muted); font-size: 12px; }
-      .status { display: flex; gap: 12px; align-items: baseline; }
-      code { background: #f3f4f6; color: #111827; padding: 2px 6px; border: 1px solid #e5e7eb; border-radius: 6px; }
-      /* operation log */
-      .log-wrap { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
-      .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-      .log-actions { display: flex; gap: 8px; align-items: center; }
-      .log-actions button { background: #ffffff; color: #111827; border: 1px solid #d1d5db; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
-      .log-actions label { font-size: 12px; color: #374151; }
-      .log-list { max-height: var(--log-h); overflow: auto; font-size: 12px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px; background: #fff; }
-      .entry { display: flex; gap: 8px; padding: 4px 0; align-items: baseline; border-bottom: 1px dashed #f3f4f6; }
+      .edge.active { stroke-width: 4; }
+      .compare-frame {
+        fill: rgba(255, 255, 255, 0.02);
+        stroke: #ef4444;
+        stroke-width: 2.5;
+        stroke-dasharray: 2 7;
+        stroke-linecap: round;
+        animation: compare-march 720ms linear infinite;
+        pointer-events: none;
+      }
+      @keyframes compare-march {
+        to { stroke-dashoffset: -18; }
+      }
+      .node { fill: #ffffff; stroke: #334155; stroke-width: 2; }
+      .node.compare { fill: #fef3c7; stroke: var(--warn); }
+      .node.swap { fill: var(--err-soft); stroke: var(--err); }
+      .node.heap-fixed { fill: var(--fixed); stroke: var(--fixed-border); }
+      .node-label {
+        font-size: 16px;
+        font-weight: 900;
+        fill: #111827;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+      }
+      .idx-label {
+        font-size: 13px;
+        fill: #0070c0;
+        font-weight: 800;
+        text-anchor: middle;
+        dominant-baseline: hanging;
+        pointer-events: none;
+      }
+      .side-col {
+        display: grid;
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+        gap: 6px;
+        min-height: 0;
+      }
+      .legend {
+        display: grid;
+        gap: 4px;
+        padding: 7px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .legend-row { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+      .legend i {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #111827;
+        border-radius: 3px;
+        margin-right: 5px;
+        vertical-align: -1px;
+      }
+      .small { color: var(--muted); font-size: 11px; }
+      .status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .status span {
+        border: 1px solid #e2e8f0;
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: #f8fafc;
+      }
+      code {
+        background: #f3f4f6;
+        color: #111827;
+        padding: 1px 5px;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+      }
+      .log-wrap,
+      .pseudo-wrap,
+      .sorted-wrap { padding: 7px 8px; min-height: 0; }
+      .pseudo-wrap {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+      .log-header,
+      .pseudo-header,
+      .sorted-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 4px;
+        gap: 6px;
+      }
+      .pseudo-card {
+        min-height: 0;
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 7px;
+        background: #ffffff;
+        color: #111827;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.48;
+      }
+      .global-code-block {
+        padding: 6px 9px 7px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #f8fafc;
+      }
+      .global-code-title {
+        display: block;
+        margin-bottom: 2px;
+        color: #64748b;
+        font-weight: 900;
+      }
+      .global-code-line {
+        display: block;
+        padding: 1px 0;
+        white-space: pre;
+      }
+      .live-badge {
+        display: inline-block;
+        margin-left: 8px;
+        padding: 1px 8px 2px;
+        border: 1px solid #86efac;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-weight: 900;
+        line-height: 1.25;
+        white-space: nowrap;
+      }
+      .live-badge.heap {
+        border-color: #bfdbfe;
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .live-badge.phase {
+        border-color: #fed7aa;
+        background: #ffedd5;
+        color: #c2410c;
+      }
+      .live-badge.current {
+        border-color: #fde68a;
+        background: #fef3c7;
+        color: #a16207;
+      }
+      .hidden { display: none !important; }
+      .pseudo-code {
+        margin: 0;
+        padding: 5px 0;
+        list-style: none;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        color: #111827;
+        font: inherit;
+      }
+      .pseudo-code li {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        column-gap: 6px;
+        padding: 2px 8px;
+        border-left: 4px solid transparent;
+        white-space: pre;
+        min-width: max-content;
+      }
+      .pseudo-code .line-no {
+        text-align: right;
+        font-weight: inherit;
+      }
+      .pseudo-code .line-code { text-align: left; }
+      .pseudo-code .kw { color: #7c3aed; font-weight: 900; }
+      .pseudo-code .fn { color: #0369a1; font-weight: 900; }
+      .pseudo-code .var { color: #111827; font-weight: 800; }
+      .pseudo-code .num { color: #b45309; font-weight: 800; }
+      .pseudo-code .op { color: #dc2626; font-weight: 900; }
+      .pseudo-code .comment { color: #15803d; font-weight: 900; }
+      .pseudo-code li.active {
+        border-left-color: #f97316;
+        background: #fef3c7;
+        color: #111827;
+        font-weight: 900;
+      }
+      .pseudo-code li.active .line-no { color: #64748b; }
+      .pseudo-code li.active .comment {
+        color: #166534;
+      }
+      .pseudo-code .indent-1 { padding-left: 8px; }
+      .pseudo-code .indent-2 { padding-left: 8px; }
+      .pseudo-code .indent-1 .line-code { padding-left: 18px; }
+      .pseudo-code .indent-2 .line-code { padding-left: 36px; }
+      .pseudo-code .section-gap {
+        padding-top: 8px;
+      }
+      .log-actions {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+      }
+      .log-actions label {
+        font-size: 11px;
+        color: #374151;
+        white-space: nowrap;
+      }
+      .log-list {
+        max-height: var(--log-h);
+        overflow: auto;
+        font-size: 12px;
+        border: 1px solid #e5e7eb;
+        border-radius: 7px;
+        padding: 4px;
+        background: #fff;
+      }
+      .entry {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 6px;
+        padding: 3px 0;
+        align-items: baseline;
+        border-bottom: 1px dashed #edf2f7;
+      }
       .entry:last-child { border-bottom: none; }
-      .tag { font-weight: 600; padding: 2px 6px; border-radius: 6px; }
-      .tag.compare { background: #FEF3C7; color: #92400E; }
-      .tag.swap { background: #FEE2E2; color: #991B1B; }
-      .tag.heap { background: #E0E7FF; color: #3730A3; }
-      .tag.phase { background: #E5E7EB; color: #111827; }
-      /* sorted row */
-      .sorted-wrap { background: #ffffff; color: #111827; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; }
-      .sorted-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-      .sorted-list { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-      .chip { background: #F3F4F6; border: 1px solid #E5E7EB; color: #111827; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
-      .chip.highlight { background: #DBEAFE; border-color: #93C5FD; }
+      .tag {
+        font-weight: 900;
+        padding: 1px 5px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .tag.compare { background: #fef3c7; color: #92400e; }
+      .tag.swap { background: #fee2e2; color: #991b1b; }
+      .tag.heap { background: #e0f2fe; color: #075985; }
+      .tag.phase { background: #e5e7eb; color: #111827; }
+      .sorted-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        min-height: 26px;
+      }
+      .chip {
+        background: var(--fixed);
+        border: 1px solid var(--fixed-border);
+        color: #0f172a;
+        padding: 4px 7px;
+        border-radius: 7px;
+        font-size: 12px;
+        font-weight: 900;
+      }
+      .chip.highlight { background: #dcfce7; border-color: #22c55e; }
+      @media (max-width: 1050px) {
+        .guide,
+        .viz-row { grid-template-columns: 1fr; }
+        .guide ol { grid-template-columns: 1fr; }
+        .side-col { grid-template-rows: auto; }
+      }
+      @media (max-height: 760px) and (min-width: 1051px) {
+        :root {
+          --tree-h: clamp(270px, 43vh, 390px);
+          --log-h: 76px;
+        }
+        .guide-note { display: none; }
+        .guide ol { grid-template-columns: repeat(4, minmax(130px, 1fr)); }
+        .message-box {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .pseudo-code {
+          font-size: 10.5px;
+          line-height: 1.25;
+        }
+        .swap-popup {
+          top: 52px;
+          padding: 4px 8px;
+        }
+      }
+      @media (max-width: 640px) {
+        header { align-items: flex-start; flex-direction: column; gap: 4px; }
+        main { padding: 8px; }
+        .array-cell { flex-basis: 36px; grid-template-rows: 14px 32px; }
+        .array-cell .value { width: 36px; height: 30px; font-size: 18px; }
+      }
     </style>
   </head>
-  <body>
+  <body class="phase-build">
     <header>
-      <p style="margin-bottom: 8px; text-align: left;"><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
       <h1>Heap Sort Visualizer（最大ヒープ）</h1>
     </header>
     <main>
-      <section class="controls" aria-label="controls">
-        <label>要素数 <input id="size" type="range" min="3" max="24" value="12" /> <span id="sizeLabel">12</span></label>
-        <label>速度 <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
+      <section class="guide panel" aria-label="heap sort guide">
+        <ol>
+          <li>配列全体を <span class="green">最大ヒープ</span> にする</li>
+          <li>根（最大値）と末尾を <span class="orange">交換</span> する</li>
+          <li>末尾を <span class="green">確定領域</span> にし、ヒープサイズを 1 減らす</li>
+          <li>残ったヒープを再び heapifyDown する</li>
+        </ol>
+        <div class="guide-note">根に最大値を集め、末尾から順に確定させる</div>
+      </section>
+
+      <section class="controls panel" aria-label="controls">
+        <label class="control-field">要素数 <input id="size" type="range" min="3" max="24" value="12" /> <span id="sizeLabel">12</span></label>
+        <label class="control-field">速度 <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
         <button id="btnRandom">乱数生成</button>
-        <button id="btnStep">ステップ</button>
+        <button id="btnBack" disabled>戻る</button>
+        <button id="btnStep">1ステップ進む</button>
         <button id="btnPlay">再生</button>
         <button id="btnPause" disabled>一時停止</button>
         <button id="btnReset">リセット</button>
-        <span class="small">段階: <strong id="phase">build-heap</strong></span>
-        <span class="small">ヒープサイズ: <strong id="heapSize">-</strong></span>
+      </section>
+
+      <section class="array-panel panel" aria-label="array state">
+        <div class="section-head">
+          <h2>現在の配列</h2>
+          <div id="arrayBoundary" class="array-boundary"></div>
+        </div>
+        <div id="arrayView" class="array-view"></div>
+        <div id="currentMessage" class="message-box">最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。</div>
       </section>
 
       <section class="viz-row">
-        <aside class="explain" aria-label="comparison order">
-          <h2>比較の順番と交換</h2>
-          <ul>
-            <li>対象ノード <code>i</code> の左子 <code>L=2i+1</code> をまず比較。</li>
-            <li><code>maxIdx = argmax(A[i], A[L])</code> を更新。</li>
-            <li>次に右子 <code>R=2i+2</code> と <code>maxIdx</code> を比較。</li>
-            <li><code>maxIdx !== i</code> なら親子（<code>i</code> と <code>maxIdx</code>）を交換し、<code>i = maxIdx</code> で継続。</li>
-          </ul>
-          <ul>
-            <li>親子以外の交換は「根 <code>0</code> と末尾 <code>end</code>」のみ（ソート工程）。</li>
-            <li>強調: 比較=黄 / 交換=赤。親子なら辺も太線で強調。</li>
-            <li>インデックス: 親 <code>⌊(i-1)/2⌋</code>・左 <code>2i+1</code>・右 <code>2i+2</code></li>
-          </ul>
-          <div class="small" style="color:#374151;">
-            heapifyDown の簡易擬似コード:
-            <pre style="margin:6px 0; background:#f9fafb; border:1px solid #e5e7eb; padding:8px; border-radius:8px;"><code>while true:
-  maxIdx = i
-  if L < heapSize and A[L] > A[maxIdx]: maxIdx = L
-  if R < heapSize and A[R] > A[maxIdx]: maxIdx = R
-  if maxIdx == i: break
-  swap(A[i], A[maxIdx]); i = maxIdx</code></pre>
-            右下のログに比較・交換の履歴と値が記録されます。
+        <section class="tree-wrap panel" aria-label="heap tree">
+          <div class="section-head">
+            <h2>ヒープ木</h2>
+            <span class="small">親/左/右: i, 2i+1, 2i+2</span>
           </div>
-        </aside>
-        <section class="tree-wrap" aria-label="heap tree">
-          <svg id="heapTree" role="img" aria-label="heap tree"></svg>
+          <div class="tree-status">
+            <span class="state-badge">段階 <strong id="phase">build-heap</strong></span>
+            <span class="state-badge">ヒープサイズ <strong id="heapSize">-</strong></span>
+          </div>
+          <div class="tree-canvas">
+            <svg id="heapTree" role="img" aria-label="heap tree"></svg>
+          </div>
         </section>
-      </section>
+        <aside class="side-col" aria-label="side information">
+          <section class="legend panel" aria-label="legend">
+            <strong>凡例</strong>
+            <div class="legend-row">
+              <div><i style="background:#fff"></i>通常</div>
+              <div><i style="background:#fef3c7; border-color:#f59e0b"></i>比較</div>
+              <div><i style="background:#fee2e2; border-color:#ef4444"></i>交換</div>
+              <div><i style="background:#e0f2fe; border-color:#38bdf8"></i>確定</div>
+            </div>
+          </section>
 
-      
+          <section class="sorted-wrap panel" aria-label="sorted outputs">
+            <div class="sorted-header">
+              <strong>確定した値</strong>
+              <span class="small">末尾から増える</span>
+            </div>
+            <div id="sorted" class="sorted-list"></div>
+          </section>
 
-      <section class="legend" aria-label="legend">
-        <div><i style="background:#334155"></i>通常</div>
-        <div><i style="background:#f59e0b"></i>比較</div>
-        <div><i style="background:#f43f5e"></i>交換</div>
-        <div><i style="background:#1f2937"></i>確定領域（ヒープ外）</div>
-      </section>
+          <section class="pseudo-wrap panel" aria-label="pseudocode">
+            <div class="pseudo-header">
+              <strong>疑似言語 heapSort(a) と heapify_down()</strong>
+              <span class="small">現在行を強調</span>
+            </div>
+            <div class="pseudo-card" aria-label="擬似コード">
+              <div class="global-code-block" aria-label="準備">
+<span class="global-code-title">準備: 配列とヒープ領域</span>
+<span class="global-code-line"><span class="comment"># 配列 a をそのままヒープとして使う</span></span>
+<span class="global-code-line"><span class="var">n</span> <span class="op">=</span> <span id="pseudoN">12</span> <span class="comment"># 要素数</span> <span id="pseudoPhaseBadge" class="live-badge phase">現在の段階 = ヒープ構築</span></span>
+<span class="global-code-line"><span class="var">heap_size</span> <span class="op">=</span> <span id="pseudoHeapSize">12</span> <span class="comment"># まだ整える範囲</span> <span id="pseudoHeapBadge" class="live-badge heap">現在の heap_size = 12</span></span>
+              </div>
+              <ol id="pseudoCode" class="pseudo-code">
+                <li data-line="1"><span class="line-no">1.</span><span class="line-code"><span class="kw">def</span> <span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="var">root</span>, <span class="var">heap_size</span>): <span class="comment"># 親子関係を修復</span> <span id="pseudoCurrentBadge" class="live-badge current hidden"></span></span></li>
+                <li data-line="2" class="indent-1"><span class="line-no">2.</span><span class="line-code"><span class="var">child</span> <span class="op">=</span> <span class="fn">larger_child</span>(<span class="var">root</span>)           <span class="comment"># 左右の大きい子</span></span></li>
+                <li data-line="3" class="indent-1"><span class="line-no">3.</span><span class="line-code"><span class="kw">if</span> <span class="var">child</span> &lt; <span class="var">heap_size</span> <span class="kw">and</span> <span class="var">a</span>[<span class="var">child</span>] &gt; <span class="var">a</span>[<span class="var">root</span>]: <span class="comment"># 子が大きい</span></span></li>
+                <li data-line="4" class="indent-2"><span class="line-no">4.</span><span class="line-code"><span class="var">a</span>[<span class="var">root</span>], <span class="var">a</span>[<span class="var">child</span>] <span class="op">=</span> <span class="var">a</span>[<span class="var">child</span>], <span class="var">a</span>[<span class="var">root</span>] <span class="comment"># 親子を交換</span></span></li>
+                <li data-line="5" class="indent-2"><span class="line-no">5.</span><span class="line-code"><span class="var">root</span> <span class="op">=</span> <span class="var">child</span>                          <span class="comment"># 下へ進む</span></span></li>
+                <li data-line="6" class="indent-1"><span class="line-no">6.</span><span class="line-code"><span class="kw">else</span>: <span class="kw">break</span>                           <span class="comment"># ヒープ条件OK</span></span></li>
+                <li data-line="7" class="section-gap"><span class="line-no">7.</span><span class="line-code"><span class="kw">for</span> <span class="var">i</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="var">n</span> // <span class="num">2</span> - <span class="num">1</span>, -<span class="num">1</span>, -<span class="num">1</span>):  <span class="comment"># 最後の親から上へ</span></span></li>
+                <li data-line="8" class="indent-1"><span class="line-no">8.</span><span class="line-code"><span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="var">i</span>, <span class="var">n</span>)                <span class="comment"># 最大ヒープに直す</span></span></li>
+                <li data-line="9"><span class="line-no">9.</span><span class="line-code"><span class="kw">for</span> <span class="var">end</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="var">n</span> - <span class="num">1</span>, <span class="num">0</span>, -<span class="num">1</span>):      <span class="comment"># 末尾から確定</span></span></li>
+                <li data-line="10" class="indent-1"><span class="line-no">10.</span><span class="line-code"><span class="var">a</span>[<span class="num">0</span>], <span class="var">a</span>[<span class="var">end</span>] <span class="op">=</span> <span class="var">a</span>[<span class="var">end</span>], <span class="var">a</span>[<span class="num">0</span>]          <span class="comment"># 最大値を末尾へ</span></span></li>
+                <li data-line="11" class="indent-1"><span class="line-no">11.</span><span class="line-code"><span class="var">heap_size</span> <span class="op">=</span> <span class="var">end</span>                      <span class="comment"># 確定領域を除く</span></span></li>
+                <li data-line="12" class="indent-1"><span class="line-no">12.</span><span class="line-code"><span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="num">0</span>, <span class="var">heap_size</span>)        <span class="comment"># 根から整える</span></span></li>
+              </ol>
+            </div>
+          </section>
 
-      <section class="status" aria-label="status">
-        <div class="small">計算量: build O(n), sort O(n log n)</div>
-        <div class="small">アルゴリズム: in-place / 非安定</div>
-      </section>
-
-      <section class="sorted-wrap" aria-label="sorted outputs">
-        <div class="sorted-header">
-          <strong>確定した値（左→右が昇順）</strong>
-          <span class="small" style="color:#374151;">heapSize が小さくなるたびに更新</span>
-        </div>
-        <div id="sorted" class="sorted-list"></div>
-      </section>
-
-      <section class="log-wrap" aria-label="operation log">
-        <div class="log-header">
-          <strong>操作ログ</strong>
-          <div class="log-actions">
-            <label><input id="autoScroll" type="checkbox" checked /> 自動スクロール</label>
-            <button id="clearLog" title="ログを消去">ログ消去</button>
-          </div>
-        </div>
-        <div id="log" class="log-list" aria-live="polite"></div>
+          <section class="log-wrap panel" aria-label="operation log">
+            <div class="log-header">
+              <strong>操作ログ</strong>
+              <div class="log-actions">
+                <label><input id="autoScroll" type="checkbox" checked /> 自動</label>
+                <button id="clearLog" title="ログを消去">消去</button>
+              </div>
+            </div>
+            <div id="log" class="log-list" aria-live="polite"></div>
+          </section>
+        </aside>
       </section>
     </main>
+    <div id="swapPopup" class="swap-popup" aria-live="polite" aria-hidden="true"></div>
 
     <script>
       // 可視化対象の配列状態と、アルゴリズム手順（ステップ）を管理
@@ -153,6 +702,7 @@
       const speedInput = document.getElementById('speed');
       const speedLabel = document.getElementById('speedLabel');
       const btnRandom = document.getElementById('btnRandom');
+      const btnBack = document.getElementById('btnBack');
       const btnStep = document.getElementById('btnStep');
       const btnPlay = document.getElementById('btnPlay');
       const btnPause = document.getElementById('btnPause');
@@ -160,9 +710,19 @@
       const phaseEl = document.getElementById('phase');
       const heapSizeEl = document.getElementById('heapSize');
       const logList = document.getElementById('log');
+      const pseudoCode = document.getElementById('pseudoCode');
+      const swapPopup = document.getElementById('swapPopup');
       const autoScroll = document.getElementById('autoScroll');
       const clearLogBtn = document.getElementById('clearLog');
       const sortedList = document.getElementById('sorted');
+      const arrayView = document.getElementById('arrayView');
+      const arrayBoundary = document.getElementById('arrayBoundary');
+      const currentMessageEl = document.getElementById('currentMessage');
+      const pseudoN = document.getElementById('pseudoN');
+      const pseudoHeapSize = document.getElementById('pseudoHeapSize');
+      const pseudoPhaseBadge = document.getElementById('pseudoPhaseBadge');
+      const pseudoHeapBadge = document.getElementById('pseudoHeapBadge');
+      const pseudoCurrentBadge = document.getElementById('pseudoCurrentBadge');
 
       /** グローバル状態 */
       let base = [];
@@ -175,6 +735,10 @@
       let timer = null;
       let phase = 'build-heap';
       let lastFixedIndex = -1;
+      let activePseudoLine = 7;
+      let currentIdx = null;
+      let currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+      let swapPopupTimer = null;
 
       function randArray(n) {
         const a = Array.from({ length: n }, () => 5 + Math.floor(Math.random() * 95));
@@ -192,16 +756,42 @@
         cursor = 0;
         heapSize = arr.length;
         phase = 'build-heap';
+        lastFixedIndex = -1;
+        activePseudoLine = 7;
+        currentIdx = null;
+        currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+        hideSwapPopup();
         updateLabels();
         clearLog();
         render();
+        updateStepButtons();
       }
 
       function updateLabels() {
+        const phaseNames = {
+          'build-heap': 'ヒープ構築',
+          sort: 'ソート',
+        };
+        document.body.classList.toggle('phase-build', phase === 'build-heap');
+        document.body.classList.toggle('phase-sort', phase === 'sort');
         sizeLabel.textContent = String(arr.length);
         speedLabel.textContent = Number(speedInput.value).toFixed(2) + 'x';
-        phaseEl.textContent = phase;
+        phaseEl.textContent = phaseNames[phase] || phase;
         heapSizeEl.textContent = String(heapSize);
+        if (pseudoN) pseudoN.textContent = String(arr.length);
+        if (pseudoHeapSize) pseudoHeapSize.textContent = String(heapSize);
+        if (pseudoPhaseBadge) pseudoPhaseBadge.textContent = `現在の段階 = ${phaseNames[phase] || phase}`;
+        if (pseudoHeapBadge) pseudoHeapBadge.textContent = `現在の heap_size = ${heapSize}`;
+        if (pseudoCurrentBadge) {
+          const hasCurrent = Number.isInteger(currentIdx);
+          pseudoCurrentBadge.classList.toggle('hidden', !hasCurrent);
+          pseudoCurrentBadge.textContent = hasCurrent ? `現在の currentIdx = ${currentIdx}` : '';
+        }
+      }
+
+      function updateStepButtons() {
+        btnBack.disabled = cursor <= 0 || playing;
+        btnStep.disabled = cursor >= steps.length || playing;
       }
 
       // ヒープソートの手順を記録
@@ -265,20 +855,25 @@
         // 正しくは要素数 n に対して総段数 = floor(log2(n)) + 1。
         const totalLevels = arr.length > 0 ? Math.floor(Math.log2(arr.length)) + 1 : 1;
         const marginTop = 8;
-        const baseBottom = 36; // 余白（円+インデックスラベル分）
+        const baseBottom = 44; // 余白（円+インデックスラベル分）
         let yGap = (h - marginTop - baseBottom) / totalLevels;
-        let radius = Math.max(6, Math.min(14, yGap * 0.4));
-        const marginBottom = Math.max(baseBottom, Math.ceil(radius + 14));
+        let radius = Math.max(9, Math.min(21, yGap * 0.42));
+        const marginBottom = Math.max(baseBottom, Math.ceil(radius + 18));
         yGap = (h - marginTop - marginBottom) / totalLevels;
-        radius = Math.max(6, Math.min(14, yGap * 0.45));
+        radius = Math.max(9, Math.min(21, yGap * 0.48));
 
         const xFor = (level, idx) => {
           const count = 2 ** level;
-          const margin = 24;
+          const margin = 14;
           const span = Math.max(0, w - margin * 2);
           return margin + Math.round(((idx + 1) / (count + 1)) * span);
         };
         const yFor = (level) => Math.round(marginTop + (level + 0.5) * yGap);
+        const positionForIndex = (i) => {
+          const level = Math.floor(Math.log2(i + 1));
+          const idx = i - (2 ** level - 1);
+          return { x: xFor(level, idx), y: yFor(level) };
+        };
 
         // edges first for all existing nodes (見た目の安定性のため)
         for (let i = 0; i < arr.length; i++) {
@@ -343,16 +938,43 @@
           }
         }
 
+        if (highlight?.type === 'compare' && highlight.a < hs && highlight.b < hs) {
+          const p1 = positionForIndex(highlight.a);
+          const p2 = positionForIndex(highlight.b);
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const distance = Math.hypot(dx, dy);
+          const cx = (p1.x + p2.x) / 2;
+          const cy = (p1.y + p2.y) / 2;
+          const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+          const frameWidth = Math.max(52, distance + radius * 3.2);
+          const frameHeight = Math.max(38, radius * 3.8);
+          const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          group.setAttribute('transform', `translate(${cx} ${cy}) rotate(${angle})`);
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', -frameWidth / 2);
+          rect.setAttribute('y', -frameHeight / 2);
+          rect.setAttribute('width', frameWidth);
+          rect.setAttribute('height', frameHeight);
+          rect.setAttribute('rx', Math.min(18, frameHeight / 2));
+          rect.setAttribute('ry', Math.min(18, frameHeight / 2));
+          rect.setAttribute('class', 'compare-frame');
+          group.appendChild(rect);
+          heapTree.appendChild(group);
+        }
+
         const drawNode = (i, fixedOutsideHeap) => {
           const level = Math.floor(Math.log2(i + 1));
           const idx = i - (2 ** level - 1);
           const cx = xFor(level, idx);
           const cy = yFor(level);
           const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+          g.dataset.index = String(i);
           const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
           circle.setAttribute('cx', cx);
           circle.setAttribute('cy', cy);
           circle.setAttribute('r', radius);
+          circle.dataset.index = String(i);
           let cls = 'node';
           const isCompare = highlight && highlight.type === 'compare' && (i === highlight.a || i === highlight.b);
           const isSwap = highlight && highlight.type === 'swap' && (i === highlight.a || i === highlight.b);
@@ -367,7 +989,7 @@
           text.textContent = String(arr[i]);
           const idxText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           idxText.setAttribute('x', cx);
-          idxText.setAttribute('y', cy + radius + 8);
+          idxText.setAttribute('y', cy + radius + 7);
           idxText.setAttribute('class', 'idx-label');
           idxText.textContent = `idx ${i}`;
           g.appendChild(circle);
@@ -380,9 +1002,59 @@
         for (let i = hs; i < arr.length; i++) drawNode(i, true);
       }
 
+      function renderArray(highlight = null) {
+        if (!arrayView) return;
+        arrayView.innerHTML = '';
+        for (let i = 0; i < arr.length; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'array-cell';
+          if (i >= heapSize) cell.classList.add('fixed');
+          if (highlight?.type === 'compare' && (i === highlight.a || i === highlight.b)) {
+            cell.classList.add('compare');
+          }
+          if (highlight?.type === 'swap' && (i === highlight.a || i === highlight.b)) {
+            cell.classList.add('swap');
+          }
+
+          const idx = document.createElement('div');
+          idx.className = 'idx';
+          idx.textContent = String(i);
+
+          const value = document.createElement('div');
+          value.className = 'value';
+          value.textContent = String(arr[i]);
+
+          cell.appendChild(idx);
+          cell.appendChild(value);
+          arrayView.appendChild(cell);
+        }
+
+        if (heapSize === arr.length) {
+          arrayBoundary.textContent = `ヒープ領域: a[0] から a[${arr.length - 1}] / 確定領域なし`;
+        } else if (heapSize === 0) {
+          arrayBoundary.textContent = `全要素が確定: a[0] から a[${arr.length - 1}]`;
+        } else {
+          arrayBoundary.textContent = `ヒープ領域: a[0] から a[${heapSize - 1}] / 確定領域: a[${heapSize}] から a[${arr.length - 1}]`;
+        }
+      }
+
+      function renderCurrentMessage() {
+        if (currentMessageEl) currentMessageEl.textContent = currentText;
+      }
+
+      function renderPseudoCode() {
+        if (!pseudoCode) return;
+        pseudoCode.querySelectorAll('li').forEach((line) => {
+          line.classList.toggle('active', Number(line.dataset.line) === activePseudoLine);
+        });
+      }
+
       function render(highlight = null) {
+        renderArray(highlight);
         renderTree(highlight);
         renderSorted();
+        renderCurrentMessage();
+        renderPseudoCode();
       }
 
       function renderSorted() {
@@ -400,6 +1072,78 @@
         logList.innerHTML = '';
       }
 
+      function childRole(parent, child) {
+        if (child === parent * 2 + 1) return '左の子';
+        if (child === parent * 2 + 2) return '右の子';
+        return '';
+      }
+
+      function relationForPair(a, b) {
+        if (a < 0 || b < 0) return null;
+        const parentOfA = Math.floor((a - 1) / 2);
+        const parentOfB = Math.floor((b - 1) / 2);
+        if (parentOfA === b) return { parent: b, child: a, childName: childRole(b, a) };
+        if (parentOfB === a) return { parent: a, child: b, childName: childRole(a, b) };
+        return null;
+      }
+
+      function childSummary(parent, snapshot) {
+        const left = parent * 2 + 1;
+        const right = parent * 2 + 2;
+        const leftText = left < heapSize ? `左の子 a[${left}] = ${snapshot[left]}` : '左の子なし';
+        const rightText = right < heapSize ? `右の子 a[${right}] = ${snapshot[right]}` : '右の子なし';
+        return `${leftText} / ${rightText}`;
+      }
+
+      function hideSwapPopup() {
+        if (!swapPopup) return;
+        if (swapPopupTimer) {
+          clearTimeout(swapPopupTimer);
+          swapPopupTimer = null;
+        }
+        swapPopup.classList.remove('show');
+        swapPopup.textContent = '';
+        swapPopup.setAttribute('aria-hidden', 'true');
+      }
+
+      function showSwapPopup(step, before) {
+        if (!swapPopup) return;
+        hideSwapPopup();
+        const firstNode = heapTree.querySelector(`circle[data-index="${step.a}"]`);
+        const secondNode = heapTree.querySelector(`circle[data-index="${step.b}"]`);
+        if (!firstNode || !secondNode) return;
+        const firstRect = firstNode.getBoundingClientRect();
+        const secondRect = secondNode.getBoundingClientRect();
+        const centerX = (firstRect.left + firstRect.width / 2 + secondRect.left + secondRect.width / 2) / 2;
+        const centerY = (firstRect.top + firstRect.height / 2 + secondRect.top + secondRect.height / 2) / 2;
+        const isSortRootSwap = phase === 'sort' && step.a === 0 && step.b === heapSize - 1;
+        const relation = relationForPair(step.a, step.b);
+        if (relation) {
+          const parentValue = before?.[relation.parent] ?? arr[relation.parent];
+          const childValue = before?.[relation.child] ?? arr[relation.child];
+          swapPopup.innerHTML =
+            `交換：<span class="role">親 ${parentValue}</span>` +
+            `<span class="arrow">↔</span>` +
+            `<span class="role">${relation.childName} ${childValue}</span>`;
+        } else {
+          const firstRole = isSortRootSwap ? '根' : `a[${step.a}]`;
+          const secondRole = isSortRootSwap ? '末尾' : `a[${step.b}]`;
+          const firstValue = before?.[step.a] ?? arr[step.a];
+          const secondValue = before?.[step.b] ?? arr[step.b];
+          swapPopup.innerHTML =
+            `交換：<span class="role">${firstRole} ${firstValue}</span>` +
+            `<span class="arrow">↔</span>` +
+            `<span class="role">${secondRole} ${secondValue}</span>`;
+        }
+        swapPopup.style.left = `${centerX}px`;
+        swapPopup.style.top = `${centerY}px`;
+        swapPopup.setAttribute('aria-hidden', 'false');
+        // 同じ要素でも連続交換時にCSSアニメーションを再実行させる
+        void swapPopup.offsetWidth;
+        swapPopup.classList.add('show');
+        swapPopupTimer = setTimeout(hideSwapPopup, 1450);
+      }
+
       function appendLog(step, before, after) {
         const entry = document.createElement('div');
         entry.className = 'entry';
@@ -408,26 +1152,36 @@
         tag.className = 'tag';
         if (step.type === 'compare') {
           tag.classList.add('compare');
-          tag.textContent = 'COMPARE';
+          tag.textContent = '比較';
           const va = before?.[step.a];
           const vb = before?.[step.b];
-          text.textContent = `比較 idx ${step.a} (${va}) vs idx ${step.b} (${vb})`;
+          const relation = relationForPair(step.a, step.b);
+          if (relation) {
+            text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を比較（${childSummary(relation.parent, before)}）`;
+          } else {
+            text.textContent = `a[${step.a}] = ${va} と a[${step.b}] = ${vb}`;
+          }
         } else if (step.type === 'swap') {
           tag.classList.add('swap');
-          tag.textContent = 'SWAP';
+          tag.textContent = '交換';
           const ba = before?.[step.a];
           const bb = before?.[step.b];
           const aa = after?.[step.a];
           const ab = after?.[step.b];
-          text.textContent = `交換 idx ${step.a} (${ba}) ⇄ idx ${step.b} (${bb}) → [${aa}, ${ab}]`;
+          const relation = relationForPair(step.a, step.b);
+          if (relation) {
+            text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を交換（${childSummary(relation.parent, before)}）`;
+          } else {
+            text.textContent = `a[${step.a}] = ${ba} と a[${step.b}] = ${bb} を交換 → [${aa}, ${ab}]`;
+          }
         } else if (step.type === 'heapSize') {
           tag.classList.add('heap');
-          tag.textContent = 'HEAP';
+          tag.textContent = '確定';
           text.textContent = `ヒープサイズ = ${step.value}`;
         } else if (step.type === 'phase') {
           tag.classList.add('phase');
-          tag.textContent = 'PHASE';
-          text.textContent = `フェーズ = ${step.name}`;
+          tag.textContent = '段階';
+          text.textContent = step.name === 'build-heap' ? 'ヒープ構築' : 'ソート';
         }
         entry.appendChild(tag);
         entry.appendChild(text);
@@ -437,20 +1191,86 @@
         }
       }
 
+      function describeStep(step, before) {
+        if (step.type === 'compare') {
+          const va = before[step.a];
+          const vb = before[step.b];
+          const winner = va >= vb ? step.a : step.b;
+          const relation = relationForPair(step.a, step.b);
+          if (relation) {
+            return `比較: 親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を比べます。${childSummary(relation.parent, before)}。大きい方の a[${winner}] を親候補にします。`;
+          }
+          return `比較: a[${step.a}] = ${va} と a[${step.b}] = ${vb} を比べます。大きい方の a[${winner}] を親候補にします。`;
+        }
+        if (step.type === 'swap') {
+          const va = before[step.a];
+          const vb = before[step.b];
+          if (phase === 'sort' && step.a === 0 && step.b === heapSize - 1) {
+            return `根 a[0] = ${va} は現在の最大値です。末尾 a[${step.b}] = ${vb} と交換して、末尾を確定させます。`;
+          }
+          const relation = relationForPair(step.a, step.b);
+          if (relation) {
+            return `交換: 親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を入れ替えます。${childSummary(relation.parent, before)}。`;
+          }
+          return `交換: a[${step.a}] = ${va} と a[${step.b}] = ${vb} を入れ替え、最大値が親側に来るようにします。`;
+        }
+        if (step.type === 'heapSize') {
+          if (step.value === 0) return 'すべての要素が確定しました。配列は昇順に整列しています。';
+          return `a[${step.value}] 以降を確定領域にします。残り a[0] から a[${step.value - 1}] をヒープとして扱います。`;
+        }
+        if (step.type === 'phase') {
+          return step.name === 'build-heap'
+            ? 'ヒープ構築: 下の親ノードから順に、親が子以上になるように整えます。'
+            : 'ソート: 根の最大値を末尾へ移し、確定領域を右から広げます。';
+        }
+        return '';
+      }
+
+      function pseudoLineForStep(step) {
+        if (step.type === 'phase') {
+          return step.name === 'build-heap' ? 7 : 9;
+        }
+        if (step.type === 'compare') return 2;
+        if (step.type === 'swap') {
+          return phase === 'sort' && step.a === 0 && step.b === heapSize - 1 ? 10 : 4;
+        }
+        if (step.type === 'heapSize') {
+          return step.value === 0 ? 6 : 11;
+        }
+        return activePseudoLine;
+      }
+
+      function currentIdxForStep(step) {
+        if (step.type === 'compare' || step.type === 'swap') {
+          const relation = relationForPair(step.a, step.b);
+          if (relation) return relation.parent;
+          if (phase === 'sort' && step.type === 'swap' && step.a === 0) return 0;
+        }
+        return null;
+      }
+
       // ステップの適用
       function applyStep(step) {
         const before = arr.slice();
+        currentText = describeStep(step, before);
+        activePseudoLine = pseudoLineForStep(step);
+        currentIdx = currentIdxForStep(step);
         switch (step.type) {
           case 'compare':
+            hideSwapPopup();
+            updateLabels();
             render(step);
             appendLog(step, before, before);
             break;
           case 'swap':
             [arr[step.a], arr[step.b]] = [arr[step.b], arr[step.a]];
+            updateLabels();
             render(step);
+            showSwapPopup(step, before);
             appendLog(step, before, arr);
             break;
           case 'heapSize':
+            hideSwapPopup();
             heapSize = step.value;
             lastFixedIndex = step.value; // 新たに確定した先頭位置
             updateLabels();
@@ -458,6 +1278,7 @@
             appendLog(step, before, arr);
             break;
           case 'phase':
+            hideSwapPopup();
             phase = step.name;
             updateLabels();
             render();
@@ -467,10 +1288,43 @@
       }
 
       function stepOnce() {
-        if (cursor >= steps.length) return false;
+        if (cursor >= steps.length) {
+          updateStepButtons();
+          return false;
+        }
         const st = steps[cursor++];
         applyStep(st);
+        updateStepButtons();
         return cursor < steps.length;
+      }
+
+      function rebuildTo(targetCursor) {
+        arr = base.slice();
+        cursor = 0;
+        heapSize = arr.length;
+        phase = 'build-heap';
+        lastFixedIndex = -1;
+        activePseudoLine = 7;
+        currentIdx = null;
+        currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+        hideSwapPopup();
+        updateLabels();
+        clearLog();
+        if (targetCursor <= 0) {
+          render();
+          updateStepButtons();
+          return;
+        }
+        while (cursor < targetCursor && cursor < steps.length) {
+          const st = steps[cursor++];
+          applyStep(st);
+        }
+        updateStepButtons();
+      }
+
+      function stepBack() {
+        pause();
+        rebuildTo(Math.max(0, cursor - 1));
       }
 
       function play() {
@@ -478,6 +1332,7 @@
         playing = true;
         btnPlay.disabled = true;
         btnPause.disabled = false;
+        updateStepButtons();
         const baseMs = 420; // 基本速度
         const tick = () => {
           const speed = Number(speedInput.value);
@@ -494,6 +1349,7 @@
         btnPlay.disabled = false;
         btnPause.disabled = true;
         if (timer) { clearTimeout(timer); timer = null; }
+        updateStepButtons();
       }
 
       function reset() {
@@ -514,6 +1370,7 @@
       btnRandom.addEventListener('click', () => {
         init(Number(sizeInput.value));
       });
+      btnBack.addEventListener('click', stepBack);
       btnStep.addEventListener('click', () => {
         stepOnce();
       });
