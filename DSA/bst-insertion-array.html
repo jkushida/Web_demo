@@ -1,0 +1,1926 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>二分探索木への追加（配列表現）</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #64748b;
+        --line: #d7deea;
+        --soft-line: #e8edf5;
+        --primary: #2563eb;
+        --primary-soft: #dbeafe;
+        --green: #15803d;
+        --green-soft: #dcfce7;
+        --orange: #c2410c;
+        --orange-soft: #ffedd5;
+        --yellow: #a16207;
+        --yellow-soft: #fef9c3;
+        --red: #b91c1c;
+        --red-soft: #fee2e2;
+        --code-bg: #ffffff;
+        --code-line: #fef3c7;
+        --shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      header {
+        padding: 2px 10px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+      }
+
+      header p {
+        margin: 0;
+        font-size: 10px;
+      }
+
+      a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      a:hover { text-decoration: underline; }
+
+      h1 {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.15;
+      }
+
+      main {
+        width: min(1480px, 100%);
+        min-height: 0;
+        margin: 0 auto;
+        padding: 4px 8px 8px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .panel {
+        min-width: 0;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      .controls {
+        padding: 5px 8px;
+        display: grid;
+        gap: 5px;
+      }
+
+      .controls-top,
+      .controls-bottom {
+        display: grid;
+        grid-template-columns: minmax(180px, 230px) minmax(280px, 1fr) auto;
+        gap: 6px;
+        align-items: end;
+      }
+
+      .controls-bottom {
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+      }
+
+      .field {
+        display: grid;
+        gap: 2px;
+      }
+
+      label,
+      .field-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-height: 28px;
+        padding: 4px 7px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+      }
+
+      .button-row,
+      .setting-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        align-items: center;
+      }
+
+      button {
+        min-height: 28px;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover { background: #f1f5f9; }
+
+      button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+
+      input[type="range"] {
+        width: 120px;
+        accent-color: var(--primary);
+      }
+
+      .status-note {
+        min-width: 0;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .progress-wrap {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--green));
+        transition: width 0.18s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(640px, 1fr) minmax(390px, 470px);
+        gap: 8px;
+      }
+
+      .left-stack,
+      .side-stack {
+        min-height: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .left-stack {
+        grid-template-rows: minmax(430px, 1fr) auto;
+      }
+
+      .side-stack {
+        grid-template-rows: auto minmax(280px, 1fr) minmax(160px, 0.55fr);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 10px 6px;
+        border-bottom: 1px solid var(--soft-line);
+      }
+
+      h2 {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .head-note {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .tree-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
+      }
+
+      .tree-stage {
+        min-height: 0;
+        position: relative;
+        margin: 6px 8px 10px;
+        overflow: hidden;
+        border: 0;
+        border-radius: 0;
+        background: #fff;
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .edge {
+        stroke: #7b8798;
+        stroke-width: 3;
+        stroke-linecap: round;
+      }
+
+      .edge.attach {
+        stroke: var(--green);
+        stroke-width: 5;
+      }
+
+      .pending-edge {
+        stroke: var(--orange);
+        stroke-width: 3;
+        stroke-dasharray: 7 6;
+        stroke-linecap: round;
+      }
+
+      .edge-label {
+        fill: var(--muted);
+        font-size: 24px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .node circle {
+        fill: #fff;
+        stroke: #334155;
+        stroke-width: 2.2;
+        filter: drop-shadow(0 3px 6px rgba(15, 23, 42, 0.16));
+        transition: fill 0.18s ease, stroke 0.18s ease, stroke-width 0.18s ease;
+      }
+
+      .node.path circle {
+        fill: var(--primary-soft);
+        stroke: var(--primary);
+      }
+
+      .node.current circle {
+        fill: var(--yellow-soft);
+        stroke: var(--yellow);
+        stroke-width: 5;
+      }
+
+      .node.new-node circle {
+        fill: var(--orange-soft);
+        stroke: var(--orange);
+        stroke-width: 4;
+      }
+
+      .node.attached circle {
+        fill: var(--green-soft);
+        stroke: var(--green);
+        stroke-width: 4;
+      }
+
+      .node text.value {
+        fill: var(--ink);
+        font-size: 34px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+      }
+
+      .node text.meta {
+        fill: #7c3aed;
+        font-size: 22px;
+        font-weight: 900;
+        text-anchor: middle;
+        pointer-events: none;
+      }
+
+      .empty-slot circle {
+        fill: #fff7ed;
+        stroke: var(--orange);
+        stroke-width: 2;
+        stroke-dasharray: 5 5;
+      }
+
+      .empty-slot text {
+        fill: var(--orange);
+        font-size: 18px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .floating-label,
+      .empty-message {
+        fill: var(--muted);
+        font-size: 21px;
+        font-weight: 900;
+        text-anchor: middle;
+      }
+
+      .array-panel {
+        margin-top: 8px;
+        padding-bottom: 8px;
+      }
+
+      .array-grid {
+        padding: 8px 10px 0;
+        display: grid;
+        grid-template-columns: repeat(10, minmax(76px, 1fr));
+        gap: 6px;
+        overflow-x: auto;
+      }
+
+      .slot-wrap {
+        min-width: 76px;
+        display: grid;
+        grid-template-rows: 20px auto;
+        gap: 2px;
+      }
+
+      .slot-marker-row {
+        min-height: 20px;
+        display: flex;
+        align-items: end;
+        justify-content: center;
+        gap: 3px;
+      }
+
+      .slot-marker {
+        max-width: 100%;
+        padding: 1px 6px;
+        overflow: hidden;
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: var(--primary);
+        font-size: 10px;
+        font-weight: 900;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .slot-marker.root {
+        border-color: #bfdbfe;
+        background: var(--primary-soft);
+        color: var(--primary);
+      }
+
+      .slot-marker.newIdx {
+        border-color: #fed7aa;
+        background: var(--orange-soft);
+        color: var(--orange);
+      }
+
+      .slot-marker.cur {
+        border-color: #fde68a;
+        background: var(--yellow-soft);
+        color: var(--yellow);
+      }
+
+      .slot {
+        min-width: 76px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .slot.empty {
+        background: #f8fafc;
+        color: var(--muted);
+      }
+
+      .slot.current {
+        border-color: var(--yellow);
+        box-shadow: inset 0 0 0 2px rgba(161, 98, 7, 0.26);
+      }
+
+      .slot.new-slot {
+        border-color: var(--orange);
+        box-shadow: inset 0 0 0 2px rgba(194, 65, 12, 0.22);
+      }
+
+      .slot.attached {
+        border-color: var(--green);
+        box-shadow: inset 0 0 0 2px rgba(21, 128, 61, 0.2);
+      }
+
+      .slot-head {
+        min-height: 27px;
+        padding: 4px 6px;
+        display: grid;
+        place-items: center;
+        border-bottom: 1px solid var(--soft-line);
+        background: #f8fafc;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .slot-tag {
+        display: none;
+        color: var(--primary);
+        font-size: 10px;
+        font-weight: 900;
+      }
+
+      .slot-row {
+        display: grid;
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 4px;
+        padding: 3px 6px;
+        font-size: 12px;
+        line-height: 1.25;
+      }
+
+      .slot-row span:first-child {
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .slot-row span:last-child {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .current-panel {
+        padding-bottom: 0;
+      }
+
+      .message-box {
+        margin: 6px 8px;
+        padding: 8px 10px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+      }
+
+      #currentMessage {
+        margin: 0;
+        color: #1f2937;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1.45;
+      }
+
+      .code-panel,
+      .log-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .code-card {
+        min-height: 0;
+        margin: 8px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: var(--ink);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.58;
+      }
+
+      .code-line {
+        display: block;
+        min-width: max-content;
+        padding: 1px 8px;
+        border-left: 4px solid transparent;
+        white-space: pre;
+      }
+
+      .code-line.active {
+        border-left-color: var(--orange);
+        background: var(--code-line);
+        color: var(--ink);
+        font-weight: 900;
+      }
+
+      .line-no {
+        display: inline-block;
+        width: 24px;
+        color: var(--muted);
+      }
+
+      .global-code-block {
+        padding: 6px 10px 7px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #f8fafc;
+      }
+
+      .global-code-title {
+        display: block;
+        margin-bottom: 2px;
+        color: var(--muted);
+        font-weight: 900;
+      }
+
+      .global-code-line {
+        display: block;
+        padding: 1px 0;
+        white-space: pre;
+      }
+
+      .main-code-block {
+        margin-top: 4px;
+        padding-top: 4px;
+        border-top: 1px solid var(--soft-line);
+      }
+
+      .live-badge {
+        display: inline-block;
+        margin-left: 10px;
+        padding: 1px 10px 2px;
+        border: 1px solid #86efac;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 900;
+      }
+
+      .live-badge.index-badge {
+        border-color: #bfdbfe;
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .live-badge.new-index-badge {
+        border-color: #fed7aa;
+        background: #ffedd5;
+        color: #c2410c;
+      }
+
+      .live-badge.flag-badge {
+        border-color: #ddd6fe;
+        background: #ede9fe;
+        color: #6d28d9;
+      }
+
+      .live-badge.hidden {
+        display: none;
+      }
+
+      .kw { color: #be185d; font-weight: 800; }
+      .fn { color: #b45309; font-weight: 900; }
+      .arr { color: #1d4ed8; font-weight: 800; }
+      .idx { color: #7c3aed; font-weight: 800; }
+      .prop { color: #047857; font-weight: 800; }
+      .vr { color: #6d28d9; font-weight: 800; }
+      .op { color: #ca8a04; font-weight: 900; }
+      .num { color: #c2410c; font-weight: 900; }
+      .bool { color: #0f766e; font-weight: 900; }
+      .cm { color: #15803d; font-weight: 800; }
+
+      .steps-list {
+        min-height: 0;
+        margin: 8px;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 5px;
+        overflow: auto;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .step-item:hover {
+        border-color: #bfdbfe;
+        background: #f8fbff;
+      }
+
+      .step-item.active {
+        border-color: var(--primary);
+        background: #eff6ff;
+      }
+
+      .step-no {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #475569;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .step-item.active .step-no {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .step-title {
+        min-width: 0;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .step-meta {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      @media (min-width: 1061px) {
+        body {
+          background:
+            linear-gradient(90deg, rgba(15, 23, 42, 0.06), transparent 32px, transparent calc(100% - 32px), rgba(15, 23, 42, 0.08)),
+            #eef1f5;
+        }
+
+        main {
+          width: min(1760px, calc(100% - 40px));
+          height: calc(100% - 10px);
+          margin: 5px auto;
+          padding: 10px 24px 28px;
+          overflow: hidden;
+          display: grid;
+          grid-template-columns: minmax(760px, 1fr) minmax(520px, 720px);
+          grid-template-rows: auto minmax(0, 1fr);
+          gap: 12px 14px;
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+        }
+
+        .panel {
+          border-radius: 13px;
+          box-shadow: none;
+        }
+
+        .controls {
+          grid-column: 1;
+          grid-row: 1;
+          padding: 7px 10px;
+        }
+
+        .controls-top {
+          grid-template-columns: 300px minmax(300px, 1fr) 78px;
+          gap: 8px;
+        }
+
+        .controls-bottom {
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 8px;
+        }
+
+        input,
+        select {
+          min-height: 32px;
+          padding: 5px 9px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        button {
+          min-height: 32px;
+          padding: 5px 10px;
+          border-radius: 8px;
+          font-size: 13px;
+        }
+
+        .workspace {
+          display: contents;
+        }
+
+        .left-stack {
+          grid-column: 1;
+          grid-row: 2;
+          min-height: 0;
+          display: grid;
+          grid-template-rows: minmax(0, 1fr) minmax(132px, 168px);
+          gap: 18px;
+        }
+
+        .side-stack {
+          grid-column: 2;
+          grid-row: 1 / span 2;
+          min-height: 0;
+          display: grid;
+          grid-template-rows: auto minmax(0, 1fr);
+          gap: 8px;
+          z-index: 2;
+        }
+
+        .side-stack .section-head {
+          padding: 6px 8px 4px;
+        }
+
+        .tree-stage {
+          margin: 6px 10px 12px;
+        }
+
+        .array-panel {
+          margin-top: 10px;
+        }
+
+        .array-grid {
+          grid-template-columns: repeat(10, minmax(56px, 1fr));
+          gap: 4px;
+          padding: 8px 10px 0;
+          overflow-x: hidden;
+        }
+
+        .slot {
+          min-width: 0;
+          border-radius: 8px;
+        }
+
+        .slot-head {
+          min-height: 24px;
+          padding: 3px 5px;
+          font-size: 12px;
+        }
+
+        .slot-tag {
+          max-width: 42px;
+          overflow: hidden;
+          font-size: 10px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .slot-row {
+          grid-template-columns: 30px minmax(0, 1fr);
+          gap: 2px;
+          padding: 2px 5px;
+          font-size: 11px;
+        }
+
+        .slot-row span:first-child {
+          overflow: hidden;
+          text-overflow: clip;
+        }
+
+        .current-panel {
+          overflow: hidden;
+          padding-bottom: 0;
+        }
+
+        .message-box {
+          margin: 4px 8px;
+          padding: 6px 9px;
+          border-radius: 9px;
+        }
+
+        #currentMessage {
+          font-size: 14px;
+          line-height: 1.2;
+        }
+
+        .code-panel {
+          min-height: 0;
+        }
+
+        .code-card {
+          margin: 10px 14px 12px;
+          padding: 6px 0;
+          border-radius: 10px;
+          font-size: 12px;
+          line-height: 1.42;
+        }
+
+        .code-line {
+          padding: 2px 10px;
+        }
+
+        .line-no {
+          width: 30px;
+        }
+
+        .log-panel {
+          display: none;
+        }
+      }
+
+      @media (max-width: 1060px) {
+        html,
+        body {
+          height: auto;
+          min-height: 100%;
+          overflow: auto;
+        }
+
+        body { display: block; }
+
+        main { height: auto; }
+
+        .workspace,
+        .controls-top,
+        .controls-bottom {
+          grid-template-columns: 1fr;
+        }
+
+        .left-stack,
+        .side-stack {
+          grid-template-rows: auto;
+        }
+
+        .tree-stage {
+          height: 480px;
+        }
+
+        .array-grid {
+          grid-template-columns: repeat(5, minmax(82px, 1fr));
+        }
+      }
+
+      @media (max-width: 620px) {
+        main { padding: 7px; }
+        h1 { font-size: 18px; }
+        .button-row { align-items: stretch; }
+        button { flex: 1 1 auto; }
+        .array-grid { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>二分探索木への追加（配列表現）</h1>
+    </header>
+
+    <main>
+      <section class="panel controls" aria-label="操作">
+        <div class="controls-top">
+          <div class="field">
+            <label for="presetSelect">例</label>
+            <select id="presetSelect">
+              <option value="balanced">標準例: 4, 6, 5, 2, 3, 7, 1</option>
+              <option value="left">左へ進む例: 50, 40, 30, 20, 10</option>
+              <option value="right">右へ進む例: 10, 20, 30, 40, 50</option>
+              <option value="mixed">分岐が多い例: 45, 18, 72, 12, 31, 60, 90, 25, 38</option>
+              <option value="custom">カスタム</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sequenceInput">挿入列（最大10個、カンマ区切り）</label>
+            <input id="sequenceInput" type="text" value="4, 6, 5, 2, 3, 7, 1" />
+          </div>
+          <button id="setBtn" class="primary" type="button">セット</button>
+        </div>
+        <div class="controls-bottom">
+          <div class="button-row">
+            <button id="playBtn" class="primary" type="button" title="自動再生">▶ 再生</button>
+            <button id="prevBtn" type="button" title="前の手順">← 前へ</button>
+            <button id="nextBtn" type="button" title="次の手順">次へ →</button>
+            <button id="endBtn" type="button" title="最後の手順へ">最後へ</button>
+            <button id="resetBtn" type="button" title="先頭に戻す">↺ リセット</button>
+          </div>
+          <div class="setting-row">
+            <span id="stepCounter" class="status-note">手順 0 / 0</span>
+            <label for="speedRange">速度
+              <input id="speedRange" type="range" min="280" max="1400" step="40" value="760" />
+            </label>
+          </div>
+        </div>
+        <div class="progress-wrap" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+        <div id="statusNote" class="status-note">親より小さい値は左、大きい値は右。同じ値は擬似コードの else に合わせて右。</div>
+      </section>
+
+      <section class="workspace">
+        <section class="left-stack">
+          <article class="panel tree-panel">
+            <div class="section-head">
+              <h2>木の接続状態</h2>
+              <span id="treeHeadNote" class="head-note">rootIdx = 0</span>
+            </div>
+            <div class="tree-stage">
+              <svg id="treeSvg" viewBox="0 0 860 620" role="img" aria-label="二分探索木の配列表現"></svg>
+            </div>
+          </article>
+
+          <article class="panel array-panel">
+            <div class="section-head">
+              <h2>配列 tree[10]</h2>
+              <span class="head-note">data / left / right</span>
+            </div>
+            <div id="arrayGrid" class="array-grid" aria-label="tree 配列"></div>
+          </article>
+        </section>
+
+        <aside class="side-stack">
+          <article class="panel current-panel">
+            <div class="message-box">
+              <p id="currentMessage">挿入列をセット。addBST(data) の処理を1行ずつ追跡。</p>
+            </div>
+          </article>
+
+          <article class="panel code-panel">
+            <div class="section-head">
+              <h2>擬似言語 addBST(data) と main()</h2>
+              <span class="head-note">行ハイライト</span>
+            </div>
+            <div class="code-card" aria-label="擬似コード">
+              <div class="global-code-block" aria-label="グローバル変数">
+<span class="global-code-title">準備: 構造体とグローバル変数</span>
+<span class="global-code-line"><span class="cm"># ノードの構造</span> <span class="fn">BST</span> { <span class="prop">data</span>, <span class="prop">left</span>, <span class="prop">right</span> }</span>
+<span class="global-code-line"><span class="arr">tree</span>[<span class="num">10</span>] <span class="cm"># 二分探索木を格納する配列</span></span>
+<span class="global-code-line"><span class="idx">rootIdx</span> <span class="op">←</span> <span class="num">0</span> <span class="cm"># 根の添字</span></span>
+<span class="global-code-line"><span class="idx">newIdx</span> <span class="op">←</span> <span class="num">0</span> <span class="cm"># 次に使う空き添字</span></span>
+              </div>
+<span id="code-1" class="code-line"><span class="line-no">1</span><span class="kw">関数</span> <span class="fn">addBST</span>(<span class="vr">data</span>) <span class="cm"># 1つ追加</span> <span id="functionDataBadge" class="live-badge hidden"></span> <span id="functionNewIdxBadge" class="live-badge new-index-badge hidden"></span></span>
+<span id="code-2" class="code-line"><span class="line-no">2</span>  <span class="arr">tree</span>[<span class="idx">newIdx</span>].<span class="prop">data</span>  <span class="op">←</span> <span class="vr">data</span> <span class="cm"># 値を格納</span></span>
+<span id="code-3" class="code-line"><span class="line-no">3</span>  <span class="arr">tree</span>[<span class="idx">newIdx</span>].<span class="prop">left</span>  <span class="op">←</span> <span class="num">-1</span> <span class="cm"># 左は空</span></span>
+<span id="code-4" class="code-line"><span class="line-no">4</span>  <span class="arr">tree</span>[<span class="idx">newIdx</span>].<span class="prop">right</span> <span class="op">←</span> <span class="num">-1</span> <span class="cm"># 右も空</span></span>
+<span id="code-5" class="code-line"><span class="line-no">5</span>  <span class="kw">if</span> <span class="idx">newIdx</span> <span class="op">!=</span> <span class="idx">rootIdx</span> <span class="cm"># 根でなければ探索</span></span>
+<span id="code-6" class="code-line"><span class="line-no">6</span>    <span class="idx">currentIdx</span> <span class="op">←</span> <span class="idx">rootIdx</span> <span class="cm"># 根から開始</span></span>
+<span id="code-7" class="code-line"><span class="line-no">7</span>    <span class="vr">addFlag</span> <span class="op">←</span> <span class="bool">false</span> <span class="cm"># まだ未追加</span> <span id="addFlagBadge" class="live-badge flag-badge hidden"></span></span>
+<span id="code-8" class="code-line"><span class="line-no">8</span>    <span class="kw">while</span> <span class="vr">addFlag</span> <span class="op">==</span> <span class="bool">false</span> <span class="cm"># 接続まで反復</span></span>
+<span id="code-9" class="code-line"><span class="line-no">9</span>      <span class="kw">if</span> <span class="vr">data</span> <span class="op">&lt;</span> <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">data</span> <span class="cm"># 小さいなら左</span></span>
+<span id="code-10" class="code-line"><span class="line-no">10</span>        <span class="kw">if</span> <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">left</span> <span class="op">==</span> <span class="num">-1</span> <span class="cm"># 左が空?</span></span>
+<span id="code-11" class="code-line"><span class="line-no">11</span>          <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">left</span> <span class="op">←</span> <span class="idx">newIdx</span> <span class="cm"># 左に接続</span></span>
+<span id="code-12" class="code-line"><span class="line-no">12</span>          <span class="vr">addFlag</span> <span class="op">←</span> <span class="bool">true</span> <span class="cm"># 追加完了</span></span>
+<span id="code-13" class="code-line"><span class="line-no">13</span>        <span class="kw">else</span> <span class="cm"># 左に子あり</span></span>
+<span id="code-14" class="code-line"><span class="line-no">14</span>          <span class="idx">currentIdx</span> <span class="op">←</span> <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">left</span> <span class="cm"># 左へ移動</span></span>
+<span id="code-15" class="code-line"><span class="line-no">15</span>      <span class="kw">else</span> <span class="cm"># 大きいなら右</span></span>
+<span id="code-16" class="code-line"><span class="line-no">16</span>        <span class="kw">if</span> <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">right</span> <span class="op">==</span> <span class="num">-1</span> <span class="cm"># 右が空?</span></span>
+<span id="code-17" class="code-line"><span class="line-no">17</span>          <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">right</span> <span class="op">←</span> <span class="idx">newIdx</span> <span class="cm"># 右に接続</span></span>
+<span id="code-18" class="code-line"><span class="line-no">18</span>          <span class="vr">addFlag</span> <span class="op">←</span> <span class="bool">true</span> <span class="cm"># 追加完了</span></span>
+<span id="code-19" class="code-line"><span class="line-no">19</span>        <span class="kw">else</span> <span class="cm"># 右に子あり</span></span>
+<span id="code-20" class="code-line"><span class="line-no">20</span>          <span class="idx">currentIdx</span> <span class="op">←</span> <span class="arr">tree</span>[<span class="idx">currentIdx</span>].<span class="prop">right</span> <span class="cm"># 右へ移動</span></span>
+<span id="code-21" class="code-line"><span class="line-no">21</span>  <span class="idx">newIdx</span> <span class="op">←</span> <span class="idx">newIdx</span> <span class="op">+</span> <span class="num">1</span> <span class="cm"># 次の空きへ</span></span>
+              <div id="mainCodeBlock" class="main-code-block" aria-label="main の呼び出し"></div>
+            </div>
+          </article>
+
+          <article class="panel log-panel">
+            <div class="section-head">
+              <h2>手順ログ</h2>
+              <span class="head-note">クリックで移動</span>
+            </div>
+            <ol id="stepsList" class="steps-list"></ol>
+          </article>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const CAPACITY = 10;
+      const ROOT_IDX = 0;
+      const SVG_NS = "http://www.w3.org/2000/svg";
+      const NODE_RADIUS = 38;
+      const EMPTY_RADIUS = 26;
+      const META_OFFSET = 70;
+      const MAIN_LINE = 22;
+      const MAIN_VALUES_LINE = 23;
+      const MAIN_LOOP_LINE = 24;
+      const MAIN_DATA_LINE = 25;
+      const MAIN_CALL_LINE = 26;
+
+      const presets = {
+        balanced: [4, 6, 5, 2, 3, 7, 1],
+        left: [50, 40, 30, 20, 10],
+        right: [10, 20, 30, 40, 50],
+        mixed: [45, 18, 72, 12, 31, 60, 90, 25, 38]
+      };
+
+      const presetSelect = document.getElementById("presetSelect");
+      const sequenceInput = document.getElementById("sequenceInput");
+      const setBtn = document.getElementById("setBtn");
+      const playBtn = document.getElementById("playBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const endBtn = document.getElementById("endBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const speedRange = document.getElementById("speedRange");
+      const statusNote = document.getElementById("statusNote");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const treeSvg = document.getElementById("treeSvg");
+      const arrayGrid = document.getElementById("arrayGrid");
+      const currentMessage = document.getElementById("currentMessage");
+      const stepsList = document.getElementById("stepsList");
+      const treeHeadNote = document.getElementById("treeHeadNote");
+      const mainCodeBlock = document.getElementById("mainCodeBlock");
+
+      let history = [];
+      let currentStep = 0;
+      let playTimer = null;
+      let isPlaying = false;
+
+      function makeEmptyTree() {
+        return Array.from({ length: CAPACITY }, () => ({
+          data: null,
+          left: -1,
+          right: -1,
+          initialized: false
+        }));
+      }
+
+      function cloneTree(tree) {
+        return tree.map(node => ({ ...node }));
+      }
+
+      function valueText(value) {
+        return value === null || value === undefined ? "-" : String(value);
+      }
+
+      function parseSequence(text) {
+        const tokens = text
+          .split(/[\s,]+/)
+          .map(token => token.trim())
+          .filter(Boolean);
+        const values = [];
+        for (const token of tokens) {
+          const value = Number(token);
+          if (!Number.isInteger(value)) {
+            throw new Error(`整数ではない値があります: ${token}`);
+          }
+          values.push(value);
+        }
+        if (values.length === 0) {
+          throw new Error("挿入する整数を1個以上入力してください。");
+        }
+        if (values.length > CAPACITY) {
+          throw new Error(`tree[10] なので、入力できる値は最大 ${CAPACITY} 個です。`);
+        }
+        return values;
+      }
+
+      function makeStep(tree, line, message, vars = {}) {
+        return {
+          tree: cloneTree(tree),
+          line,
+          message,
+          data: vars.data ?? null,
+          i: vars.i ?? null,
+          insertIdx: vars.insertIdx ?? null,
+          newIdx: vars.newIdx ?? 0,
+          currentIdx: vars.currentIdx ?? null,
+          addFlag: vars.addFlag ?? null,
+          path: vars.path ? [...vars.path] : [],
+          pending: vars.pending ?? null,
+          attached: vars.attached ?? null,
+          phase: vars.phase ?? ""
+        };
+      }
+
+      function appendStyledText(parent, className, text) {
+        const span = document.createElement("span");
+        span.className = className;
+        span.textContent = text;
+        parent.appendChild(span);
+        return span;
+      }
+
+      function appendLineNumber(parent, lineNo) {
+        appendStyledText(parent, "line-no", String(lineNo));
+      }
+
+      function renderMainCode(values) {
+        mainCodeBlock.innerHTML = "";
+
+        const mainLine = document.createElement("span");
+        mainLine.id = `code-${MAIN_LINE}`;
+        mainLine.className = "code-line";
+        appendLineNumber(mainLine, MAIN_LINE);
+        appendStyledText(mainLine, "kw", "メイン");
+        mainLine.append(" ");
+        appendStyledText(mainLine, "fn", "main");
+        mainLine.append("() ");
+        appendStyledText(mainLine, "cm", "# ここから順に呼び出し");
+        mainCodeBlock.appendChild(mainLine);
+
+        const valuesLine = document.createElement("span");
+        valuesLine.id = `code-${MAIN_VALUES_LINE}`;
+        valuesLine.className = "code-line";
+        appendLineNumber(valuesLine, MAIN_VALUES_LINE);
+        valuesLine.append("  ");
+        appendStyledText(valuesLine, "arr", "values");
+        valuesLine.append(" ");
+        appendStyledText(valuesLine, "op", "←");
+        valuesLine.append(" [");
+        values.forEach((value, index) => {
+          if (index > 0) valuesLine.append(", ");
+          appendStyledText(valuesLine, "num", String(value));
+        });
+        valuesLine.append("] ");
+        appendStyledText(valuesLine, "cm", "# 挿入する順番");
+        mainCodeBlock.appendChild(valuesLine);
+
+        const loopLine = document.createElement("span");
+        loopLine.id = `code-${MAIN_LOOP_LINE}`;
+        loopLine.className = "code-line";
+        appendLineNumber(loopLine, MAIN_LOOP_LINE);
+        loopLine.append("  ");
+        appendStyledText(loopLine, "kw", "for");
+        loopLine.append(" ");
+        appendStyledText(loopLine, "idx", "i");
+        loopLine.append(" ");
+        appendStyledText(loopLine, "op", "←");
+        loopLine.append(" ");
+        appendStyledText(loopLine, "num", "0");
+        loopLine.append(" to ");
+        appendStyledText(loopLine, "num", String(values.length - 1));
+        loopLine.append(" ");
+        appendStyledText(loopLine, "cm", "# i 番目を取り出す");
+        loopLine.append(" ");
+        const iBadge = document.createElement("span");
+        iBadge.id = "mainIBadge";
+        iBadge.className = "live-badge index-badge hidden";
+        loopLine.appendChild(iBadge);
+        mainCodeBlock.appendChild(loopLine);
+
+        const dataLine = document.createElement("span");
+        dataLine.id = `code-${MAIN_DATA_LINE}`;
+        dataLine.className = "code-line";
+        appendLineNumber(dataLine, MAIN_DATA_LINE);
+        dataLine.append("    ");
+        appendStyledText(dataLine, "vr", "data");
+        dataLine.append(" ");
+        appendStyledText(dataLine, "op", "←");
+        dataLine.append(" ");
+        appendStyledText(dataLine, "arr", "values");
+        dataLine.append("[");
+        appendStyledText(dataLine, "idx", "i");
+        dataLine.append("] ");
+        appendStyledText(dataLine, "cm", "# 今回追加する値");
+        dataLine.append(" ");
+        const dataBadge = document.createElement("span");
+        dataBadge.id = "mainDataBadge";
+        dataBadge.className = "live-badge hidden";
+        dataLine.appendChild(dataBadge);
+        mainCodeBlock.appendChild(dataLine);
+
+        const callLine = document.createElement("span");
+        callLine.id = `code-${MAIN_CALL_LINE}`;
+        callLine.className = "code-line";
+        appendLineNumber(callLine, MAIN_CALL_LINE);
+        callLine.append("    ");
+        appendStyledText(callLine, "fn", "addBST");
+        callLine.append("(");
+        appendStyledText(callLine, "vr", "data");
+        callLine.append(") ");
+        appendStyledText(callLine, "cm", "# data を引数にする");
+        mainCodeBlock.appendChild(callLine);
+      }
+
+      function generateHistory(values) {
+        const tree = makeEmptyTree();
+        const steps = [];
+        let newIdx = 0;
+        let activeI = null;
+        let activeData = null;
+
+        const push = (line, message, vars = {}) => {
+          steps.push(makeStep(tree, line, message, {
+            newIdx,
+            data: activeData,
+            i: activeI,
+            ...vars
+          }));
+        };
+
+        push(MAIN_LINE, "挿入列をセット。main() から addBST(値) を順に呼ぶ。", {
+          phase: "main"
+        });
+        push(MAIN_VALUES_LINE, `values ← [${values.join(", ")}]`, {
+          phase: "main"
+        });
+
+        for (let order = 0; order < values.length; order += 1) {
+          const data = values[order];
+          activeI = order;
+          activeData = null;
+          push(MAIN_LOOP_LINE, `i ← ${order}。values[${order}] を取り出す。`, {
+            phase: "i 更新"
+          });
+
+          activeData = data;
+          push(MAIN_DATA_LINE, `data ← values[${order}] = ${data}`, {
+            phase: "data 代入"
+          });
+
+          const insertIdx = newIdx;
+          push(MAIN_CALL_LINE, `addBST(data) を呼ぶ。data=${data}`, {
+            data,
+            insertIdx,
+            phase: "呼び出し"
+          });
+
+          push(1, `addBST(data) 開始。使用位置 tree[${insertIdx}]。`, {
+            data,
+            insertIdx,
+            phase: "関数開始"
+          });
+
+          tree[insertIdx].data = data;
+          tree[insertIdx].initialized = true;
+          push(2, `tree[${insertIdx}].data ← ${data}`, {
+            data,
+            insertIdx,
+            path: [insertIdx],
+            phase: "ノード準備"
+          });
+
+          tree[insertIdx].left = -1;
+          push(3, `tree[${insertIdx}].left ← -1。左の子なし。`, {
+            data,
+            insertIdx,
+            path: [insertIdx],
+            phase: "ノード準備"
+          });
+
+          tree[insertIdx].right = -1;
+          push(4, `tree[${insertIdx}].right ← -1。右の子なし。`, {
+            data,
+            insertIdx,
+            path: [insertIdx],
+            phase: "ノード準備"
+          });
+
+          if (newIdx !== ROOT_IDX) {
+            push(5, `newIdx=${newIdx} != rootIdx=${ROOT_IDX}。根から探索。`, {
+              data,
+              insertIdx,
+              phase: "探索判定"
+            });
+
+            let currentIdx = ROOT_IDX;
+            let addFlag = false;
+            const path = [currentIdx];
+
+            push(6, `currentIdx ← rootIdx (${ROOT_IDX})`, {
+              data,
+              insertIdx,
+              currentIdx,
+              path,
+              phase: "探索開始"
+            });
+
+            push(7, "addFlag ← false。未追加。", {
+              data,
+              insertIdx,
+              currentIdx,
+              addFlag,
+              path,
+              phase: "探索開始"
+            });
+
+            while (!addFlag) {
+              push(8, "addFlag == false。現在ノードと比較。", {
+                data,
+                insertIdx,
+                currentIdx,
+                addFlag,
+                path,
+                phase: "比較"
+              });
+
+              const currentData = tree[currentIdx].data;
+              if (data < currentData) {
+                push(9, `${data} < tree[${currentIdx}].data (${currentData})。左を見る。`, {
+                  data,
+                  insertIdx,
+                  currentIdx,
+                  addFlag,
+                  path,
+                  phase: "左へ"
+                });
+
+                if (tree[currentIdx].left === -1) {
+                  push(10, `tree[${currentIdx}].left == -1。空き。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    pending: { parent: currentIdx, side: "left", child: insertIdx },
+                    phase: "接続先発見"
+                  });
+
+                  tree[currentIdx].left = insertIdx;
+                  push(11, `tree[${currentIdx}].left ← newIdx (${insertIdx})。左に接続。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path: [...path, insertIdx],
+                    attached: { parent: currentIdx, side: "left", child: insertIdx },
+                    phase: "接続"
+                  });
+
+                  addFlag = true;
+                  push(12, "addFlag ← true。追加完了。", {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path: [...path, insertIdx],
+                    attached: { parent: currentIdx, side: "left", child: insertIdx },
+                    phase: "追加完了"
+                  });
+                } else {
+                  const nextIdx = tree[currentIdx].left;
+                  push(10, `tree[${currentIdx}].left == ${nextIdx}。左の子あり。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    phase: "左の子あり"
+                  });
+
+                  currentIdx = nextIdx;
+                  path.push(currentIdx);
+                  push(14, `currentIdx ← tree[${currentIdx}]。左へ移動。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    phase: "移動"
+                  });
+                }
+              } else {
+                const compareMessage = data === currentData
+                  ? `${data} == tree[${currentIdx}].data (${currentData})。右へ進む。`
+                  : `${data} > tree[${currentIdx}].data (${currentData})。右を見る。`;
+                push(15, compareMessage, {
+                  data,
+                  insertIdx,
+                  currentIdx,
+                  addFlag,
+                  path,
+                  phase: "右へ"
+                });
+
+                if (tree[currentIdx].right === -1) {
+                  push(16, `tree[${currentIdx}].right == -1。空き。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    pending: { parent: currentIdx, side: "right", child: insertIdx },
+                    phase: "接続先発見"
+                  });
+
+                  tree[currentIdx].right = insertIdx;
+                  push(17, `tree[${currentIdx}].right ← newIdx (${insertIdx})。右に接続。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path: [...path, insertIdx],
+                    attached: { parent: currentIdx, side: "right", child: insertIdx },
+                    phase: "接続"
+                  });
+
+                  addFlag = true;
+                  push(18, "addFlag ← true。追加完了。", {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path: [...path, insertIdx],
+                    attached: { parent: currentIdx, side: "right", child: insertIdx },
+                    phase: "追加完了"
+                  });
+                } else {
+                  const nextIdx = tree[currentIdx].right;
+                  push(16, `tree[${currentIdx}].right == ${nextIdx}。右の子あり。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    phase: "右の子あり"
+                  });
+
+                  currentIdx = nextIdx;
+                  path.push(currentIdx);
+                  push(20, `currentIdx ← tree[${currentIdx}]。右へ移動。`, {
+                    data,
+                    insertIdx,
+                    currentIdx,
+                    addFlag,
+                    path,
+                    phase: "移動"
+                  });
+                }
+              }
+            }
+          } else {
+            push(5, `newIdx=${newIdx} == rootIdx=${ROOT_IDX}。tree[${insertIdx}] を根にする。探索なし。`, {
+              data,
+              insertIdx,
+              path: [insertIdx],
+              phase: "根"
+            });
+          }
+
+          newIdx += 1;
+          const nextText = newIdx < CAPACITY ? `次は tree[${newIdx}]。` : "tree[10] は満杯。";
+          push(21, `newIdx ← ${newIdx}。${nextText}`, {
+            data,
+            insertIdx,
+            path: collectReachableIndexes(tree),
+            phase: "完了"
+          });
+        }
+
+        activeI = null;
+        activeData = null;
+        push(0, "全値の追加完了。left / right が子ノードの添字。", {
+          newIdx,
+          path: collectReachableIndexes(tree),
+          phase: "完了"
+        });
+        return steps;
+      }
+
+      function collectReachableIndexes(tree) {
+        const out = [];
+        const seen = new Set();
+        function walk(idx) {
+          if (idx < 0 || idx >= CAPACITY || seen.has(idx) || !tree[idx].initialized) return;
+          seen.add(idx);
+          out.push(idx);
+          walk(tree[idx].left);
+          walk(tree[idx].right);
+        }
+        walk(ROOT_IDX);
+        return out;
+      }
+
+      function collectLayoutItems(tree) {
+        const items = [];
+        const seen = new Set();
+        function walk(idx, depth, parent, side) {
+          if (idx < 0 || idx >= CAPACITY || seen.has(idx) || !tree[idx].initialized) return;
+          seen.add(idx);
+          walk(tree[idx].left, depth + 1, idx, "left");
+          items.push({ idx, depth, parent, side });
+          walk(tree[idx].right, depth + 1, idx, "right");
+        }
+        walk(ROOT_IDX, 0, null, "");
+        return items;
+      }
+
+      function makeSvgElement(tag, attrs = {}) {
+        const element = document.createElementNS(SVG_NS, tag);
+        for (const [name, value] of Object.entries(attrs)) {
+          element.setAttribute(name, String(value));
+        }
+        return element;
+      }
+
+      function clearSvg(svg) {
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+      }
+
+      function appendText(parent, attrs, text) {
+        const element = makeSvgElement("text", attrs);
+        element.textContent = text;
+        parent.appendChild(element);
+        return element;
+      }
+
+      function computePositions(tree, items) {
+        const width = 860;
+        const height = 620;
+        const positions = new Map();
+        if (!items.length) return positions;
+        const maxDepth = Math.max(...items.map(item => item.depth));
+        const yStep = maxDepth > 0 ? Math.min(128, Math.max(78, (height - 150) / maxDepth)) : 0;
+
+        function place(idx, depth, x) {
+          if (idx < 0 || idx >= CAPACITY || !tree[idx].initialized || positions.has(idx)) return;
+          const boundedX = Math.max(45, Math.min(width - 45, x));
+          positions.set(idx, {
+            x: boundedX,
+            y: 70 + yStep * depth
+          });
+
+          const childGap = Math.max(48, width / Math.pow(2, depth + 2));
+          place(tree[idx].left, depth + 1, boundedX - childGap);
+          place(tree[idx].right, depth + 1, boundedX + childGap);
+        }
+
+        place(ROOT_IDX, 0, width / 2);
+        return positions;
+      }
+
+      function renderTree(step) {
+        clearSvg(treeSvg);
+        const tree = step.tree;
+        const items = collectLayoutItems(tree);
+        const positions = computePositions(tree, items);
+        const reachable = new Set(items.map(item => item.idx));
+        const pathSet = new Set(step.path);
+        const attached = step.attached;
+
+        if (!items.length) {
+          appendText(treeSvg, { x: 430, y: 250, class: "empty-message" }, "まだノードはありません");
+          return;
+        }
+
+        for (const item of items) {
+          const parent = item.parent;
+          if (parent === null) continue;
+          const parentPos = positions.get(parent);
+          const childPos = positions.get(item.idx);
+          const isAttached = attached && attached.parent === parent && attached.child === item.idx;
+          const line = makeSvgElement("line", {
+            x1: parentPos.x,
+            y1: parentPos.y + NODE_RADIUS,
+            x2: childPos.x,
+            y2: childPos.y - NODE_RADIUS,
+            class: isAttached ? "edge attach" : "edge"
+          });
+          treeSvg.appendChild(line);
+          const midX = (parentPos.x + childPos.x) / 2;
+          const midY = (parentPos.y + childPos.y) / 2;
+          appendText(treeSvg, {
+            x: midX,
+            y: midY - 14,
+            class: "edge-label"
+          }, item.side === "left" ? "L" : "R");
+        }
+
+        if (step.pending && positions.has(step.pending.parent)) {
+          const parentPos = positions.get(step.pending.parent);
+          const dx = step.pending.side === "left" ? -70 : 70;
+          const emptyX = parentPos.x + dx;
+          const emptyY = parentPos.y + 88;
+          treeSvg.appendChild(makeSvgElement("line", {
+            x1: parentPos.x,
+            y1: parentPos.y + NODE_RADIUS,
+            x2: emptyX,
+            y2: emptyY - EMPTY_RADIUS,
+            class: "pending-edge"
+          }));
+          const group = makeSvgElement("g", { class: "empty-slot" });
+          group.appendChild(makeSvgElement("circle", { cx: emptyX, cy: emptyY, r: EMPTY_RADIUS }));
+          appendText(group, { x: emptyX, y: emptyY }, "-1");
+          treeSvg.appendChild(group);
+        }
+
+        for (const item of items) {
+          const node = tree[item.idx];
+          const pos = positions.get(item.idx);
+          const classes = ["node"];
+          if (item.idx === ROOT_IDX) classes.push("root");
+          if (pathSet.has(item.idx)) classes.push("path");
+          if (item.idx === step.currentIdx) classes.push("current");
+          if (item.idx === step.insertIdx) classes.push("new-node");
+          if (attached && attached.child === item.idx) classes.push("attached");
+
+          const group = makeSvgElement("g", { class: classes.join(" ") });
+          group.appendChild(makeSvgElement("circle", { cx: pos.x, cy: pos.y, r: NODE_RADIUS }));
+          appendText(group, { x: pos.x, y: pos.y + 1, class: "value" }, String(node.data));
+          appendText(group, { x: pos.x, y: pos.y + META_OFFSET, class: "meta" }, `idx ${item.idx}`);
+          treeSvg.appendChild(group);
+        }
+
+        const floating = tree
+          .map((node, idx) => ({ node, idx }))
+          .filter(item => item.node.initialized && !reachable.has(item.idx));
+        floating.forEach((item, offset) => {
+          const x = 52 + offset * 78;
+          const y = 126;
+          appendText(treeSvg, { x, y: y - 60, class: "floating-label" }, "未接続");
+          const group = makeSvgElement("g", { class: "node new-node" });
+          group.appendChild(makeSvgElement("circle", { cx: x, cy: y, r: NODE_RADIUS }));
+          appendText(group, { x, y: y + 1, class: "value" }, String(item.node.data));
+          appendText(group, { x, y: y + META_OFFSET, class: "meta" }, `idx ${item.idx}`);
+          treeSvg.appendChild(group);
+        });
+      }
+
+      function renderArray(step) {
+        const tree = step.tree;
+        arrayGrid.innerHTML = "";
+        for (let idx = 0; idx < CAPACITY; idx += 1) {
+          const node = tree[idx];
+          const classes = ["slot"];
+          if (!node.initialized) classes.push("empty");
+          if (idx === step.currentIdx) classes.push("current");
+          if (idx === step.insertIdx) classes.push("new-slot");
+          if (step.attached && step.attached.child === idx) classes.push("attached");
+          const wrap = document.createElement("div");
+          wrap.className = "slot-wrap";
+
+          const slot = document.createElement("div");
+          slot.className = classes.join(" ");
+
+          const tags = [];
+          if (idx === ROOT_IDX) tags.push({ text: "root", className: "root" });
+          if (idx === step.newIdx) tags.push({ text: "newIdx", className: "newIdx" });
+          if (idx === step.currentIdx) tags.push({ text: "cur", className: "cur" });
+
+          slot.innerHTML = `
+            <div class="slot-head"><span>[${idx}]</span></div>
+            <div class="slot-row"><span>data</span><span>${valueText(node.data)}</span></div>
+            <div class="slot-row"><span>left</span><span>${node.initialized ? node.left : "-"}</span></div>
+            <div class="slot-row"><span>right</span><span>${node.initialized ? node.right : "-"}</span></div>
+          `;
+          wrap.innerHTML = `
+            <div class="slot-marker-row">
+              ${tags.map((tag) => `<span class="slot-marker ${tag.className}">${tag.text}</span>`).join("")}
+            </div>
+          `;
+          wrap.appendChild(slot);
+          arrayGrid.appendChild(wrap);
+        }
+      }
+
+      function scrollChildIntoContainer(container, child) {
+        if (!container || !child) return;
+        const margin = 6;
+        const containerRect = container.getBoundingClientRect();
+        const childRect = child.getBoundingClientRect();
+        const hiddenAbove = childRect.top - containerRect.top - margin;
+        const hiddenBelow = childRect.bottom - containerRect.bottom + margin;
+
+        if (hiddenAbove < 0) {
+          container.scrollTop += hiddenAbove;
+        } else if (hiddenBelow > 0) {
+          container.scrollTop += hiddenBelow;
+        }
+      }
+
+      function renderCode(line) {
+        document.querySelectorAll(".code-line").forEach(element => {
+          element.classList.remove("active");
+        });
+        const target = document.getElementById(`code-${line}`);
+        if (target) {
+          target.classList.add("active");
+          scrollChildIntoContainer(target.parentElement, target);
+        }
+      }
+
+      function renderMainBadges(step) {
+        const functionDataBadge = document.getElementById("functionDataBadge");
+        const functionNewIdxBadge = document.getElementById("functionNewIdxBadge");
+        const addFlagBadge = document.getElementById("addFlagBadge");
+        const iBadge = document.getElementById("mainIBadge");
+        const dataBadge = document.getElementById("mainDataBadge");
+
+        if (functionDataBadge) {
+          if (step.data === null) {
+            functionDataBadge.classList.add("hidden");
+            functionDataBadge.textContent = "";
+          } else {
+            functionDataBadge.classList.remove("hidden");
+            functionDataBadge.textContent = `現在の data = ${step.data}`;
+          }
+        }
+
+        if (functionNewIdxBadge) {
+          if (step.data === null) {
+            functionNewIdxBadge.classList.add("hidden");
+            functionNewIdxBadge.textContent = "";
+          } else {
+            functionNewIdxBadge.classList.remove("hidden");
+            functionNewIdxBadge.textContent = `現在の newIdx = ${step.newIdx}`;
+          }
+        }
+
+        if (addFlagBadge) {
+          if (step.addFlag === null) {
+            addFlagBadge.classList.add("hidden");
+            addFlagBadge.textContent = "";
+          } else {
+            addFlagBadge.classList.remove("hidden");
+            addFlagBadge.textContent = `現在の addFlag = ${step.addFlag}`;
+          }
+        }
+
+        if (iBadge) {
+          if (step.i === null) {
+            iBadge.classList.add("hidden");
+            iBadge.textContent = "";
+          } else {
+            iBadge.classList.remove("hidden");
+            iBadge.textContent = `現在の i = ${step.i}`;
+          }
+        }
+
+        if (dataBadge) {
+          if (step.data === null) {
+            dataBadge.classList.add("hidden");
+            dataBadge.textContent = "";
+          } else {
+            dataBadge.classList.remove("hidden");
+            dataBadge.textContent = `現在の data = ${step.data}`;
+          }
+        }
+      }
+
+      function renderLog() {
+        stepsList.innerHTML = "";
+        history.forEach((step, index) => {
+          const item = document.createElement("li");
+          item.className = `step-item${index === currentStep ? " active" : ""}`;
+          item.addEventListener("click", () => goToStep(index));
+          item.innerHTML = `
+            <span class="step-no">${index}</span>
+            <span>
+              <span class="step-title">${step.message}</span>
+              <span class="step-meta">行 ${step.line || "-"} / ${step.phase || "処理"}</span>
+            </span>
+          `;
+          stepsList.appendChild(item);
+        });
+        const active = stepsList.querySelector(".step-item.active");
+        scrollChildIntoContainer(stepsList, active);
+      }
+
+      function renderStep() {
+        const step = history[currentStep];
+        if (!step) return;
+        renderTree(step);
+        renderArray(step);
+        renderCode(step.line);
+        renderMainBadges(step);
+        renderLog();
+
+        currentMessage.textContent = step.message;
+        stepCounter.textContent = `手順 ${currentStep} / ${history.length - 1}`;
+        progressBar.style.width = history.length > 1
+          ? `${(currentStep / (history.length - 1)) * 100}%`
+          : "0%";
+        treeHeadNote.textContent = `rootIdx = ${ROOT_IDX} / newIdx = ${step.newIdx}`;
+
+        prevBtn.disabled = currentStep <= 0;
+        nextBtn.disabled = currentStep >= history.length - 1;
+        endBtn.disabled = currentStep >= history.length - 1;
+        playBtn.disabled = currentStep >= history.length - 1;
+      }
+
+      function goToStep(index) {
+        stopPlay();
+        currentStep = Math.max(0, Math.min(index, history.length - 1));
+        renderStep();
+      }
+
+      function nextStep() {
+        if (currentStep >= history.length - 1) {
+          stopPlay();
+          return;
+        }
+        currentStep += 1;
+        renderStep();
+      }
+
+      function prevStep() {
+        if (currentStep <= 0) return;
+        stopPlay();
+        currentStep -= 1;
+        renderStep();
+      }
+
+      function startPlay() {
+        if (currentStep >= history.length - 1) return;
+        isPlaying = true;
+        playBtn.textContent = "一時停止";
+        playTimer = window.setInterval(nextStep, Number(speedRange.value));
+      }
+
+      function stopPlay() {
+        isPlaying = false;
+        playBtn.textContent = "▶ 再生";
+        if (playTimer !== null) {
+          window.clearInterval(playTimer);
+          playTimer = null;
+        }
+      }
+
+      function togglePlay() {
+        if (isPlaying) {
+          stopPlay();
+        } else {
+          startPlay();
+        }
+      }
+
+      function setSequenceFromInput() {
+        stopPlay();
+        try {
+          const values = parseSequence(sequenceInput.value);
+          renderMainCode(values);
+          history = generateHistory(values);
+          currentStep = 0;
+          statusNote.textContent = "親より小さい値は左、大きい値は右。同じ値は擬似コードの else に合わせて右。";
+          renderStep();
+        } catch (error) {
+          statusNote.textContent = error.message;
+        }
+      }
+
+      presetSelect.addEventListener("change", () => {
+        if (presetSelect.value !== "custom") {
+          sequenceInput.value = presets[presetSelect.value].join(", ");
+          setSequenceFromInput();
+        }
+      });
+
+      sequenceInput.addEventListener("input", () => {
+        presetSelect.value = "custom";
+      });
+
+      sequenceInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") {
+          setSequenceFromInput();
+        }
+      });
+
+      setBtn.addEventListener("click", setSequenceFromInput);
+      playBtn.addEventListener("click", togglePlay);
+      prevBtn.addEventListener("click", prevStep);
+      nextBtn.addEventListener("click", nextStep);
+      endBtn.addEventListener("click", () => goToStep(history.length - 1));
+      resetBtn.addEventListener("click", () => goToStep(0));
+      speedRange.addEventListener("input", () => {
+        if (isPlaying) {
+          stopPlay();
+          startPlay();
+        }
+      });
+
+      setSequenceFromInput();
+    </script>
+  </body>
+</html>
