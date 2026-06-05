@@ -924,11 +924,13 @@
         min-height: 0;
         padding: 4px 8px 0;
         display: grid;
-        grid-template-rows: auto auto minmax(0, 1fr);
+        grid-template-columns: minmax(300px, 1fr) minmax(190px, 0.72fr);
+        grid-template-rows: auto minmax(0, 1fr);
         gap: 4px;
       }
 
       .message-box {
+        grid-column: 1 / -1;
         min-height: 39px;
         padding: 4px 8px;
         display: flex;
@@ -950,12 +952,10 @@
       .state-grid {
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(130px, 0.72fr) minmax(0, 1fr);
-        gap: 6px;
       }
 
       .life-timeline {
-        min-height: 154px;
+        min-height: 0;
         max-height: none;
         overflow: hidden;
         padding: 6px 9px;
@@ -968,7 +968,7 @@
       }
 
       .life-timeline.dense {
-        min-height: 212px;
+        min-height: 0;
         padding: 5px 8px;
         font-size: 9.5px;
         line-height: 1.12;
@@ -1087,15 +1087,15 @@
         color: #fef3c7;
       }
 
-      .call-stack,
-      .step-list {
+      .call-stack {
         min-height: 0;
         overflow: auto;
       }
 
       .call-stack {
+        height: 100%;
         display: flex;
-        flex-direction: column-reverse;
+        flex-direction: column;
         justify-content: flex-start;
         gap: 4px;
         padding: 6px;
@@ -1130,75 +1130,6 @@
         text-align: center;
       }
 
-      .step-list {
-        margin: 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 4px;
-      }
-
-      .step-item {
-        display: grid;
-        grid-template-columns: 25px minmax(0, 1fr);
-        gap: 6px;
-        align-items: center;
-        padding: 4px 6px;
-        border: 1px solid var(--soft-line);
-        border-radius: 8px;
-        background: #fff;
-        cursor: pointer;
-      }
-
-      .step-item:hover {
-        border-color: #bfdbfe;
-        background: #f8fbff;
-      }
-
-      .step-item.active {
-        border-color: var(--primary);
-        background: #eff6ff;
-      }
-
-      .step-no {
-        width: 22px;
-        height: 22px;
-        display: grid;
-        place-items: center;
-        border-radius: 999px;
-        background: #e5e7eb;
-        color: #475569;
-        font-size: 11px;
-        font-weight: 900;
-      }
-
-      .step-item.active .step-no {
-        background: var(--primary);
-        color: #fff;
-      }
-
-      .step-main {
-        min-width: 0;
-      }
-
-      .step-title {
-        color: var(--ink);
-        font-size: 11px;
-        font-weight: 900;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .step-meta {
-        color: var(--muted);
-        font-size: 10px;
-        font-weight: 800;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
       @media (max-width: 980px) {
         html,
         body {
@@ -1218,8 +1149,13 @@
         .intro,
         .controls,
         .workspace,
-        .state-grid {
+        .state-grid,
+        .stack-content {
           grid-template-columns: 1fr;
+        }
+
+        .stack-content {
+          grid-template-rows: auto auto auto;
         }
 
         .right-stack,
@@ -1236,11 +1172,7 @@
         }
 
         .call-stack {
-          min-height: 92px;
-        }
-
-        .step-list {
-          max-height: 280px;
+          min-height: 160px;
         }
 
         .step-counter {
@@ -1391,7 +1323,7 @@
 
           <section class="panel stack-panel">
             <div class="section-head">
-              <h2>再帰呼び出しと手順</h2>
+              <h2>再帰呼び出しの状態</h2>
               <span id="stackNote" class="head-note">call stack</span>
             </div>
             <div class="stack-content">
@@ -1401,7 +1333,6 @@
               <div id="lifeTimeline" class="life-timeline" aria-label="search呼び出しの寿命"></div>
               <div class="state-grid">
                 <div id="callStack" class="call-stack" aria-label="再帰呼び出しスタック"></div>
-                <ol id="stepList" class="step-list" aria-label="手順ログ"></ol>
               </div>
             </div>
           </section>
@@ -1474,18 +1405,18 @@
             { no: 1, html: '<span class="cm"># 探索したノードを格納するリスト</span>' },
             { no: 2, html: '<span class="vr">node_order</span> = []' },
             { no: 3, html: "" },
-            { no: 4, html: '<span class="cm"># 通りがけ順（中順）</span>' },
+            { no: 4, html: '<span class="cm"># 通りがけ順（中順）: 子の数で分岐</span>' },
             { no: 5, html: '<span class="kw">def</span> <span class="fn">search</span>(<span class="vr">pos</span>):' },
-            { no: 6, html: '    <span class="kw">if</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">2</span>:' },
+            { no: 6, html: '    <span class="kw">if</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">2</span>: <span class="cm"># 子が2つ</span>' },
             { no: 7, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">0</span>])' },
             { no: 8, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
             { no: 9, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">1</span>])' },
             { no: 10, html: "" },
-            { no: 11, html: '    <span class="kw">elif</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">1</span>:' },
+            { no: 11, html: '    <span class="kw">elif</span> <span class="fn">len</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]) == <span class="num">1</span>: <span class="cm"># 子が1つ</span>' },
             { no: 12, html: '        <span class="fn">search</span>(<span class="vr">tree</span>[<span class="vr">pos</span>][<span class="num">0</span>])' },
             { no: 13, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
             { no: 14, html: "" },
-            { no: 15, html: '    <span class="kw">else</span>:' },
+            { no: 15, html: '    <span class="kw">else</span>: <span class="cm"># 子なし</span>' },
             { no: 16, html: '        <span class="vr">node_order</span>.append(<span class="vr">pos</span>)' },
             { no: 17, html: "    " },
             { no: 18, html: '<span class="cm"># ルートから開始（引数はノード）</span>' },
@@ -1539,7 +1470,6 @@
       const currentMessage = document.getElementById("currentMessage");
       const lifeTimeline = document.getElementById("lifeTimeline");
       const callStack = document.getElementById("callStack");
-      const stepList = document.getElementById("stepList");
 
       let steps = [];
       let lifetimes = [];
@@ -2156,30 +2086,6 @@
         }).join("");
       }
 
-      function renderStepList() {
-        stepList.innerHTML = steps.map((step, index) => {
-          return `
-            <li class="step-item ${index === currentStep ? "active" : ""}" data-index="${index}">
-              <span class="step-no">${index}</span>
-              <span class="step-main">
-                <span class="step-title">${step.title}</span>
-                <span class="step-meta">行 ${step.line || "-"} / ${step.order.length ? step.order.join(" → ") : "未追加"}</span>
-              </span>
-            </li>
-          `;
-        }).join("");
-
-        stepList.querySelectorAll(".step-item").forEach((item) => {
-          item.addEventListener("click", () => {
-            stopPlaying();
-            setStep(Number(item.dataset.index));
-          });
-        });
-
-        const active = stepList.querySelector(".step-item.active");
-        active?.scrollIntoView({ block: "nearest" });
-      }
-
       function setStep(index) {
         currentStep = Math.max(0, Math.min(index, steps.length - 1));
         const step = steps[currentStep];
@@ -2189,7 +2095,6 @@
         renderCode(step);
         renderStack(step);
         renderLifetimes(step, currentStep);
-        renderStepList();
         currentMessage.textContent = step.message;
         statusText.textContent = step.status;
         stackNote.textContent = step.stack.length ? `深さ ${step.stack.length}` : "call stack";
