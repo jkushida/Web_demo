@@ -622,10 +622,10 @@
           <div class="tree-stage">
             <svg id="treeSvg" viewBox="0 0 980 620" role="img" aria-label="行きがけ順の一筆書き">
               <g id="edgeLayer"></g>
-              <g id="nodeLayer"></g>
               <path id="tourGuide" class="tour-guide"></path>
               <path id="tourTrace"></path>
               <circle id="tourCursor" r="8"></circle>
+              <g id="nodeLayer"></g>
               <g id="labelLayer"></g>
             </svg>
             <div class="explain-note">一筆書きでノードの<strong>左側</strong>を通る順番が、そのまま行きがけ順（<strong>前順</strong>）です。</div>
@@ -706,70 +706,97 @@
         k: { x: 820, y: 500 }
       };
 
+      const traceCornerRadius = 10;
       const tourPoints = [
-        { x: 520, y: 60 },
-        { x: 448, y: 76, node: "a" },
-        { x: 428, y: 118 },
-        { x: 392, y: 152 },
-        { x: 340, y: 176 },
-        { x: 260, y: 206, node: "b" },
-        { x: 246, y: 252 },
-        { x: 220, y: 294 },
-        { x: 142, y: 340, node: "c" },
-        { x: 112, y: 414 },
-        { x: 77, y: 468 },
-        { x: 55, y: 504, node: "h" },
-        { x: 72, y: 548 },
-        { x: 146, y: 540 },
-        { x: 150, y: 490 },
-        { x: 184, y: 422 },
-        { x: 220, y: 452 },
-        { x: 228, y: 504, node: "i" },
-        { x: 278, y: 560 },
-        { x: 345, y: 540 },
-        { x: 336, y: 488 },
-        { x: 300, y: 420 },
-        { x: 230, y: 356 },
-        { x: 270, y: 272 },
-        { x: 336, y: 300 },
-        { x: 370, y: 344, node: "d" },
-        { x: 410, y: 404 },
-        { x: 488, y: 400 },
-        { x: 476, y: 338 },
-        { x: 382, y: 270 },
-        { x: 330, y: 238 },
-        { x: 330, y: 188 },
-        { x: 448, y: 132 },
-        { x: 500, y: 132 },
+        { x: 542, y: 36 },
+        { x: 492, y: 34 },
+        { x: 457, y: 51 },
+        { x: 442, y: 86, node: "a" },
+        { x: 457, y: 121 },
+        { x: 370, y: 145 },
+        { x: 300, y: 165 },
+        { x: 267, y: 171 },
+        { x: 252, y: 206, node: "b" },
+        { x: 267, y: 241 },
+        { x: 220, y: 276 },
+        { x: 168, y: 294 },
+        { x: 153, y: 305 },
+        { x: 138, y: 340, node: "c" },
+        { x: 153, y: 375 },
+        { x: 118, y: 414 },
+        { x: 70, y: 444 },
+        { x: 60, y: 465 },
+        { x: 45, y: 500, node: "h" },
+        { x: 60, y: 535 },
+        { x: 95, y: 552 },
+        { x: 130, y: 535 },
+        { x: 158, y: 506 },
+        { x: 168, y: 460 },
+        { x: 220, y: 456 },
+        { x: 245, y: 465 },
+        { x: 230, y: 500, node: "i" },
+        { x: 245, y: 535 },
+        { x: 280, y: 552 },
+        { x: 315, y: 535 },
+        { x: 338, y: 490 },
+        { x: 318, y: 420 },
+        { x: 260, y: 382 },
+        { x: 252, y: 320 },
+        { x: 320, y: 292 },
+        { x: 395, y: 305 },
+        { x: 380, y: 340, node: "d" },
+        { x: 395, y: 375 },
+        { x: 430, y: 392 },
+        { x: 482, y: 375 },
+        { x: 482, y: 305 },
+        { x: 430, y: 275 },
+        { x: 350, y: 252 },
+        { x: 350, y: 220 },
+        { x: 440, y: 145 },
+        { x: 492, y: 134 },
         { x: 548, y: 140 },
-        { x: 612, y: 172 },
+        { x: 600, y: 150 },
+        { x: 655, y: 171 },
         { x: 640, y: 206, node: "e" },
-        { x: 650, y: 252 },
-        { x: 620, y: 300 },
-        { x: 550, y: 340, node: "f" },
-        { x: 512, y: 420 },
-        { x: 470, y: 504, node: "j" },
-        { x: 482, y: 556 },
-        { x: 558, y: 540 },
-        { x: 554, y: 490 },
+        { x: 655, y: 241 },
+        { x: 650, y: 260 },
+        { x: 615, y: 286 },
+        { x: 555, y: 305 },
+        { x: 540, y: 340, node: "f" },
+        { x: 555, y: 375 },
+        { x: 535, y: 424 },
+        { x: 475, y: 465 },
+        { x: 460, y: 500, node: "j" },
+        { x: 475, y: 535 },
+        { x: 510, y: 552 },
+        { x: 545, y: 535 },
+        { x: 560, y: 484 },
         { x: 594, y: 410 },
-        { x: 634, y: 356 },
-        { x: 666, y: 284 },
-        { x: 720, y: 294 },
+        { x: 638, y: 356 },
+        { x: 666, y: 290 },
+        { x: 732, y: 285 },
+        { x: 785, y: 305 },
         { x: 770, y: 340, node: "g" },
-        { x: 812, y: 418 },
-        { x: 825, y: 504, node: "k" },
-        { x: 864, y: 548 },
-        { x: 932, y: 534 },
-        { x: 926, y: 486 },
-        { x: 870, y: 420 },
-        { x: 820, y: 356 },
-        { x: 782, y: 282 },
-        { x: 704, y: 246 },
-        { x: 694, y: 182 },
-        { x: 606, y: 144 },
-        { x: 520, y: 110 },
-        { x: 520, y: 60 }
+        { x: 785, y: 375 },
+        { x: 820, y: 420 },
+        { x: 865, y: 465 },
+        { x: 850, y: 500, node: "k" },
+        { x: 865, y: 535 },
+        { x: 900, y: 552 },
+        { x: 935, y: 535 },
+        { x: 950, y: 500 },
+        { x: 935, y: 465 },
+        { x: 880, y: 388 },
+        { x: 870, y: 330 },
+        { x: 820, y: 286 },
+        { x: 746, y: 254 },
+        { x: 735, y: 206 },
+        { x: 725, y: 171 },
+        { x: 690, y: 158 },
+        { x: 646, y: 150 },
+        { x: 558, y: 116 },
+        { x: 540, y: 76 },
+        { x: 542, y: 36 }
       ];
 
       const eventPoints = Object.fromEntries(
@@ -810,17 +837,43 @@
         return element;
       }
 
-      function smoothPathData(points) {
+      function roundedPathData(points) {
         if (points.length === 0) return "";
         if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
 
         const parts = [`M ${points[0].x} ${points[0].y}`];
         for (let i = 1; i < points.length - 1; i += 1) {
+          const previous = points[i - 1];
           const current = points[i];
           const next = points[i + 1];
-          const midX = (current.x + next.x) / 2;
-          const midY = (current.y + next.y) / 2;
-          parts.push(`Q ${current.x} ${current.y} ${midX} ${midY}`);
+          const incoming = {
+            x: current.x - previous.x,
+            y: current.y - previous.y
+          };
+          const outgoing = {
+            x: next.x - current.x,
+            y: next.y - current.y
+          };
+          const incomingLength = Math.hypot(incoming.x, incoming.y);
+          const outgoingLength = Math.hypot(outgoing.x, outgoing.y);
+
+          if (incomingLength === 0 || outgoingLength === 0 || current.node) {
+            parts.push(`L ${current.x} ${current.y}`);
+            continue;
+          }
+
+          const radius = Math.min(traceCornerRadius, incomingLength / 2, outgoingLength / 2);
+          const cornerStart = {
+            x: current.x - (incoming.x / incomingLength) * radius,
+            y: current.y - (incoming.y / incomingLength) * radius
+          };
+          const cornerEnd = {
+            x: current.x + (outgoing.x / outgoingLength) * radius,
+            y: current.y + (outgoing.y / outgoingLength) * radius
+          };
+
+          parts.push(`L ${cornerStart.x} ${cornerStart.y}`);
+          parts.push(`Q ${current.x} ${current.y} ${cornerEnd.x} ${cornerEnd.y}`);
         }
 
         const last = points[points.length - 1];
@@ -905,7 +958,7 @@
           labelLayer.appendChild(group);
         });
 
-        const data = smoothPathData(tourPoints);
+        const data = roundedPathData(tourPoints);
         tourGuide.setAttribute("d", data);
         tourTrace.setAttribute("d", data);
       }
