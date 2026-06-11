@@ -1,0 +1,1733 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>パスカルの三角形と再帰関数</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #ffffff;
+      --line: #d7dee8;
+      --text: #172033;
+      --muted: #607086;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --call: #7c3aed;
+      --call-soft: #ede9fe;
+      --base: #059669;
+      --base-soft: #d1fae5;
+      --return: #dc2626;
+      --return-soft: #fee2e2;
+      --active: #f59e0b;
+      --active-soft: #fef3c7;
+      --code-bg: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-width: 320px;
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(37, 99, 235, .08), transparent 26rem),
+        var(--bg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    select,
+    input {
+      font: inherit;
+    }
+
+    button,
+    select {
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    button {
+      padding: 6px 12px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+
+    button:focus-visible,
+    select:focus-visible,
+    .pascal-cell:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, .3);
+      outline-offset: 2px;
+    }
+
+    button.primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .42;
+    }
+
+    select {
+      padding: 5px 28px 5px 10px;
+      font-weight: 700;
+    }
+
+    a {
+      color: var(--primary);
+    }
+
+    .page-header {
+      padding: 14px clamp(14px, 3vw, 34px) 12px;
+      border-bottom: 1px solid #e2e8f0;
+      background: rgba(255, 255, 255, .9);
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 32px);
+      line-height: 1.2;
+    }
+
+    .lead {
+      max-width: 960px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, .045);
+    }
+
+    .concept-panel {
+      padding: 13px 16px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .concept-item {
+      min-width: 0;
+      padding-left: 12px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .concept-item:nth-child(2) {
+      border-left-color: var(--call);
+    }
+
+    .concept-item:nth-child(3) {
+      border-left-color: var(--base);
+    }
+
+    .concept-label {
+      margin: 0 0 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .concept-value {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(15px, 1.7vw, 20px);
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .controls-panel {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .control-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .progress-area {
+      min-width: 220px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-track {
+      height: 8px;
+      flex: 1;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+
+    #progressBar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), var(--call));
+      transition: width .15s ease;
+    }
+
+    #stepCounter {
+      min-width: 76px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .triangle-panel {
+      padding: 12px 14px 15px;
+      position: relative;
+    }
+
+    .panel-heading {
+      margin-bottom: 9px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+    }
+
+    .panel-note {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    #pascalTriangle {
+      padding: 5px 0 2px;
+      display: grid;
+      gap: 7px;
+      overflow-x: auto;
+    }
+
+    .pascal-row {
+      min-width: max-content;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+    }
+
+    .row-index {
+      width: 42px;
+      flex: 0 0 42px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    .pascal-cell {
+      width: 49px;
+      min-height: 39px;
+      padding: 3px;
+      border: 2px solid #bfdbfe;
+      border-radius: 9px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      display: grid;
+      place-items: center;
+      font-variant-numeric: tabular-nums;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .pascal-cell:hover {
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .pascal-cell.selected {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .28);
+    }
+
+    .pascal-cell.required {
+      border-color: #8b5cf6;
+      box-shadow: inset 0 0 0 1px #8b5cf6;
+    }
+
+    .pascal-cell.trace-active {
+      border-color: var(--active);
+      background: var(--active-soft);
+      color: #92400e;
+    }
+
+    .pascal-cell.trace-base {
+      border-color: var(--base);
+      background: var(--base-soft);
+      color: #065f46;
+    }
+
+    .pascal-cell.trace-combining {
+      border-color: var(--call);
+      background: var(--call-soft);
+      color: #5b21b6;
+    }
+
+    .pascal-cell.trace-returned {
+      border-color: var(--return);
+      background: var(--return-soft);
+      color: #991b1b;
+    }
+
+    .pascal-cell.trace-waiting {
+      border-color: #94a3b8;
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .workspace {
+      min-height: 520px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(320px, .85fr);
+      gap: 12px;
+    }
+
+    .left-column {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .triangle-summary {
+      min-width: 0;
+      min-height: 0;
+      display: block;
+    }
+
+    .tree-panel {
+      min-height: 520px;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+    }
+
+    .tree-panel .panel-heading {
+      margin: 0;
+      padding: 12px 14px 8px;
+    }
+
+    .message-box {
+      min-height: 58px;
+      margin: 0 12px 9px;
+      padding: 9px 11px;
+      border: 1px solid #f3d38b;
+      border-radius: 9px;
+      background: #fffbeb;
+    }
+
+    #stepTitle {
+      margin: 0 0 2px;
+      color: #92400e;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    #stepMessage {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .tree-scroll {
+      min-height: 330px;
+      overflow: auto;
+      border-top: 1px solid #edf0f4;
+      border-bottom: 1px solid #edf0f4;
+      background:
+        linear-gradient(rgba(148, 163, 184, .09) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(148, 163, 184, .09) 1px, transparent 1px),
+        #fbfdff;
+      background-size: 24px 24px;
+    }
+
+    #treeSvg {
+      display: block;
+      min-width: 100%;
+      min-height: 330px;
+    }
+
+    .tree-edge {
+      fill: none;
+      stroke: #a8b4c5;
+      stroke-width: 2;
+    }
+
+    .tree-edge.left {
+      stroke: var(--primary);
+    }
+
+    .tree-edge.right {
+      stroke: var(--call);
+    }
+
+    .edge-label {
+      fill: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .node-box {
+      stroke-width: 2.5;
+      rx: 10;
+      filter: drop-shadow(0 2px 2px rgba(15, 23, 42, .1));
+    }
+
+    .node-box.waiting {
+      fill: #fff;
+      stroke: #94a3b8;
+    }
+
+    .node-box.active {
+      fill: var(--active-soft);
+      stroke: var(--active);
+    }
+
+    .node-box.base {
+      fill: var(--base-soft);
+      stroke: var(--base);
+    }
+
+    .node-box.returned {
+      fill: var(--return-soft);
+      stroke: var(--return);
+    }
+
+    .node-box.combining {
+      fill: var(--call-soft);
+      stroke: var(--call);
+    }
+
+    .node-title {
+      fill: var(--text);
+      font-size: 12px;
+      font-weight: 850;
+      text-anchor: middle;
+    }
+
+    .node-value {
+      fill: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-anchor: middle;
+    }
+
+    .legend {
+      padding: 8px 12px 10px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border: 2px solid;
+      border-radius: 4px;
+    }
+
+    .side-column {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(160px, 1fr);
+      gap: 12px;
+    }
+
+    .code-panel,
+    .result-panel,
+    .stack-panel {
+      overflow: hidden;
+    }
+
+    .side-heading {
+      padding: 10px 12px 7px;
+      border-bottom: 1px solid #edf0f4;
+    }
+
+    .side-heading h2 {
+      font-size: 15px;
+    }
+
+    .code-list {
+      margin: 0;
+      padding: 8px 0;
+      overflow-x: auto;
+      background: var(--code-bg);
+      color: #e5e7eb;
+      font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      list-style: none;
+      counter-reset: code-line;
+    }
+
+    .code-line {
+      min-width: 410px;
+      min-height: 1.65em;
+      padding: 1px 12px 1px 47px;
+      position: relative;
+      white-space: nowrap;
+    }
+
+    .code-line::before {
+      width: 27px;
+      position: absolute;
+      left: 9px;
+      color: #64748b;
+      text-align: right;
+      content: attr(data-line);
+    }
+
+    .code-content {
+      display: inline-block;
+    }
+
+    .code-content.indent-1 {
+      padding-left: 2ch;
+    }
+
+    .code-content.indent-2 {
+      padding-left: 4ch;
+    }
+
+    .code-line.active {
+      background: #374151;
+      box-shadow: inset 4px 0 var(--active);
+    }
+
+    .kw {
+      color: #c084fc;
+    }
+
+    .fn {
+      color: #60a5fa;
+    }
+
+    .num {
+      color: #fbbf24;
+    }
+
+    .comment {
+      color: #94a3b8;
+    }
+
+    .result-content {
+      padding: 11px 12px 12px;
+    }
+
+    .triangle-result {
+      width: 170px;
+      position: absolute;
+      z-index: 5;
+      top: 10px;
+      right: 10px;
+      border-left: 1px solid var(--line);
+      background: rgba(255, 255, 255, .96);
+      box-shadow: -8px 8px 14px rgba(15, 23, 42, .04);
+    }
+
+    .result-formula {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .stack-panel {
+      min-height: 160px;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    #callStack {
+      min-height: 0;
+      padding: 9px;
+      display: flex;
+      flex-direction: column-reverse;
+      justify-content: flex-start;
+      gap: 6px;
+      overflow-y: auto;
+      background: #f8fafc;
+    }
+
+    .stack-frame {
+      padding: 7px 9px;
+      border: 1px solid #cbd5e1;
+      border-left: 5px solid var(--call);
+      border-radius: 7px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .stack-frame.current {
+      border-left-color: var(--active);
+      background: var(--active-soft);
+    }
+
+    .stack-frame small {
+      color: var(--muted);
+    }
+
+    .empty-state {
+      margin: auto;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    kbd {
+      padding: 1px 5px;
+      border: 1px solid #cbd5e1;
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: #fff;
+      color: var(--text);
+      font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    @media (max-width: 980px) {
+      .concept-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .left-column {
+        grid-template-columns: 1fr;
+      }
+
+      .triangle-result {
+        position: static;
+        width: auto;
+        margin-top: 8px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 9px;
+      }
+
+      .page-header {
+        padding-inline: 12px;
+      }
+
+      .controls-panel,
+      .button-group,
+      .progress-area {
+        width: 100%;
+      }
+
+      .button-group button {
+        flex: 1;
+        padding-inline: 7px;
+      }
+
+      .pascal-cell {
+        width: 43px;
+      }
+    }
+
+    @media (min-width: 1101px) and (min-height: 700px) {
+      html,
+      body {
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      body {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .page-header {
+        padding: 7px 18px 6px;
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        column-gap: 14px;
+      }
+
+      .back-link {
+        margin: 0;
+        font-size: 12px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .lead {
+        max-width: none;
+        margin: 2px 0 0;
+        grid-column: 1 / -1;
+        overflow: hidden;
+        font-size: 12px;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      main {
+        width: 100%;
+        min-height: 0;
+        padding: 7px 9px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 7px;
+      }
+
+      .panel {
+        border-radius: 9px;
+      }
+
+      .controls-panel {
+        grid-column: 1;
+        grid-row: 1;
+        padding: 5px 8px;
+        gap: 6px;
+        flex-wrap: nowrap;
+      }
+
+      button,
+      select {
+        min-height: 30px;
+      }
+
+      button {
+        padding: 3px 9px;
+        font-size: 12px;
+      }
+
+      select {
+        padding: 3px 25px 3px 8px;
+        font-size: 12px;
+      }
+
+      label {
+        font-size: 12px;
+      }
+
+      .button-group {
+        flex-wrap: nowrap;
+      }
+
+      .progress-area {
+        min-width: 130px;
+      }
+
+      .concept-panel {
+        padding: 5px 7px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .concept-item {
+        padding-left: 6px;
+        border-left-width: 3px;
+      }
+
+      .concept-label {
+        margin-bottom: 2px;
+        font-size: 9px;
+      }
+
+      .concept-value {
+        font-size: 12px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+
+      .triangle-panel {
+        min-height: 0;
+        padding: 7px 8px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .triangle-panel .panel-heading {
+        margin-bottom: 4px;
+      }
+
+      h2 {
+        font-size: 14px;
+      }
+
+      .panel-note {
+        font-size: 10px;
+        line-height: 1.25;
+      }
+
+      .triangle-panel .panel-note {
+        display: none;
+      }
+
+      #pascalTriangle {
+        height: calc(100% - 22px);
+        padding: 1px 0;
+        gap: 3px;
+        align-content: center;
+      }
+
+      .pascal-row {
+        gap: 3px;
+      }
+
+      .row-index {
+        width: 34px;
+        flex-basis: 34px;
+        font-size: 9px;
+      }
+
+      .pascal-cell {
+        width: 36px;
+        min-height: 29px;
+        padding: 1px;
+        border-radius: 7px;
+        font-size: 12px;
+      }
+
+      .workspace {
+        min-height: 0;
+        grid-column: 1;
+        grid-row: 2;
+        grid-template-columns: clamp(440px, 35vw, 470px) minmax(0, 1fr);
+        gap: 7px;
+      }
+
+      .left-column {
+        grid-template-rows: auto minmax(225px, 1fr) auto 60px;
+        gap: 7px;
+      }
+
+      .triangle-summary {
+        display: block;
+      }
+
+      .tree-panel {
+        min-height: 0;
+      }
+
+      .tree-panel .panel-heading {
+        padding: 7px 9px 5px;
+      }
+
+      .message-box {
+        min-height: 43px;
+        margin: 0 8px 5px;
+        padding: 5px 8px;
+      }
+
+      #stepTitle {
+        font-size: 11px;
+      }
+
+      #stepMessage {
+        font-size: 12px;
+        line-height: 1.3;
+      }
+
+      .tree-scroll {
+        min-height: 0;
+      }
+
+      #treeSvg {
+        min-height: 260px;
+      }
+
+      .legend {
+        padding: 5px 8px 6px;
+        gap: 8px;
+        font-size: 9px;
+      }
+
+      .legend-swatch {
+        width: 11px;
+        height: 11px;
+      }
+
+      .side-heading {
+        padding: 6px 8px 4px;
+      }
+
+      .side-heading h2 {
+        font-size: 12px;
+      }
+
+      .code-list {
+        padding: 4px 0;
+        font-size: 12px;
+        line-height: 1.32;
+      }
+
+      .code-line {
+        min-width: 350px;
+        min-height: 1.32em;
+        padding: 0 8px 0 37px;
+      }
+
+      .code-line::before {
+        left: 4px;
+      }
+
+      .result-content {
+        padding: 6px 8px 7px;
+      }
+
+      .triangle-result {
+        width: 150px;
+        top: 7px;
+        right: 7px;
+        margin: 0;
+        border: 0;
+        border-left: 1px solid var(--line);
+        border-radius: 0;
+      }
+
+      .result-formula {
+        font-size: 18px;
+      }
+
+      .stack-panel {
+        min-height: 0;
+      }
+
+      #callStack {
+        padding: 5px;
+        gap: 3px;
+      }
+
+      .stack-frame {
+        padding: 4px 6px;
+        font-size: 10px;
+      }
+
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <a class="back-link" href="../index.html">← デモ一覧へ戻る</a>
+    <h1>パスカルの三角形と再帰関数</h1>
+    <p class="lead">
+      組合せ <strong>nCr</strong> の再帰式を使い、パスカルの三角形の各値がどのような再帰呼び出しで求まるかを可視化します。
+      三角形の数をクリックすると、追跡する <strong>c(n, r)</strong> を変更できます。
+    </p>
+  </header>
+
+  <main>
+    <section class="panel controls-panel" aria-label="デモ操作">
+      <div class="control-group">
+        <label for="maxRowSelect">表示する最終行 m</label>
+        <select id="maxRowSelect"></select>
+      </div>
+      <div class="control-group">
+        <label for="nSelect">追跡する n</label>
+        <select id="nSelect"></select>
+      </div>
+      <div class="control-group">
+        <label for="rSelect">r</label>
+        <select id="rSelect"></select>
+      </div>
+      <div class="button-group">
+        <button id="prevBtn" type="button">戻る</button>
+        <button id="nextBtn" type="button">進む</button>
+        <button id="playBtn" class="primary" type="button">自動再生</button>
+        <button id="resetBtn" type="button">最初から</button>
+        <button id="finalBtn" type="button">最終状態</button>
+      </div>
+      <div class="progress-area">
+        <div class="progress-track" aria-hidden="true"><div id="progressBar"></div></div>
+        <span id="stepCounter">0 / 0</span>
+      </div>
+    </section>
+
+    <div class="workspace">
+      <div class="left-column">
+        <section class="panel concept-panel" aria-label="パスカルの三角形の規則">
+          <div class="concept-item">
+            <p class="concept-label">両端の値</p>
+            <p class="concept-value"><sub>n</sub>C<sub>0</sub> = <sub>n</sub>C<sub>n</sub> = 1</p>
+          </div>
+          <div class="concept-item">
+            <p class="concept-label">内側の値</p>
+            <p class="concept-value"><sub>n</sub>C<sub>r</sub> = <sub>n-1</sub>C<sub>r-1</sub> + <sub>n-1</sub>C<sub>r</sub></p>
+          </div>
+          <div class="concept-item">
+            <p class="concept-label">二項定理</p>
+            <p class="concept-value">(a + b)<sup>n</sup> の係数は <sub>n</sub>C<sub>r</sub></p>
+          </div>
+        </section>
+
+        <div class="triangle-summary">
+          <section class="panel triangle-panel">
+            <div class="panel-heading">
+              <h2>パスカルの三角形</h2>
+              <p class="panel-note">色が再帰ツリーの状態と対応します。</p>
+            </div>
+            <div id="pascalTriangle" aria-label="パスカルの三角形"></div>
+            <aside class="triangle-result" aria-label="選択した値">
+              <div class="side-heading"><h2>選択した値</h2></div>
+              <div class="result-content">
+                <p id="resultFormula" class="result-formula">5C2 = 10</p>
+              </div>
+            </aside>
+          </section>
+        </div>
+
+        <section class="panel code-panel">
+          <div class="side-heading"><h2>Pythonコード</h2></div>
+          <ol id="codeList" class="code-list" aria-label="Pythonコード">
+            <li class="code-line" data-line="1"><span class="code-content"><span class="kw">def</span> <span class="fn">c</span>(n, r):  <span class="comment"># nCr を求める関数</span></span></li>
+            <li class="code-line" data-line="2"><span class="code-content indent-1"><span class="kw">if</span> r == <span class="num">0</span> <span class="kw">or</span> n == r:  <span class="comment"># 三角形の両端か調べる</span></span></li>
+            <li class="code-line" data-line="3"><span class="code-content indent-2"><span class="kw">return</span> <span class="num">1</span>  <span class="comment"># 両端の値は 1</span></span></li>
+            <li class="code-line" data-line="4"><span class="code-content indent-1"><span class="kw">return</span> <span class="fn">c</span>(n - <span class="num">1</span>, r - <span class="num">1</span>) + <span class="fn">c</span>(n - <span class="num">1</span>, r)  <span class="comment"># 左上と右上を足す</span></span></li>
+            <li class="code-line" data-line="5"><span class="code-content">&nbsp;</span></li>
+            <li class="code-line" data-line="6"><span class="code-content"><span class="comment"># main</span></span></li>
+            <li class="code-line" data-line="7"><span class="code-content">n = <span class="fn">int</span>(<span class="fn">input</span>())  <span class="comment"># n を入力</span></span></li>
+            <li class="code-line" data-line="8"><span class="code-content">r = <span class="fn">int</span>(<span class="fn">input</span>())  <span class="comment"># r を入力</span></span></li>
+            <li class="code-line" data-line="9"><span class="code-content">value = <span class="fn">c</span>(n, r)  <span class="comment"># main から関数を呼び出す</span></span></li>
+            <li class="code-line" data-line="10"><span class="code-content"><span class="fn">print</span>(value)  <span class="comment"># 求めた値を表示</span></span></li>
+          </ol>
+        </section>
+
+        <section class="panel stack-panel">
+          <div class="side-heading"><h2>コールスタック</h2></div>
+          <div id="callStack"></div>
+        </section>
+      </div>
+
+      <section class="panel tree-panel">
+        <div class="panel-heading">
+          <h2>再帰呼び出しツリー</h2>
+          <p class="panel-note"><kbd>←</kbd> <kbd>→</kbd> キーでもステップを移動できます。</p>
+        </div>
+        <div class="message-box" aria-live="polite">
+          <p id="stepTitle">実行開始前</p>
+          <p id="stepMessage">「進む」を押すと、再帰呼び出しを1ステップずつ確認できます。</p>
+        </div>
+        <div id="treeScroll" class="tree-scroll">
+          <svg id="treeSvg" role="img" aria-label="再帰呼び出しツリー"></svg>
+        </div>
+        <div class="legend" aria-label="色の凡例">
+          <span class="legend-item"><span class="legend-swatch" style="border-color:#f59e0b;background:#fef3c7"></span>実行中</span>
+          <span class="legend-item"><span class="legend-swatch" style="border-color:#059669;background:#d1fae5"></span>基底条件</span>
+          <span class="legend-item"><span class="legend-swatch" style="border-color:#7c3aed;background:#ede9fe"></span>加算</span>
+          <span class="legend-item"><span class="legend-swatch" style="border-color:#dc2626;background:#fee2e2"></span>戻り値確定</span>
+          <span class="legend-item"><span class="legend-swatch" style="border-color:#94a3b8;background:#fff"></span>待機中</span>
+        </div>
+      </section>
+    </div>
+
+  </main>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const maxRowSelect = document.getElementById("maxRowSelect");
+    const nSelect = document.getElementById("nSelect");
+    const rSelect = document.getElementById("rSelect");
+    const triangle = document.getElementById("pascalTriangle");
+    const treeSvg = document.getElementById("treeSvg");
+    const treeScroll = document.getElementById("treeScroll");
+    const callStack = document.getElementById("callStack");
+    const stepTitle = document.getElementById("stepTitle");
+    const stepMessage = document.getElementById("stepMessage");
+    const resultFormula = document.getElementById("resultFormula");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const playBtn = document.getElementById("playBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const finalBtn = document.getElementById("finalBtn");
+    const progressBar = document.getElementById("progressBar");
+    const stepCounter = document.getElementById("stepCounter");
+    const codeLines = [...document.querySelectorAll(".code-line")];
+
+    let events = [];
+    let currentStep = -1;
+    let playTimer = null;
+
+    function combination(n, r) {
+      if (r < 0 || r > n) return 0;
+      const k = Math.min(r, n - r);
+      let value = 1;
+      for (let i = 1; i <= k; i += 1) {
+        value = (value * (n - k + i)) / i;
+      }
+      return value;
+    }
+
+    function createOption(value, label = value) {
+      const option = document.createElement("option");
+      option.value = String(value);
+      option.textContent = String(label);
+      return option;
+    }
+
+    function initializeSelects() {
+      for (let m = 3; m <= 8; m += 1) {
+        maxRowSelect.appendChild(createOption(m));
+      }
+      maxRowSelect.value = "6";
+      updateNOptions(5);
+      updateROptions(2);
+    }
+
+    function updateNOptions(preferred) {
+      const maxRow = Number(maxRowSelect.value);
+      const nextN = Math.min(Number(preferred), maxRow);
+      nSelect.replaceChildren();
+      for (let n = 0; n <= maxRow; n += 1) {
+        nSelect.appendChild(createOption(n));
+      }
+      nSelect.value = String(nextN);
+    }
+
+    function updateROptions(preferred) {
+      const n = Number(nSelect.value);
+      const nextR = Math.min(Number(preferred), n);
+      rSelect.replaceChildren();
+      for (let r = 0; r <= n; r += 1) {
+        rSelect.appendChild(createOption(r));
+      }
+      rSelect.value = String(nextR);
+    }
+
+    function renderTriangle() {
+      const maxRow = Number(maxRowSelect.value);
+      const selectedN = Number(nSelect.value);
+      const selectedR = Number(rSelect.value);
+      const fragment = document.createDocumentFragment();
+
+      for (let n = 0; n <= maxRow; n += 1) {
+        const row = document.createElement("div");
+        row.className = "pascal-row";
+
+        const rowIndex = document.createElement("span");
+        rowIndex.className = "row-index";
+        rowIndex.textContent = `n = ${n}`;
+        row.appendChild(rowIndex);
+
+        for (let r = 0; r <= n; r += 1) {
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "pascal-cell";
+          cell.dataset.n = String(n);
+          cell.dataset.r = String(r);
+          if (n === selectedN && r === selectedR) {
+            cell.classList.add("selected");
+            cell.setAttribute("aria-current", "true");
+          }
+          cell.textContent = combination(n, r);
+          cell.title = `${n}C${r} = ${combination(n, r)}`;
+          cell.setAttribute("aria-label", `${n}C${r} は ${combination(n, r)}`);
+          cell.addEventListener("click", () => selectTarget(n, r));
+          row.appendChild(cell);
+        }
+        fragment.appendChild(row);
+      }
+
+      triangle.replaceChildren(fragment);
+    }
+
+    function triangleStatusPriority(status) {
+      return {
+        waiting: 0,
+        returned: 1,
+        base: 2,
+        combining: 3,
+        active: 4
+      }[status] ?? -1;
+    }
+
+    function collectRequiredCells(n, r, required) {
+      if (r === 0 || n === r) return;
+
+      const parents = [
+        [n - 1, r - 1],
+        [n - 1, r]
+      ];
+      parents.forEach(([parentN, parentR]) => {
+        const key = `${parentN},${parentR}`;
+        if (required.has(key)) return;
+        required.add(key);
+        collectRequiredCells(parentN, parentR, required);
+      });
+    }
+
+    function syncTriangleWithTree(event) {
+      const statusByCoordinate = new Map();
+      const requiredCoordinates = new Set();
+
+      collectRequiredCells(
+        Number(nSelect.value),
+        Number(rSelect.value),
+        requiredCoordinates
+      );
+
+      if (event) {
+        event.nodes.forEach((node) => {
+          const key = `${node.n},${node.r}`;
+          const currentStatus = statusByCoordinate.get(key);
+          if (
+            currentStatus === undefined ||
+            triangleStatusPriority(node.status) > triangleStatusPriority(currentStatus)
+          ) {
+            statusByCoordinate.set(key, node.status);
+          }
+        });
+      }
+
+      triangle.querySelectorAll(".pascal-cell").forEach((cell) => {
+        cell.classList.remove(
+          "required",
+          "trace-active",
+          "trace-base",
+          "trace-combining",
+          "trace-returned",
+          "trace-waiting"
+        );
+        const key = `${cell.dataset.n},${cell.dataset.r}`;
+        if (requiredCoordinates.has(key)) {
+          cell.classList.add("required");
+        }
+        const status = statusByCoordinate.get(key);
+        if (status) {
+          cell.classList.add(`trace-${status}`);
+        }
+      });
+    }
+
+    function selectTarget(n, r) {
+      nSelect.value = String(n);
+      updateROptions(r);
+      rebuildDemo();
+    }
+
+    function cloneNodeStates(nodes) {
+      return [...nodes.values()].map((node) => ({ ...node }));
+    }
+
+    function buildTrace(targetN, targetR) {
+      const builtEvents = [];
+      const nodes = new Map();
+      const stack = [];
+      let nextId = 0;
+
+      const record = (type, title, message, line, activeId = null) => {
+        builtEvents.push({
+          type,
+          title,
+          message,
+          line,
+          activeId,
+          stack: [...stack],
+          nodes: cloneNodeStates(nodes)
+        });
+      };
+
+      const visit = (n, r, parent = null, side = "root", depth = 0) => {
+        const id = nextId;
+        nextId += 1;
+        nodes.set(id, {
+          id,
+          n,
+          r,
+          parent,
+          side,
+          depth,
+          status: "active",
+          value: null
+        });
+        stack.push(id);
+        record("call", "関数を呼び出す", `c(${n}, ${r}) の処理領域を作り、引数 n = ${n}, r = ${r} を保存します。`, 1, id);
+        record("check", "基底条件を調べる", `r == 0 または n == r が成り立つかを確認します。`, 2, id);
+
+        if (r === 0 || n === r) {
+          const node = nodes.get(id);
+          node.status = "base";
+          record("base", "両端の値は 1", `${n}C${r} は三角形の端にあるため、再帰せず 1 を返します。`, 3, id);
+          node.value = 1;
+          node.status = "returned";
+          record("return", "戻り値を返す", `c(${n}, ${r}) の戻り値 1 が確定しました。`, 3, id);
+          stack.pop();
+          return 1;
+        }
+
+        const node = nodes.get(id);
+        node.status = "waiting";
+        record(
+          "left-call",
+          "左上の値を求める",
+          `まず c(${n - 1}, ${r - 1}) を再帰呼び出しします。これはパスカルの三角形の左上の値です。`,
+          4,
+          id
+        );
+        const leftValue = visit(n - 1, r - 1, id, "left", depth + 1);
+
+        node.status = "active";
+        record(
+          "left-return",
+          "左上の値を受け取る",
+          `c(${n - 1}, ${r - 1}) から ${leftValue} が返りました。次に右上の値を求めます。`,
+          4,
+          id
+        );
+
+        node.status = "waiting";
+        record(
+          "right-call",
+          "右上の値を求める",
+          `c(${n - 1}, ${r}) を再帰呼び出します。これはパスカルの三角形の右上の値です。`,
+          4,
+          id
+        );
+        const rightValue = visit(n - 1, r, id, "right", depth + 1);
+
+        node.status = "combining";
+        const value = leftValue + rightValue;
+        record(
+          "combine",
+          "2つの戻り値を足す",
+          `${leftValue} + ${rightValue} = ${value} なので、c(${n}, ${r}) の値は ${value} です。`,
+          4,
+          id
+        );
+        node.value = value;
+        node.status = "returned";
+        record("return", "戻り値を返す", `c(${n}, ${r}) は ${value} を呼び出し元へ返します。`, 4, id);
+        stack.pop();
+        return value;
+      };
+
+      record(
+        "main-call",
+        "main から関数を呼び出す",
+        `n = ${targetN}, r = ${targetR} を入力し、value = c(${targetN}, ${targetR}) を実行します。`,
+        9,
+        null
+      );
+      const result = visit(targetN, targetR);
+      record("finish", "計算完了", `${targetN}C${targetR} = ${result} を表示します。`, 10, null);
+      return builtEvents;
+    }
+
+    function rebuildDemo() {
+      stopPlayback();
+      const n = Number(nSelect.value);
+      const r = Number(rSelect.value);
+      events = buildTrace(n, r);
+      currentStep = -1;
+      renderTriangle();
+      renderResult();
+      renderCurrentStep();
+    }
+
+    function renderResult() {
+      const n = Number(nSelect.value);
+      const r = Number(rSelect.value);
+      resultFormula.innerHTML = `<sub>${n}</sub>C<sub>${r}</sub> = ${combination(n, r)}`;
+    }
+
+    function makeSvgElement(name, attributes = {}) {
+      const element = document.createElementNS(SVG_NS, name);
+      Object.entries(attributes).forEach(([key, value]) => {
+        element.setAttribute(key, String(value));
+      });
+      return element;
+    }
+
+    function calculateTreeLayout(nodes) {
+      const byId = new Map(nodes.map((node) => [node.id, node]));
+      const children = new Map(nodes.map((node) => [node.id, []]));
+      nodes.forEach((node) => {
+        if (node.parent !== null && children.has(node.parent)) {
+          children.get(node.parent).push(node);
+        }
+      });
+      children.forEach((items) => {
+        items.sort((a, b) => (a.side === "left" ? -1 : 1) - (b.side === "left" ? -1 : 1));
+      });
+
+      const positions = new Map();
+      let leafIndex = 0;
+      const horizontalGap = 112;
+      const verticalGap = 92;
+      const marginX = 58;
+      const marginY = 42;
+
+      const place = (id) => {
+        const childNodes = children.get(id) || [];
+        let x;
+        if (childNodes.length === 0) {
+          x = marginX + leafIndex * horizontalGap;
+          leafIndex += 1;
+        } else {
+          const childXs = childNodes.map((child) => place(child.id));
+          x = childXs.reduce((sum, childX) => sum + childX, 0) / childXs.length;
+          if (childNodes.length === 1) {
+            x += childNodes[0].side === "left" ? horizontalGap / 2 : -horizontalGap / 2;
+            x = Math.max(marginX, x);
+          }
+        }
+        const node = byId.get(id);
+        positions.set(id, { x, y: marginY + node.depth * verticalGap });
+        return x;
+      };
+
+      if (nodes.length > 0) {
+        place(nodes[0].id);
+      }
+
+      const rootX = positions.get(nodes[0].id).x;
+      const xValues = [...positions.values()].map((position) => position.x);
+      const minX = Math.min(...xValues);
+      const maxX = Math.max(...xValues);
+      const halfWidth = Math.max(rootX - minX, maxX - rootX) + marginX;
+      const width = Math.max(900, halfWidth * 2);
+      const offsetX = width / 2 - rootX;
+      positions.forEach((position) => {
+        position.x += offsetX;
+      });
+
+      const maxDepth = Math.max(...nodes.map((node) => node.depth), 2);
+      return {
+        positions,
+        width,
+        height: Math.max(330, marginY * 2 + maxDepth * verticalGap)
+      };
+    }
+
+    function renderTree(event) {
+      treeSvg.replaceChildren();
+      if (!event || event.nodes.length === 0) {
+        treeSvg.setAttribute("viewBox", "0 0 900 330");
+        const emptyText = makeSvgElement("text", {
+          x: 450,
+          y: 165,
+          "text-anchor": "middle",
+          fill: "#607086",
+          "font-size": 14
+        });
+        emptyText.textContent = "まだ再帰呼び出しは始まっていません";
+        treeSvg.appendChild(emptyText);
+        return;
+      }
+
+      const { positions, width, height } = calculateTreeLayout(event.nodes);
+      treeSvg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+      treeSvg.setAttribute("width", width);
+      treeSvg.setAttribute("height", height);
+
+      const nodeById = new Map(event.nodes.map((node) => [node.id, node]));
+      event.nodes.forEach((node) => {
+        if (node.parent === null) return;
+        const parentPosition = positions.get(node.parent);
+        const childPosition = positions.get(node.id);
+        const edge = makeSvgElement("path", {
+          d: `M ${parentPosition.x} ${parentPosition.y + 26} C ${parentPosition.x} ${parentPosition.y + 52}, ${childPosition.x} ${childPosition.y - 52}, ${childPosition.x} ${childPosition.y - 26}`,
+          class: `tree-edge ${node.side}`
+        });
+        treeSvg.appendChild(edge);
+
+        const label = makeSvgElement("text", {
+          x: (parentPosition.x + childPosition.x) / 2,
+          y: (parentPosition.y + childPosition.y) / 2 - 3,
+          class: "edge-label",
+          "text-anchor": "middle"
+        });
+        label.textContent = node.side === "left" ? "左上" : "右上";
+        treeSvg.appendChild(label);
+      });
+
+      event.nodes.forEach((node) => {
+        const position = positions.get(node.id);
+        const group = makeSvgElement("g", {
+          transform: `translate(${position.x}, ${position.y})`
+        });
+        const box = makeSvgElement("rect", {
+          x: -43,
+          y: -27,
+          width: 86,
+          height: 54,
+          class: `node-box ${node.status}`
+        });
+        const title = makeSvgElement("text", {
+          x: 0,
+          y: -4,
+          class: "node-title"
+        });
+        title.textContent = `c(${node.n}, ${node.r})`;
+        const value = makeSvgElement("text", {
+          x: 0,
+          y: 15,
+          class: "node-value"
+        });
+        value.textContent = node.value === null ? "計算中" : `戻り値 ${node.value}`;
+        group.append(box, title, value);
+        treeSvg.appendChild(group);
+      });
+
+      const activeNode = event.activeId === null ? null : nodeById.get(event.activeId);
+      if (activeNode) {
+        const position = positions.get(activeNode.id);
+        requestAnimationFrame(() => {
+          treeScroll.scrollTo({
+            left: Math.max(0, position.x - treeScroll.clientWidth / 2),
+            top: Math.max(0, position.y - treeScroll.clientHeight / 2),
+            behavior: "smooth"
+          });
+        });
+      }
+    }
+
+    function renderStack(event) {
+      callStack.replaceChildren();
+      if (!event || event.stack.length === 0) {
+        const empty = document.createElement("p");
+        empty.className = "empty-state";
+        empty.textContent = event && event.type === "finish"
+          ? "すべての関数が終了しました"
+          : "スタックは空です";
+        callStack.appendChild(empty);
+        return;
+      }
+
+      const nodeById = new Map(event.nodes.map((node) => [node.id, node]));
+      event.stack.forEach((id, index) => {
+        const node = nodeById.get(id);
+        const frame = document.createElement("div");
+        frame.className = "stack-frame";
+        if (index === event.stack.length - 1) {
+          frame.classList.add("current");
+        }
+        const name = document.createElement("strong");
+        name.textContent = `c(${node.n}, ${node.r})`;
+        const state = document.createElement("small");
+        state.textContent = index === event.stack.length - 1 ? "実行位置" : "戻り待ち";
+        frame.append(name, state);
+        callStack.appendChild(frame);
+      });
+    }
+
+    function renderCode(activeLine) {
+      codeLines.forEach((line) => {
+        line.classList.toggle("active", Number(line.dataset.line) === activeLine);
+      });
+    }
+
+    function renderCurrentStep() {
+      const event = currentStep >= 0 ? events[currentStep] : null;
+      if (event) {
+        stepTitle.textContent = event.title;
+        stepMessage.textContent = event.message;
+      } else {
+        stepTitle.textContent = "実行開始前";
+        stepMessage.textContent = "「進む」を押すと、再帰呼び出しを1ステップずつ確認できます。";
+      }
+
+      renderTree(event);
+      syncTriangleWithTree(event);
+      renderStack(event);
+      renderCode(event ? event.line : null);
+
+      const shownStep = currentStep + 1;
+      stepCounter.textContent = `${shownStep} / ${events.length}`;
+      progressBar.style.width = `${events.length ? (shownStep / events.length) * 100 : 0}%`;
+      prevBtn.disabled = currentStep < 0;
+      nextBtn.disabled = currentStep >= events.length - 1;
+      resetBtn.disabled = currentStep < 0;
+      finalBtn.disabled = currentStep >= events.length - 1;
+      playBtn.disabled = currentStep >= events.length - 1;
+      playBtn.textContent = playTimer ? "一時停止" : "自動再生";
+    }
+
+    function stepForward() {
+      if (currentStep < events.length - 1) {
+        currentStep += 1;
+        renderCurrentStep();
+      } else {
+        stopPlayback();
+      }
+    }
+
+    function stepBack() {
+      stopPlayback();
+      if (currentStep >= 0) {
+        currentStep -= 1;
+        renderCurrentStep();
+      }
+    }
+
+    function stopPlayback() {
+      if (playTimer) {
+        clearInterval(playTimer);
+        playTimer = null;
+      }
+      playBtn.textContent = "自動再生";
+    }
+
+    function togglePlayback() {
+      if (playTimer) {
+        stopPlayback();
+        renderCurrentStep();
+        return;
+      }
+      if (currentStep >= events.length - 1) return;
+      stepForward();
+      playTimer = setInterval(() => {
+        if (currentStep >= events.length - 1) {
+          stopPlayback();
+          renderCurrentStep();
+          return;
+        }
+        stepForward();
+      }, 850);
+      renderCurrentStep();
+    }
+
+    maxRowSelect.addEventListener("change", () => {
+      const previousN = Number(nSelect.value);
+      const previousR = Number(rSelect.value);
+      updateNOptions(previousN);
+      updateROptions(previousR);
+      rebuildDemo();
+    });
+
+    nSelect.addEventListener("change", () => {
+      const n = Number(nSelect.value);
+      updateROptions(Math.floor(n / 2));
+      rebuildDemo();
+    });
+
+    rSelect.addEventListener("change", rebuildDemo);
+    prevBtn.addEventListener("click", stepBack);
+    nextBtn.addEventListener("click", stepForward);
+    playBtn.addEventListener("click", togglePlayback);
+    resetBtn.addEventListener("click", () => {
+      stopPlayback();
+      currentStep = -1;
+      renderCurrentStep();
+    });
+    finalBtn.addEventListener("click", () => {
+      stopPlayback();
+      currentStep = events.length - 1;
+      renderCurrentStep();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const tagName = document.activeElement ? document.activeElement.tagName : "";
+      if (tagName === "SELECT" || tagName === "INPUT") return;
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        stepForward();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        stepBack();
+      } else if (event.key === " ") {
+        event.preventDefault();
+        togglePlayback();
+      }
+    });
+
+    initializeSelects();
+    rebuildDemo();
+  </script>
+</body>
+</html>

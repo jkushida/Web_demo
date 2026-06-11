@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>パスカルの三角形の作り方</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --panel: #fff;
+      --line: #d7e0eb;
+      --text: #172033;
+      --muted: #607086;
+      --blue: #2563eb;
+      --blue-soft: #dbeafe;
+      --green: #059669;
+      --green-soft: #d1fae5;
+      --orange: #f59e0b;
+      --orange-soft: #fef3c7;
+      --purple: #7c3aed;
+      --purple-soft: #ede9fe;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    header {
+      padding: 7px 16px 5px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    header a {
+      font-size: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 2.5vw, 28px);
+    }
+
+    .controls {
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    select,
+    .download-link {
+      min-height: 32px;
+      padding: 4px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled),
+    .download-link:hover {
+      background: #f1f5f9;
+      text-decoration: none;
+    }
+
+    button.primary {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .42;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .progress {
+      width: min(260px, 30vw);
+      min-width: 120px;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+
+    #progressBar {
+      width: 0;
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), var(--purple));
+      transition: width .15s ease;
+    }
+
+    #stepCounter {
+      min-width: 70px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: right;
+    }
+
+    main {
+      min-height: 0;
+      padding: 8px;
+      display: grid;
+      place-items: center;
+    }
+
+    .stage {
+      width: min(100%, calc((100vh - 124px) * 4 / 3), 960px);
+      aspect-ratio: 4 / 3;
+      position: relative;
+      overflow: hidden;
+      border: 2px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 3px 14px rgba(15, 23, 42, .06);
+    }
+
+    .stage-title {
+      margin: 0;
+      position: absolute;
+      top: 2.5%;
+      left: 0;
+      width: 100%;
+      font-size: clamp(20px, 3.1vw, 36px);
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .stage-subtitle {
+      margin: 0;
+      position: absolute;
+      top: 10.2%;
+      left: 0;
+      width: 100%;
+      color: var(--muted);
+      font-size: clamp(12px, 1.8vw, 20px);
+      text-align: center;
+    }
+
+    .divider {
+      position: absolute;
+      top: 16%;
+      left: 5.5%;
+      width: 89%;
+      height: 2px;
+      background: #e2e8f0;
+    }
+
+    .row-label {
+      position: absolute;
+      z-index: 2;
+      color: var(--muted);
+      font-size: clamp(10px, 1.45vw, 17px);
+      font-weight: 600;
+      transform: translate(-100%, -50%);
+      white-space: nowrap;
+    }
+
+    .cell {
+      width: clamp(34px, 5.5vw, 54px);
+      aspect-ratio: 1;
+      padding: 0;
+      position: absolute;
+      z-index: 3;
+      border: 3px solid #bfdbfe;
+      border-radius: 50%;
+      background: #fff;
+      color: #1e3a8a;
+      display: grid;
+      place-items: center;
+      font-size: clamp(16px, 2.3vw, 26px);
+      font-weight: 500;
+      transform: translate(-50%, -50%);
+      transition:
+        opacity .2s ease,
+        transform .2s ease,
+        background .2s ease,
+        border-color .2s ease;
+    }
+
+    .cell.hidden {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(.55);
+    }
+
+    .cell.parent {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .cell.edge {
+      border-color: var(--green);
+      background: var(--green-soft);
+      color: #065f46;
+    }
+
+    .cell.new {
+      border-width: 4px;
+      border-color: var(--orange);
+      background: var(--orange-soft);
+      color: #92400e;
+      transform: translate(-50%, -50%) scale(1.08);
+    }
+
+    .cell.complete {
+      border-color: var(--purple);
+      background: var(--purple-soft);
+      color: #5b21b6;
+    }
+
+    #arrowLayer {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .arrow-line {
+      stroke: var(--blue);
+      stroke-width: 5;
+      fill: none;
+      marker-end: url(#arrowHead);
+    }
+
+    .status {
+      min-height: 10.7%;
+      padding: 1.5% 2.6%;
+      position: absolute;
+      z-index: 4;
+      left: 3.5%;
+      right: 3.5%;
+      bottom: 1.5%;
+      border: 3px solid var(--blue);
+      border-radius: 16px;
+      background: var(--blue-soft);
+    }
+
+    #statusTitle {
+      margin: 0 0 4px;
+      color: var(--blue);
+      font-size: clamp(12px, 1.8vw, 19px);
+      font-weight: 700;
+    }
+
+    #statusDetail {
+      margin: 0;
+      font-size: clamp(11px, 1.5vw, 16px);
+    }
+
+    .status.green {
+      border-color: var(--green);
+      background: var(--green-soft);
+    }
+
+    .status.green #statusTitle {
+      color: var(--green);
+    }
+
+    .status.orange {
+      border-color: var(--orange);
+      background: var(--orange-soft);
+    }
+
+    .status.orange #statusTitle {
+      color: #b45309;
+    }
+
+    .status.purple {
+      border-color: var(--purple);
+      background: var(--purple-soft);
+    }
+
+    .status.purple #statusTitle {
+      color: var(--purple);
+    }
+
+    @media (max-width: 660px) {
+      body {
+        display: block;
+      }
+
+      header {
+        padding-inline: 10px;
+      }
+
+      .controls {
+        gap: 5px;
+      }
+
+      .progress {
+        order: 5;
+        width: calc(100% - 90px);
+      }
+
+      main {
+        padding: 6px;
+      }
+
+      .stage {
+        width: 100%;
+        min-height: 540px;
+        aspect-ratio: 4 / 3;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cell,
+      #progressBar {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="../index.html">← デモ一覧へ戻る</a>
+    <h1>パスカルの三角形の生成アニメーション</h1>
+  </header>
+
+  <section class="controls" aria-label="アニメーション操作">
+    <button id="prevBtn" type="button">戻る</button>
+    <button id="nextBtn" type="button">進む</button>
+    <button id="playBtn" class="primary" type="button">再生</button>
+    <button id="resetBtn" type="button">最初から</button>
+    <label for="speedSelect">速度</label>
+    <select id="speedSelect">
+      <option value="1.5">ゆっくり</option>
+      <option value="1" selected>標準</option>
+      <option value="0.65">速い</option>
+    </select>
+    <div class="progress" aria-hidden="true"><div id="progressBar"></div></div>
+    <span id="stepCounter">0 / 0</span>
+    <a class="download-link" href="../assets/pascal-triangle-generation.gif" download>GIFをダウンロード</a>
+  </section>
+
+  <main>
+    <section id="stage" class="stage" aria-label="パスカルの三角形の作り方">
+      <h2 class="stage-title">パスカルの三角形の作り方</h2>
+      <p class="stage-subtitle">両端は 1 ／ 内側は「左上＋右上」</p>
+      <div class="divider"></div>
+      <svg id="arrowLayer" viewBox="0 0 960 720" aria-hidden="true">
+        <defs>
+          <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L9,3 z" fill="#2563eb"></path>
+          </marker>
+        </defs>
+        <g id="arrows"></g>
+      </svg>
+      <div id="triangle"></div>
+      <div id="status" class="status">
+        <p id="statusTitle">上から順に三角形を作ります</p>
+        <p id="statusDetail">「進む」または「再生」を押してください。</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const MAX_ROW = 6;
+    const WIDTH = 960;
+    const HEIGHT = 720;
+    const HORIZONTAL_GAP = 92;
+    const ROW_GAP = 70;
+    const TRIANGLE_TOP = 150;
+    const rows = [];
+    const steps = [];
+    const cells = new Map();
+    let currentStep = -1;
+    let timer = null;
+
+    const triangle = document.getElementById("triangle");
+    const arrows = document.getElementById("arrows");
+    const status = document.getElementById("status");
+    const statusTitle = document.getElementById("statusTitle");
+    const statusDetail = document.getElementById("statusDetail");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const playBtn = document.getElementById("playBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const speedSelect = document.getElementById("speedSelect");
+    const progressBar = document.getElementById("progressBar");
+    const stepCounter = document.getElementById("stepCounter");
+
+    function combination(n, r) {
+      let value = 1;
+      for (let i = 1; i <= r; i += 1) {
+        value = (value * (n - r + i)) / i;
+      }
+      return value;
+    }
+
+    function key(n, r) {
+      return `${n},${r}`;
+    }
+
+    function position(n, r) {
+      return {
+        x: WIDTH / 2 + (r - n / 2) * HORIZONTAL_GAP,
+        y: TRIANGLE_TOP + n * ROW_GAP
+      };
+    }
+
+    function buildRows() {
+      for (let n = 0; n <= MAX_ROW; n += 1) {
+        rows.push(Array.from({ length: n + 1 }, (_, r) => combination(n, r)));
+      }
+    }
+
+    function buildStage() {
+      const fragment = document.createDocumentFragment();
+      for (let n = 0; n <= MAX_ROW; n += 1) {
+        const first = position(n, 0);
+        const label = document.createElement("span");
+        label.className = "row-label";
+        label.style.left = `${((first.x - 50) / WIDTH) * 100}%`;
+        label.style.top = `${(first.y / HEIGHT) * 100}%`;
+        label.textContent = `n = ${n}`;
+        fragment.appendChild(label);
+
+        for (let r = 0; r <= n; r += 1) {
+          const cellPosition = position(n, r);
+          const cell = document.createElement("div");
+          cell.className = "cell hidden";
+          cell.style.left = `${(cellPosition.x / WIDTH) * 100}%`;
+          cell.style.top = `${(cellPosition.y / HEIGHT) * 100}%`;
+          cell.textContent = rows[n][r];
+          cell.setAttribute("aria-label", `${n}C${r} は ${rows[n][r]}`);
+          cells.set(key(n, r), cell);
+          fragment.appendChild(cell);
+        }
+      }
+      triangle.appendChild(fragment);
+    }
+
+    function snapshot(visible, states, title, detail, tone = "blue", arrow = null, delay = 700) {
+      steps.push({
+        visible: [...visible],
+        states: { ...states },
+        title,
+        detail,
+        tone,
+        arrow,
+        delay
+      });
+    }
+
+    function buildSteps() {
+      const visible = new Set();
+      snapshot(
+        visible,
+        {},
+        "上から順に三角形を作ります",
+        "最初に各行の両端へ 1 を置き、内側は上の2数を足します。",
+        "blue",
+        null,
+        1400
+      );
+
+      for (let n = 0; n <= MAX_ROW; n += 1) {
+        for (let r = 0; r <= n; r += 1) {
+          const value = rows[n][r];
+          if (r === 0 || r === n) {
+            visible.add(key(n, r));
+            snapshot(
+              visible,
+              { [key(n, r)]: "edge" },
+              `n = ${n}, r = ${r}：両端には 1`,
+              "各行の左端と右端は必ず 1 です。",
+              "green",
+              null,
+              650
+            );
+            continue;
+          }
+
+          const left = key(n - 1, r - 1);
+          const right = key(n - 1, r);
+          snapshot(
+            visible,
+            { [left]: "parent", [right]: "parent" },
+            `n = ${n}, r = ${r}：左上と右上を足す`,
+            `${rows[n - 1][r - 1]} ＋ ${rows[n - 1][r]} ＝ ${value}`,
+            "blue",
+            { left: [n - 1, r - 1], right: [n - 1, r], target: [n, r] },
+            750
+          );
+
+          visible.add(key(n, r));
+          snapshot(
+            visible,
+            { [key(n, r)]: "new" },
+            `${rows[n - 1][r - 1]} ＋ ${rows[n - 1][r]} ＝ ${value}`,
+            `計算結果 ${value} を ${n} 行目の ${r + 1} 番目に置きます。`,
+            "orange",
+            null,
+            650
+          );
+        }
+
+        const rowStates = {};
+        for (let r = 0; r <= n; r += 1) {
+          rowStates[key(n, r)] = "complete";
+        }
+        snapshot(
+          visible,
+          rowStates,
+          `n = ${n} の行が完成`,
+          rows[n].join("  "),
+          "purple",
+          null,
+          850
+        );
+      }
+
+      const allStates = {};
+      visible.forEach((cellKey) => {
+        allStates[cellKey] = "complete";
+      });
+      snapshot(
+        visible,
+        allStates,
+        "パスカルの三角形が完成",
+        "両端は 1、内側は左上と右上の和という同じ規則を繰り返しました。",
+        "purple",
+        null,
+        2200
+      );
+    }
+
+    function drawArrows(arrow) {
+      arrows.replaceChildren();
+      if (!arrow) return;
+
+      const target = position(...arrow.target);
+      [arrow.left, arrow.right].forEach((sourceCoordinate, index) => {
+        const source = position(...sourceCoordinate);
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const endX = target.x + (index === 0 ? -14 : 14);
+        line.setAttribute(
+          "d",
+          `M ${source.x + (index === 0 ? 8 : -8)} ${source.y + 18} L ${endX} ${target.y - 30}`
+        );
+        line.setAttribute("class", "arrow-line");
+        arrows.appendChild(line);
+      });
+    }
+
+    function renderStep() {
+      const step = steps[Math.max(0, currentStep)];
+      const visible = new Set(step.visible);
+      cells.forEach((cell, cellKey) => {
+        cell.className = "cell";
+        if (!visible.has(cellKey)) {
+          cell.classList.add("hidden");
+        }
+        if (step.states[cellKey]) {
+          cell.classList.add(step.states[cellKey]);
+        }
+      });
+
+      status.className = `status ${step.tone === "blue" ? "" : step.tone}`.trim();
+      statusTitle.textContent = step.title;
+      statusDetail.textContent = step.detail;
+      drawArrows(step.arrow);
+
+      const shown = currentStep + 1;
+      stepCounter.textContent = `${shown} / ${steps.length}`;
+      progressBar.style.width = `${(shown / steps.length) * 100}%`;
+      prevBtn.disabled = currentStep <= 0;
+      nextBtn.disabled = currentStep >= steps.length - 1;
+      resetBtn.disabled = currentStep <= 0;
+      playBtn.disabled = currentStep >= steps.length - 1;
+      playBtn.textContent = timer ? "一時停止" : "再生";
+    }
+
+    function stop() {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+      playBtn.textContent = "再生";
+    }
+
+    function scheduleNext() {
+      if (!timer || currentStep >= steps.length - 1) {
+        stop();
+        renderStep();
+        return;
+      }
+      const delay = steps[currentStep].delay * Number(speedSelect.value);
+      timer = setTimeout(() => {
+        currentStep += 1;
+        renderStep();
+        scheduleNext();
+      }, delay);
+    }
+
+    function togglePlay() {
+      if (timer) {
+        stop();
+        renderStep();
+        return;
+      }
+      if (currentStep >= steps.length - 1) return;
+      timer = true;
+      renderStep();
+      scheduleNext();
+    }
+
+    prevBtn.addEventListener("click", () => {
+      stop();
+      currentStep = Math.max(0, currentStep - 1);
+      renderStep();
+    });
+
+    nextBtn.addEventListener("click", () => {
+      stop();
+      currentStep = Math.min(steps.length - 1, currentStep + 1);
+      renderStep();
+    });
+
+    playBtn.addEventListener("click", togglePlay);
+    resetBtn.addEventListener("click", () => {
+      stop();
+      currentStep = 0;
+      renderStep();
+    });
+
+    speedSelect.addEventListener("change", () => {
+      if (timer) {
+        stop();
+        togglePlay();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowRight") {
+        nextBtn.click();
+      } else if (event.key === "ArrowLeft") {
+        prevBtn.click();
+      } else if (event.key === " ") {
+        event.preventDefault();
+        togglePlay();
+      }
+    });
+
+    buildRows();
+    buildStage();
+    buildSteps();
+    currentStep = 0;
+    renderStep();
+  </script>
+</body>
+</html>
