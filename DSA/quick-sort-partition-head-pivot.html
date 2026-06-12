@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>クイックソート - 分割の決め方</title>
+    <title>クイックソート - 先頭要素を基準値にする分割</title>
     <style>
       :root {
         --fg: #111827;
@@ -158,7 +158,7 @@
         flex: 1;
         min-height: 0;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 280px;
+        grid-template-columns: minmax(0, 1fr) 430px;
         gap: 6px;
       }
 
@@ -233,13 +233,37 @@
         line-height: 16px;
       }
       #current-array .ptr-chip.ptr-both {
+        position: relative;
+        z-index: 2;
+        width: 88px;
         height: 34px;
         line-height: 1.05;
+        transform: translateX(-22px);
+        overflow: visible;
+      }
+      #current-array .ptr-chip.ptr-right-label {
+        position: relative;
+        z-index: 2;
+        width: 64px;
+        transform: translateX(-10px);
+        white-space: nowrap;
+        overflow: visible;
+      }
+      #current-array .ptr-chip.ptr-edge-right {
+        width: 64px;
+        transform: translateX(-20px);
+        text-align: right;
+      }
+      #current-array .ptr-chip.ptr-both {
+        width: 88px;
+        transform: translateX(-22px);
+        text-align: center;
       }
       .ptr-stack {
         display: inline-grid;
         gap: 2px;
         justify-items: center;
+        white-space: nowrap;
       }
       .ptr-stack .ptr-pr { color: #dc2626; }
       .ptr-stack .ptr-pl { color: #2563eb; }
@@ -250,7 +274,7 @@
       }
       .final-brace-wrap {
         position: relative;
-        height: 72px;
+        height: 46px;
         margin-top: 2px;
       }
       .final-brace-row {
@@ -292,11 +316,28 @@
         font-weight: 800;
         white-space: nowrap;
       }
+      .final-pivot-marker {
+        position: absolute;
+        top: 1px;
+        width: 0;
+        height: 0;
+      }
+      .final-pivot-marker::after {
+        content: "基準値";
+        position: absolute;
+        top: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: var(--pivot-line);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
       .final-label {
         position: absolute;
-        top: 23px;
+        top: 19px;
         color: #111827;
-        font-size: 18px;
+        font-size: 14px;
         font-weight: 800;
         text-align: center;
         line-height: 1.1;
@@ -545,6 +586,31 @@
         font-weight: 800;
         line-height: 10px;
       }
+      .ptr-chip.ptr-edge-right {
+        width: 58px;
+        transform: translateX(-30px);
+        text-align: right;
+      }
+      .ptr-chip.ptr-right-label {
+        position: relative;
+        z-index: 2;
+        width: 58px;
+        transform: translateX(-15px);
+        white-space: nowrap;
+        overflow: visible;
+      }
+      .ptr-chip.ptr-both {
+        position: relative;
+        z-index: 2;
+        width: 68px;
+        height: 22px;
+        transform: translateX(-20px);
+        overflow: visible;
+      }
+      .ptr-chip.ptr-right-label.ptr-edge-right {
+        transform: translateX(-30px);
+        text-align: right;
+      }
       .ptr-pl   { color: #2563eb; }
       .ptr-pr   { color: #dc2626; }
       .ptr-both { color: #4f46e5; }
@@ -591,14 +657,15 @@
         background: #f8fafc;
         border: 1px solid var(--line);
         border-radius: 6px;
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
       .code-line {
         display: flex;
         align-items: center;
         padding: 2px 5px;
-        font-size: 11.5px;
+        font-size: 10.4px;
         line-height: 1.38;
         color: #374151;
         transition: background .1s, color .1s;
@@ -624,6 +691,7 @@
       .code-var { color: #1e293b; }
       .code-op { color: #ef4444; }
       .code-num { color: #059669; }
+      .code-comment { color: #64748b; }
 
       /* done result */
       #done-panel {
@@ -640,7 +708,7 @@
         border: 1px solid #86efac;
       }
 
-      @media (max-width: 850px) {
+      @media (max-width: 1100px) {
         body { overflow: auto; height: auto; }
         main { height: auto; overflow: visible; }
         .content-grid { grid-template-columns: 1fr; }
@@ -665,7 +733,7 @@
     <header>
       <div>
         <p><a href="../index.html">← デモ一覧へ戻る</a></p>
-        <h1>クイックソート - 分割の決め方</h1>
+        <h1>クイックソート - 先頭要素を基準値にする分割</h1>
       </div>
     </header>
 
@@ -674,12 +742,12 @@
       <section class="panel controls-panel">
         <!-- Rules Banner -->
         <div class="rules-box">
-          <strong>分割（パーティション）の決め方:</strong>
+          <strong>教科書の分割（基準値 = a[head]）:</strong>
           <ul class="rules-list">
-            <li>配列 <i>a</i> から枢軸（pivot）を選択する（ここでは中央の要素）</li>
-            <li><i>a</i>[<span style="color:#2563eb; font-weight:bold; font-style:italic;">pl</span>] ≥ pivot となる値を左から探す</li>
-            <li><i>a</i>[<span style="color:#dc2626; font-weight:bold; font-style:italic;">pr</span>] ≤ pivot となる値を右から探す</li>
-            <li><span style="color:#2563eb; font-weight:bold; font-style:italic;">pl</span> と <span style="color:#dc2626; font-weight:bold; font-style:italic;">pr</span> が交差するまで交換を繰り返し、pivot 以下／以上のグループに分ける</li>
+            <li>先頭要素 <i>a</i>[head] を基準値とし、left = head + 1、right = tail から調べる</li>
+            <li>左から基準値より大きい要素、右から基準値以下の要素を探す</li>
+            <li>left &lt; right の間は、見つけた2要素を交換して探索を続ける</li>
+            <li>最後に <i>a</i>[head] と <i>a</i>[right] を交換し、基準値の位置 right を返す</li>
           </ul>
         </div>
 
@@ -687,10 +755,10 @@
           <div class="ctrl-row">
             <label style="font-size:13px;color:var(--muted);white-space:nowrap;font-weight:700;">配列 a =</label>
             <select id="arrayPreset" onchange="applyPreset()">
-              <option value="5, 7, 1, 4, 6, 2, 3, 9, 8">スライド基本例</option>
-              <option value="5, 1, 2, 4, 4, 6, 9, 7, 8">枢軸と等しい値あり</option>
-              <option value="1, 2, 3, 4, 6, 7, 5, 8, 9">if交換判定がfalse</option>
-              <option value="1, 4, 6, 8, 9, 5, 3, 7, 2">最悪例</option>
+              <option value="5, 7, 1, 4, 6, 2, 3, 9, 8">基本例</option>
+              <option value="5, 1, 5, 4, 7, 2, 8, 3">基準値と同じ値あり</option>
+              <option value="1, 2, 3, 4, 5, 6, 7, 8">基準値が最小</option>
+              <option value="9, 2, 7, 4, 1, 8, 3, 6">基準値が最大</option>
             </select>
             <input id="arrayInput" type="text" value="5, 7, 1, 4, 6, 2, 3, 9, 8" style="width: 180px; flex-grow: 0;" />
             <button onclick="randomize()">乱数生成</button>
@@ -726,7 +794,7 @@
           <section class="panel spotlight-panel">
             <div class="spotlight-head">
               <h2>現在の状態</h2>
-              <div id="current-pivot" class="pivot-note">pivot = —</div>
+              <div id="current-pivot" class="pivot-note">基準値 = —</div>
             </div>
             <div id="current-array"></div>
             <div id="current-note" class="stage-note">配列を入力してリセットしてください。</div>
@@ -746,15 +814,15 @@
             <div class="legend">
               <div class="legend-item">
                 <div class="legend-box" style="background:var(--pl-bg);border-color:var(--pl-line)"></div>
-                <span>pl（左カーソル）</span>
+                <span>left（左カーソル）</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box" style="background:var(--pr-bg);border-color:var(--pr-line)"></div>
-                <span>pr（右カーソル）</span>
+                <span>right（右カーソル）</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box" style="background:var(--pivot-bg);border-color:var(--pivot-line)"></div>
-                <span>pivot</span>
+                <span>基準値 a[head]</span>
               </div>
               <div class="legend-item">
                 <div class="legend-box" style="background:var(--swap-bg);border-color:var(--swap-line)"></div>
@@ -765,17 +833,20 @@
 
           <!-- Pseudocode Panel -->
           <section class="panel side-panel code-panel">
-            <h2>分割を決めるコード</h2>
+            <h2>教科書の分割コード</h2>
             <ol class="code-list">
-              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">partition</span>(<span class="code-var">a</span>, <span class="code-var">end</span>):</span></li>
-              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">  <span class="code-var">pl</span> <span class="code-op">=</span> <span class="code-num">0</span>,  <span class="code-var">pr</span> <span class="code-op">=</span> <span class="code-var">end</span></span></li>
-              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">  <span class="code-var">pivot</span> <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">end</span> <span class="code-op">//</span> <span class="code-num">2</span>]</span></li>
-              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">  <span class="code-kw">while</span> <span class="code-var">pl</span> <span class="code-op">&lt;=</span> <span class="code-var">pr</span>:</span></li>
-              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">a</span>[<span class="code-var">pl</span>] <span class="code-op">&lt;</span> <span class="code-var">pivot</span>: <span class="code-var">pl</span> <span class="code-op">+=</span> <span class="code-num">1</span></span></li>
-              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">a</span>[<span class="code-var">pr</span>] <span class="code-op">&gt;</span> <span class="code-var">pivot</span>: <span class="code-var">pr</span> <span class="code-op">-=</span> <span class="code-num">1</span></span></li>
-              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">    <span class="code-kw">if</span> <span class="code-var">pl</span> <span class="code-op">&lt;=</span> <span class="code-var">pr</span>:</span></li>
-              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">      <span class="code-var">a</span>[<span class="code-var">pl</span>], <span class="code-var">a</span>[<span class="code-var">pr</span>] <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">pr</span>], <span class="code-var">a</span>[<span class="code-var">pl</span>]</span></li>
-              <li id="line-9" class="code-line"><span class="ln">9</span><span class="code-text">      <span class="code-var">pl</span> <span class="code-op">+=</span> <span class="code-num">1</span>,  <span class="code-var">pr</span> <span class="code-op">-=</span> <span class="code-num">1</span></span></li>
+              <li id="line-1" class="code-line"><span class="ln">1</span><span class="code-text"><span class="code-kw">def</span> <span class="code-fn">divide_array</span>(<span class="code-var">a</span>, <span class="code-var">head</span>, <span class="code-var">tail</span>): <span class="code-comment"># 分割関数</span></span></li>
+              <li id="line-2" class="code-line"><span class="ln">2</span><span class="code-text">  <span class="code-var">left</span> <span class="code-op">=</span> <span class="code-var">head</span> + <span class="code-num">1</span> <span class="code-comment"># 左位置</span></span></li>
+              <li id="line-3" class="code-line"><span class="ln">3</span><span class="code-text">  <span class="code-var">right</span> <span class="code-op">=</span> <span class="code-var">tail</span> <span class="code-comment"># 右位置</span></span></li>
+              <li id="line-4" class="code-line"><span class="ln">4</span><span class="code-text">  <span class="code-var">pivot</span> <span class="code-op">=</span> <span class="code-var">a</span>[<span class="code-var">head</span>] <span class="code-comment"># 基準値</span></span></li>
+              <li id="line-5" class="code-line"><span class="ln">5</span><span class="code-text">  <span class="code-kw">while</span> <span class="code-kw">True</span>: <span class="code-comment"># 探索を繰り返す</span></span></li>
+              <li id="line-6" class="code-line"><span class="ln">6</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">left</span> &lt;= <span class="code-var">tail</span> <span class="code-kw">and</span> <span class="code-var">pivot</span> &gt;= <span class="code-var">a</span>[<span class="code-var">left</span>]: <span class="code-var">left</span> += <span class="code-num">1</span> <span class="code-comment"># 左探索</span></span></li>
+              <li id="line-7" class="code-line"><span class="ln">7</span><span class="code-text">    <span class="code-kw">while</span> <span class="code-var">pivot</span> &lt; <span class="code-var">a</span>[<span class="code-var">right</span>]: <span class="code-var">right</span> -= <span class="code-num">1</span> <span class="code-comment"># 右探索</span></span></li>
+              <li id="line-8" class="code-line"><span class="ln">8</span><span class="code-text">    <span class="code-kw">if</span> <span class="code-var">left</span> &gt;= <span class="code-var">right</span>: <span class="code-kw">break</span> <span class="code-comment"># 交差で終了</span></span></li>
+              <li id="line-9" class="code-line"><span class="ln">9</span><span class="code-text">    <span class="code-var">a</span>[<span class="code-var">left</span>], <span class="code-var">a</span>[<span class="code-var">right</span>] = <span class="code-var">a</span>[<span class="code-var">right</span>], <span class="code-var">a</span>[<span class="code-var">left</span>] <span class="code-comment"># 交換</span></span></li>
+              <li id="line-10" class="code-line"><span class="ln">10</span><span class="code-text">    <span class="code-var">left</span> += <span class="code-num">1</span>; <span class="code-var">right</span> -= <span class="code-num">1</span> <span class="code-comment"># 内側へ移動</span></span></li>
+              <li id="line-11" class="code-line"><span class="ln">11</span><span class="code-text">  <span class="code-var">a</span>[<span class="code-var">head</span>], <span class="code-var">a</span>[<span class="code-var">right</span>] = <span class="code-var">a</span>[<span class="code-var">right</span>], <span class="code-var">a</span>[<span class="code-var">head</span>] <span class="code-comment"># 基準値を確定</span></span></li>
+              <li id="line-12" class="code-line"><span class="ln">12</span><span class="code-text">  <span class="code-kw">return</span> <span class="code-var">right</span> <span class="code-comment"># 確定位置を返す</span></span></li>
             </ol>
           </section>
 
@@ -796,82 +867,106 @@
       const a = [...initArr];
       const ids = initArr.map((_, i) => i);
       const n = a.length;
-      let pl = 0, pr = n - 1;
-      const pivotIdx0 = Math.floor((pl + pr) / 2);
-      const pivotVal  = a[pivotIdx0];
-      const pivotId = ids[pivotIdx0];
+      const head = 0;
+      const tail = n - 1;
+      let left = head + 1;
+      let right = tail;
+      const pivotVal = a[head];
+      const pivotId = ids[head];
       let iter = 0;
 
       function snap(type, label, badgeClass, annotation, extra = {}) {
         steps.push({
-          array: [...a], ids: [...ids], pl, pr, pivotVal, pivotIdx: pivotIdx0, pivotId, type,
+          array: [...a],
+          ids: [...ids],
+          head,
+          tail,
+          left,
+          right,
+          pl: left,
+          pr: right,
+          pivotVal,
+          pivotIdx: head,
+          pivotId,
+          type,
           label, badgeClass, annotation, iter,
           ...extra
         });
       }
 
-      // ① Initial state
       snap('init', '初期状態', '',
-        `pl = 0, pr = ${pr} 　 (pivot = a[${pivotIdx0}] = <b>${pivotVal}</b>)`,
-        { line: [2, 3] });
+        `基準値 = a[head] = a[0] = <b>${pivotVal}</b>、left = ${left}、right = ${right}`,
+        { line: [2, 3, 4] });
 
       while (true) {
         iter++;
 
-        if (pl > pr) {
-          snap('done', '分割完了', 'done',
-            `4行目に戻って判定: pl(${pl}) > pr(${pr}) なので while を抜ける`,
-            { done: true, doneLeft: pr, doneRight: pl, line: 4 });
-          break;
-        }
-
-        // ② Move pl right one by one
-        while (a[pl] < pivotVal) {
-          snap('pl-scan', 'pl 移動', 'pl',
-            `a[pl] = a[<b style="color:#2563eb">${pl}</b>] = ${a[pl]} < pivot(${pivotVal}) ➔ 右へ移動する`,
-            { line: 5 });
-          pl++;
-        }
-        snap('pl-stop', 'pl 停止', 'pl',
-          `a[pl] = a[<b style="color:#2563eb">${pl}</b>] = ${a[pl]} ≥ pivot(${pivotVal}) で停止`,
-          { line: 5 });
-
-        // ③ Move pr left one by one
-        while (a[pr] > pivotVal) {
-          snap('pr-scan', 'pr 移動', 'pr',
-            `a[pr] = a[<b style="color:#dc2626">${pr}</b>] = ${a[pr]} > pivot(${pivotVal}) ➔ 左へ移動する`,
+        while (left <= tail && pivotVal >= a[left]) {
+          snap('left-scan', 'left 移動', 'pl',
+            `基準値 ${pivotVal} ≥ a[left] = a[<b style="color:#2563eb">${left}</b>] = ${a[left]} なので、left を右へ進めます。`,
             { line: 6 });
-          pr--;
+          left++;
         }
-        const isReady = pl <= pr;
-        snap('pr-stop', isReady ? '交換条件成立' : 'pr 停止', isReady ? 'ready' : 'pr',
-          isReady
-            ? `a[pl] ≥ pivot かつ a[pr] ≤ pivot なので交換できる状態`
-            : `a[pr] = a[<b style="color:#dc2626">${pr}</b>] = ${a[pr]} ≤ pivot(${pivotVal}) で停止`,
+        snap('left-stop', 'left 停止', 'pl',
+          left > tail
+            ? `left = ${left} が tail = ${tail} を越えたため、左からの探索を止めます。`
+            : `a[left] = a[<b style="color:#2563eb">${left}</b>] = ${a[left]} は基準値 ${pivotVal} より大きいため、left を止めます。`,
           { line: 6 });
 
-        // ④ Check: done?
-        if (pl > pr) {
-          snap('done', '分割完了', 'done',
-            `4行目に戻って判定: pl(${pl}) > pr(${pr}) なので while を抜ける`,
-            { done: true, doneLeft: pr, doneRight: pl, line: 4 });
+        while (pivotVal < a[right]) {
+          snap('right-scan', 'right 移動', 'pr',
+            `基準値 ${pivotVal} < a[right] = a[<b style="color:#dc2626">${right}</b>] = ${a[right]} なので、right を左へ進めます。`,
+            { line: 7 });
+          right--;
+        }
+        snap('right-stop', left < right ? '交換対象を発見' : 'right 停止', left < right ? 'ready' : 'pr',
+          left < right
+            ? `a[left] = ${a[left]} は基準値より大きく、a[right] = ${a[right]} は基準値以下です。`
+            : `a[right] = a[<b style="color:#dc2626">${right}</b>] = ${a[right]} は基準値 ${pivotVal} 以下なので、right を止めます。`,
+          { line: 7 });
+
+        if (left >= right) {
+          snap('crossed', '探索終了', 'done',
+            `left(${left}) ≥ right(${right}) となったため、要素交換の繰り返しを終了します。`,
+            { line: 8 });
           break;
         }
 
-        // ⑤ Swap
-        const sp = pl, srp = pr, sv1 = a[pl], sv2 = a[pr];
-        [a[pl], a[pr]] = [a[pr], a[pl]];
-        [ids[pl], ids[pr]] = [ids[pr], ids[pl]];
+        const swapLeft = left;
+        const swapRight = right;
+        const leftValue = a[left];
+        const rightValue = a[right];
+        [a[left], a[right]] = [a[right], a[left]];
+        [ids[left], ids[right]] = [ids[right], ids[left]];
         snap('swapped', '要素交換', 'swap',
-          `a[pl] = ${sv1} ↔ a[pr] = ${sv2} を交換`,
-          { swapPl: sp, swapPr: srp, line: 8 });
+          `a[left] = ${leftValue} と a[right] = ${rightValue} を交換します。`,
+          { swapPl: swapLeft, swapPr: swapRight, line: 9 });
 
-        // ⑥ Advance
-        pl++; pr--;
-        snap('advanced', 'ポインタ更新', 'adv',
-          `pl = <b style="color:#2563eb">${pl}</b>, pr = <b style="color:#dc2626">${pr}</b> に更新`,
-          { line: 9 });
+        left++;
+        right--;
+        snap('advanced', '探索位置を更新', 'adv',
+          `left = <b style="color:#2563eb">${left}</b>、right = <b style="color:#dc2626">${right}</b> に更新します。`,
+          { line: 10 });
       }
+
+      const pivotSwapRight = right;
+      const rightValue = a[right];
+      [a[head], a[right]] = [a[right], a[head]];
+      [ids[head], ids[right]] = [ids[right], ids[head]];
+      snap('pivot-swapped', '基準値を交換', 'swap',
+        `a[head] = ${pivotVal} と a[right] = ${rightValue} を交換し、基準値を位置 ${right} に確定します。`,
+        { swapPl: head, swapPr: pivotSwapRight, pivotIndex: right, line: 11 });
+
+      snap('done', '分割完了', 'done',
+        `基準値 ${pivotVal} の位置 right = ${right} を返します。`,
+        {
+          done: true,
+          doneLeft: right - 1,
+          doneRight: right + 1,
+          pivotIndex: right,
+          returnIndex: right,
+          line: 12
+        });
 
       return steps;
     }
@@ -886,7 +981,7 @@
         if (i >= doneRight) return 'is-done-r';
         return '';
       }
-      if (type === 'swapped') {
+      if (type === 'swapped' || type === 'pivot-swapped') {
         if (step.ids && step.ids[i] === step.pivotId) return 'is-pivot';
         if (i === swapPl || i === swapPr) return 'is-swap';
         return '';
@@ -914,7 +1009,7 @@
         for (let i = 0; i < n; i++) {
           const c = document.createElement('div');
           c.className = 'pivot-marker';
-          c.textContent = i === pivotCurrentIndex ? `pivot = a[${step.pivotIdx}] = ${step.pivotVal}` : '';
+          c.textContent = i === pivotCurrentIndex ? `基準値 = ${step.pivotVal}` : '';
           pivotRow.appendChild(c);
         }
         grid.appendChild(pivotRow);
@@ -936,7 +1031,7 @@
         const c = document.createElement('div');
         const cls = cellClass(step, i);
         c.className = 'val-chip' + (cls ? ' ' + cls : '');
-        if (step.type === 'pr-stop' && step.pl <= step.pr && (i === step.pl || i === step.pr)) {
+        if (step.type === 'right-stop' && step.left < step.right && (i === step.left || i === step.right)) {
           c.classList.add('is-exchange-ready');
         }
         c.dataset.index = i;
@@ -952,12 +1047,18 @@
           const c = document.createElement('div');
           c.className = 'ptr-chip';
           const isPl = i === step.pl, isPr = i === step.pr;
+          if (isPr) {
+            c.classList.add('ptr-right-label');
+          }
+          if (isPr && i === n - 1) {
+            c.classList.add('ptr-edge-right');
+          }
           if (isPl && isPr) {
             c.classList.add('ptr-both');
-            c.innerHTML = '<span class="ptr-stack"><span class="ptr-pr">↑ pr</span><span class="ptr-pl">↑ pl</span></span>';
+            c.innerHTML = '<span class="ptr-stack"><span class="ptr-pr">↑ right</span><span class="ptr-pl">↑ left</span></span>';
           }
-          else if (isPl)    { c.textContent = '↑ pl';    c.classList.add('ptr-pl'); }
-          else if (isPr)    { c.textContent = '↑ pr';    c.classList.add('ptr-pr'); }
+          else if (isPl)    { c.textContent = '↑ left';  c.classList.add('ptr-pl'); }
+          else if (isPr)    { c.textContent = '↑ right'; c.classList.add('ptr-pr'); }
           ptrRow.appendChild(c);
         }
         grid.appendChild(ptrRow);
@@ -968,9 +1069,7 @@
 
     function buildFinalGrid(step) {
       const n = step.array.length;
-      const hasEqualGroup = step.pr + 1 < step.pl;
-      const leftEndExclusive = hasEqualGroup ? step.pr + 1 : step.doneRight;
-      const rightStart = step.doneRight;
+      const pivotIndex = step.returnIndex;
       const grid = document.createElement('div');
       grid.className = 'final-grid';
 
@@ -989,7 +1088,9 @@
       for (let i = 0; i < n; i++) {
         const c = document.createElement('div');
         c.className = 'val-chip';
-        if (step.ids && step.ids[i] === step.pivotId) c.classList.add('is-pivot');
+        if (i < pivotIndex) c.classList.add('is-done-l');
+        if (i === pivotIndex) c.classList.add('is-pivot');
+        if (i > pivotIndex) c.classList.add('is-done-r');
         c.dataset.index = i;
         c.textContent = step.array[i];
         valRow.appendChild(c);
@@ -1001,8 +1102,10 @@
       for (let i = 0; i < n; i++) {
         const c = document.createElement('div');
         c.className = 'ptr-chip';
-        if (i === step.pr) { c.textContent = '↑ pr'; c.classList.add('ptr-pr'); }
-        if (i === step.pl) { c.textContent = '↑ pl'; c.classList.add('ptr-pl'); }
+        if (i === pivotIndex) {
+          c.textContent = '↑ right';
+          c.classList.add('ptr-pr');
+        }
         ptrRow.appendChild(c);
       }
       grid.appendChild(ptrRow);
@@ -1010,37 +1113,31 @@
       const braceWrap = document.createElement('div');
       braceWrap.className = 'final-brace-wrap';
 
-      if (leftEndExclusive > 0) {
+      if (pivotIndex > 0) {
         const leftBrace = document.createElement('div');
         leftBrace.className = 'final-brace final-brace-left';
         braceWrap.appendChild(leftBrace);
-      }
 
-      if (rightStart < n) {
-        const rightBrace = document.createElement('div');
-        rightBrace.className = 'final-brace final-brace-right';
-        braceWrap.appendChild(rightBrace);
-      }
-
-      if (leftEndExclusive > 0) {
         const leftLabel = document.createElement('div');
         leftLabel.className = 'final-label final-label-left';
-        leftLabel.textContent = '枢軸以下';
+        leftLabel.textContent = '基準値以下';
         braceWrap.appendChild(leftLabel);
       }
 
-      if (rightStart < n) {
+      if (pivotIndex < n - 1) {
+        const rightBrace = document.createElement('div');
+        rightBrace.className = 'final-brace final-brace-right';
+        braceWrap.appendChild(rightBrace);
+
         const rightLabel = document.createElement('div');
         rightLabel.className = 'final-label final-label-right';
-        rightLabel.textContent = '枢軸以上';
+        rightLabel.textContent = '基準値より大きい';
         braceWrap.appendChild(rightLabel);
       }
 
-      if (step.pr + 1 < step.pl) {
-        const eqMarker = document.createElement('div');
-        eqMarker.className = 'final-eq-marker';
-        braceWrap.appendChild(eqMarker);
-      }
+      const pivotMarker = document.createElement('div');
+      pivotMarker.className = 'final-pivot-marker';
+      braceWrap.appendChild(pivotMarker);
       grid.appendChild(braceWrap);
 
       return grid;
@@ -1086,7 +1183,10 @@
     }
 
     function updateCurrentPanel(step) {
-      document.getElementById('current-pivot').textContent = `pivot = a[${step.pivotIdx}] = ${step.pivotVal}`;
+      document.getElementById('current-pivot').textContent =
+        step.done
+          ? `基準値 ${step.pivotVal} の確定位置 = ${step.returnIndex}`
+          : `基準値 = a[head] = ${step.pivotVal}`;
 
       const currentArray = document.getElementById('current-array');
       currentArray.innerHTML = '';
@@ -1094,27 +1194,31 @@
       if (step.done) {
         positionFinalBraces(step);
       }
-      if (step.type === 'swapped') {
+      if (step.type === 'swapped' || step.type === 'pivot-swapped') {
         showSwapBubble(step);
       }
 
       const note = document.getElementById('current-note');
       if (step.done) {
-        note.innerHTML = `<b>pr までを枢軸以下</b>、<b>pl からを枢軸以上</b>のグループとして示します。`;
-      } else if (step.type === 'pl-scan' || step.type === 'pl-stop') {
-        note.innerHTML = `<b>左カーソル pl</b> は、a[pl] ≥ pivot で止まります。`;
-      } else if (step.type === 'pr-scan' || step.type === 'pr-stop') {
-        if (step.type === 'pr-stop' && step.pl <= step.pr) {
-          note.innerHTML = `<b>交換条件成立</b>: a[pl] ≥ pivot かつ a[pr] ≤ pivot なので、a[pl] と a[pr] を交換できます。`;
+        note.innerHTML = `<b>基準値の位置が確定</b>しました。左側は基準値以下、右側は基準値より大きい要素です。`;
+      } else if (step.type === 'left-scan' || step.type === 'left-stop') {
+        note.innerHTML = `<b>left</b> は、基準値より大きい要素で止まります。`;
+      } else if (step.type === 'right-scan' || step.type === 'right-stop') {
+        if (step.type === 'right-stop' && step.left < step.right) {
+          note.innerHTML = `<b>交換対象を発見</b>: a[left] は基準値より大きく、a[right] は基準値以下です。`;
         } else {
-          note.innerHTML = `<b>右カーソル pr</b> は、a[pr] ≤ pivot で止まります。`;
+          note.innerHTML = `<b>right</b> は、基準値以下の要素で止まります。`;
         }
       } else if (step.type === 'swapped') {
-        note.innerHTML = `<b>a[pl] と a[pr] を交換</b>し、pivot 以下の値を左へ、pivot 以上の値を右へ送ります。`;
+        note.innerHTML = `<b>a[left] と a[right] を交換</b>し、大きい値を右へ、小さい値を左へ送ります。`;
       } else if (step.type === 'advanced') {
-        note.innerHTML = `交換後は <b>pl を 1 つ右へ</b>、<b>pr を 1 つ左へ</b>進め、同じ処理を繰り返します。`;
+        note.innerHTML = `交換後は <b>left を1つ右へ</b>、<b>right を1つ左へ</b>進めます。`;
+      } else if (step.type === 'crossed') {
+        note.innerHTML = `<b>left ≥ right</b> になったため、探索を終了して基準値を交換します。`;
+      } else if (step.type === 'pivot-swapped') {
+        note.innerHTML = `<b>a[head] と a[right] を交換</b>し、基準値を正しい位置に置きます。`;
       } else {
-        note.innerHTML = `左カーソルを先頭、右カーソルを末尾に置き、中央の値を pivot とします。<br>この pivot を境にグループ分けできる位置を探します。`;
+        note.innerHTML = `先頭の <b>a[head]</b> を基準値にし、left は head + 1、right は tail から探索します。`;
       }
     }
 
@@ -1124,9 +1228,7 @@
       if (!wrap) return;
 
       const cells = Array.from(currentArray.querySelectorAll('.final-grid .val-chip'));
-      const hasEqualGroup = step.pr + 1 < step.pl;
-      const leftEndExclusive = hasEqualGroup ? step.pr + 1 : step.doneRight;
-      const rightStart = step.doneRight;
+      const pivotIndex = step.returnIndex;
       if (cells.length !== step.array.length) return;
 
       const wrapRect = wrap.getBoundingClientRect();
@@ -1155,15 +1257,13 @@
         }
       };
 
-      applyGroup('.final-brace-left', '.final-label-left', getBounds(0, leftEndExclusive));
-      applyGroup('.final-brace-right', '.final-label-right', getBounds(rightStart, cells.length));
+      applyGroup('.final-brace-left', '.final-label-left', getBounds(0, pivotIndex));
+      applyGroup('.final-brace-right', '.final-label-right', getBounds(pivotIndex + 1, cells.length));
 
-      const eqMarker = wrap.querySelector('.final-eq-marker');
-      if (eqMarker && step.pr + 1 < step.pl) {
-        const eqBounds = getBounds(step.pr + 1, step.pl);
-        if (eqBounds) {
-          eqMarker.style.left = `${eqBounds.center}px`;
-        }
+      const pivotMarker = wrap.querySelector('.final-pivot-marker');
+      const pivotBounds = getBounds(pivotIndex, pivotIndex + 1);
+      if (pivotMarker && pivotBounds) {
+        pivotMarker.style.left = `${pivotBounds.center}px`;
       }
     }
 
@@ -1231,33 +1331,14 @@
       const donePanel = document.getElementById('done-panel');
       if (s.done) {
         donePanel.style.display = '';
-        const split = s.doneRight;
-        const L = s.array.slice(0, split).join(', ');
-        const R = s.array.slice(split).join(', ');
-        const equalGroup = s.pr + 1 < s.pl ? s.array.slice(s.pr + 1, s.pl).join(', ') : '';
-        const equalLeft = s.array.slice(0, split).some(v => v === s.pivotVal);
-        const equalRight = s.array.slice(split).some(v => v === s.pivotVal);
-        let equalNote = '';
-        if (equalGroup) {
-          equalNote =
-            `枢軸と等しいグループ<br>　[ ${equalGroup} ]<br><span style="color:#4b5563;">pr + 1 から pl - 1 までが、枢軸と等しい値のグループです。</span>`;
-        } else if (equalLeft && equalRight) {
-          equalNote =
-            `<span style="color:#4b5563;">pivot と等しい値は左右どちらのグループにも含まれています。</span>`;
-        } else if (equalLeft) {
-          equalNote =
-            `<span style="color:#4b5563;">pivot と等しい値はどちらのグループに含めてもよい。この例では左側に含まれています。</span>`;
-        } else if (equalRight) {
-          equalNote =
-            `<span style="color:#4b5563;">pivot と等しい値はどちらのグループに含めてもよい。この例では右側に含まれています。</span>`;
-        } else {
-          equalNote =
-            `<span style="color:#4b5563;">pivot と等しい値が境界付近にない場合もあります。</span>`;
-        }
+        const pivotIndex = s.returnIndex;
+        const leftGroup = s.array.slice(0, pivotIndex).join(', ');
+        const rightGroup = s.array.slice(pivotIndex + 1).join(', ');
         document.getElementById('done-content').innerHTML =
-          `左グループ（≤ ${s.pivotVal}）<br>　[ ${L} ]<br>` +
-          `右グループ（≥ ${s.pivotVal}）<br>　[ ${R} ]<br>` +
-          equalNote;
+          `基準値の確定位置: <b>right = ${pivotIndex}</b><br>` +
+          `左側（基準値以下）: [ ${leftGroup} ]<br>` +
+          `基準値: [ ${s.pivotVal} ]<br>` +
+          `右側（基準値より大きい）: [ ${rightGroup} ]`;
       } else {
         donePanel.style.display = 'none';
       }
@@ -1312,7 +1393,7 @@
       refreshHighlights();
       updateSidePanel();
       updateProgress();
-      
+
       setTimeout(keepCurrentRowComfortable, 50);
     }
 
