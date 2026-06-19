@@ -143,13 +143,14 @@
 
       .chart-panel,
       .controls-panel,
+      .vars-panel,
       .code-panel {
         padding: 8px;
       }
 
       .side-stack {
         display: grid;
-        grid-template-rows: auto 1fr;
+        grid-template-rows: auto auto 1fr;
         gap: 8px;
         min-height: 0;
       }
@@ -171,6 +172,44 @@
         flex-wrap: wrap;
         gap: 6px;
         align-items: center;
+      }
+
+      .vars-panel {
+        display: grid;
+        gap: 6px;
+      }
+
+      .vars-title {
+        margin: 0;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .vars-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .var-cell {
+        min-height: 46px;
+        display: grid;
+        place-items: center;
+        gap: 2px;
+        border: 1px solid #dbe7f3;
+        border-radius: 8px;
+        background: #f8fbff;
+      }
+
+      .var-name {
+        color: var(--muted);
+        font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .var-value {
+        color: var(--fg);
+        font: 900 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       }
 
       .chart-wrap {
@@ -322,6 +361,12 @@
 
       .cell.compare {
         background: var(--compare);
+        border-color: var(--compare-text);
+        box-shadow: 0 0 0 2px rgba(11, 114, 208, 0.18);
+      }
+
+      .cell.fixed.compare {
+        background: var(--sorted);
       }
 
       .compare-note {
@@ -329,7 +374,9 @@
         color: var(--compare-text);
         font-size: 12px;
         font-weight: 700;
-        white-space: nowrap;
+        max-width: 210px;
+        line-height: 1.3;
+        white-space: normal;
       }
 
       .step-metrics {
@@ -543,6 +590,15 @@
             </div>
           </section>
 
+          <section class="panel vars-panel" aria-label="現在の変数">
+            <h2 class="vars-title">現在の変数</h2>
+            <div class="vars-grid">
+              <div class="var-cell"><span class="var-name">n</span><strong id="nCell" class="var-value">-</strong></div>
+              <div class="var-cell"><span class="var-name">i</span><strong id="iCell" class="var-value">-</strong></div>
+              <div class="var-cell"><span class="var-name">j</span><strong id="jCell" class="var-value">-</strong></div>
+            </div>
+          </section>
+
           <section class="panel code-panel">
             <h2>挿入ソート（昇順）のコード</h2>
             <ol class="code-list">
@@ -575,6 +631,9 @@
       const chartWrap = document.getElementById('chartWrap');
       const iValue = document.getElementById('iValue');
       const jValue = document.getElementById('jValue');
+      const nCell = document.getElementById('nCell');
+      const iCell = document.getElementById('iCell');
+      const jCell = document.getElementById('jCell');
       const compareValue = document.getElementById('compareValue');
       const swapValue = document.getElementById('swapValue');
       const remainValue = document.getElementById('remainValue');
@@ -597,6 +656,7 @@
       let currentJ = null;
       let currentStepType = null;
       let currentCompareRightIndex = null;
+      let currentFixedIndices = null;
       let currentNote = '';
       let sortedPrefix = 0;
       let passSnapshots = [];
@@ -638,6 +698,7 @@
         currentJ = null;
         currentStepType = null;
         currentCompareRightIndex = null;
+        currentFixedIndices = null;
         currentNote = '';
         sortedPrefix = items.length > 0 ? 1 : 0;
         passSnapshots = [];
@@ -663,10 +724,30 @@
           let j = i;
           built.push({ type: 'set-j', line: 4, pass: i, j, sortedCount: i, message: `j = ${j} を設定` });
 
-          while (j >= 1) {
+          while (true) {
+            if (j < 1) {
+              built.push({
+                type: 'condition',
+                line: 5,
+                pass: i,
+                j,
+                canCompare: false,
+                sortedCount: i,
+                message: `(j = ${j}) < 1 のため、要素の比較は行わず while を抜ける`
+              });
+              break;
+            }
+
             const left = work[j - 1];
             const right = work[j];
-            built.push({ type: 'compare', line: 5, pass: i, j, sortedCount: i, message: `a[${j - 1}] と a[${j}] を比較` });
+            built.push({
+              type: 'compare',
+              line: 5,
+              pass: i,
+              j,
+              sortedCount: i,
+              message: `(j = ${j}) >= 1 を確認。次に a[${j - 1}] と a[${j}] を比較`
+            });
             if (!(left > right)) {
               break;
             }
@@ -756,7 +837,8 @@
         focusTrack.appendChild(renderCells(
           items.map((item) => item.value),
           sortedPrefix,
-          currentCompareRightIndex
+          currentCompareRightIndex,
+          currentFixedIndices
         ));
         focusMain.appendChild(focusTrack);
 
@@ -802,9 +884,10 @@
         return cursorRow;
       }
 
-      function renderCells(values, fixedCount, compareRightIndex) {
+      function renderCells(values, fixedCount, compareRightIndex, fixedIndices = null) {
         const cells = document.createElement('div');
         cells.className = 'cells';
+        const fixedIndexSet = fixedIndices == null ? null : new Set(fixedIndices);
 
         values.forEach((value, index) => {
           const wrap = document.createElement('div');
@@ -818,7 +901,7 @@
 
           const cell = document.createElement('div');
           cell.className = 'cell';
-          if (index < fixedCount) cell.classList.add('fixed');
+          if (fixedIndexSet ? fixedIndexSet.has(index) : index < fixedCount) cell.classList.add('fixed');
           if (compareRightIndex != null && (index === compareRightIndex - 1 || index === compareRightIndex)) {
             cell.classList.add('compare');
           }
@@ -829,6 +912,15 @@
         });
 
         return cells;
+      }
+
+      function activeFixedIndices(pass, currentInsertIndex) {
+        if (pass == null || currentInsertIndex == null) return null;
+        const indices = [];
+        for (let index = 0; index <= pass; index++) {
+          if (index !== currentInsertIndex) indices.push(index);
+        }
+        return indices;
       }
 
       function showActionBubble(kind, indices) {
@@ -893,6 +985,9 @@
 
         iValue.textContent = displayI == null ? '-' : String(displayI);
         jValue.textContent = (isDone || isAfterFinalPassEnd || currentJ == null) ? '-' : String(currentJ);
+        nCell.textContent = n === 0 ? '-' : String(n);
+        iCell.textContent = displayI == null ? '-' : String(displayI);
+        jCell.textContent = (isDone || isAfterFinalPassEnd || currentJ == null) ? '-' : String(currentJ);
         compareValue.textContent = String(compareCount);
         swapValue.textContent = String(swapCount);
         remainValue.textContent = String(Math.max(steps.length - stepIndex, 0));
@@ -926,13 +1021,24 @@
           passSwapCount = 0;
           currentJ = null;
           currentCompareRightIndex = null;
+          currentFixedIndices = null;
           currentNote = '';
         }
 
         if (step.type === 'set-j') {
           currentJ = step.j;
           currentCompareRightIndex = null;
+          currentFixedIndices = null;
           currentNote = '';
+        }
+
+        if (step.type === 'condition') {
+          currentJ = step.j;
+          currentCompareRightIndex = step.canCompare ? step.j : null;
+          currentFixedIndices = step.canCompare
+            ? activeFixedIndices(step.pass, step.j)
+            : [...Array(step.pass + 1).keys()];
+          currentNote = step.message;
         }
 
         if (step.type === 'compare') {
@@ -940,7 +1046,8 @@
           passCompareCount += 1;
           currentJ = step.j;
           currentCompareRightIndex = step.j;
-          currentNote = `a[${step.j - 1}] と a[${step.j}] を比較`;
+          currentFixedIndices = activeFixedIndices(step.pass, step.j);
+          currentNote = step.message;
         }
 
         if (step.type === 'swap') {
@@ -950,18 +1057,21 @@
           [items[a].value, items[b].value] = [items[b].value, items[a].value];
           currentJ = step.j;
           currentCompareRightIndex = step.j;
+          currentFixedIndices = activeFixedIndices(step.pass, a);
           currentNote = step.message;
         }
 
         if (step.type === 'decrement-j') {
           currentJ = step.j;
           currentCompareRightIndex = null;
+          currentFixedIndices = activeFixedIndices(step.pass, step.j);
           currentNote = '';
         }
 
         if (step.type === 'mark-sorted') {
           currentJ = null;
           currentCompareRightIndex = null;
+          currentFixedIndices = null;
           currentNote = '';
           passSnapshots.push({
             pass: step.pass,
@@ -975,6 +1085,7 @@
         if (step.type === 'done') {
           currentJ = null;
           currentCompareRightIndex = null;
+          currentFixedIndices = null;
           currentNote = '';
           sortedPrefix = items.length;
         }
