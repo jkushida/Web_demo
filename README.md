@@ -67,6 +67,7 @@ individual demos remain subject to their respective licenses.
 
 - **木・グラフ**
   - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
+  - [Non-Recursive Tree Traversal](https://jkushida.github.io/Web_demo/DSA/non-recursive-tree-traversal.html) - 2次元リストの木を、dataスタックへのPush/Popで非再帰に走査する手順を可視化
   - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
 
 - **ソート**

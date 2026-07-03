@@ -1,0 +1,1486 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>非再帰版の走査</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --panel: #fff;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #d6deeb;
+        --soft-line: #e6ebf2;
+        --primary: #2563eb;
+        --primary-soft: #dbeafe;
+        --orange: #ea7a1a;
+        --orange-soft: #fff0dc;
+        --green: #16803c;
+        --green-soft: #dcfce7;
+        --purple: #7c3aed;
+        --red: #dc2626;
+        --code-bg: #f8fafc;
+        --shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        height: 100vh;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      header {
+        padding: 4px 12px 5px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+      }
+
+      header p {
+        margin: 0 0 2px;
+        font-size: 11px;
+      }
+
+      header a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      header a:hover {
+        text-decoration: underline;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.25;
+      }
+
+      main {
+        width: min(1480px, 100%);
+        height: 100%;
+        min-height: 0;
+        margin: 0 auto;
+        padding: 6px 8px 8px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      .intro {
+        padding: 6px 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.35;
+      }
+
+      .mode-badge {
+        padding: 5px 9px;
+        border: 1px solid #fed7aa;
+        border-radius: 8px;
+        background: var(--orange-soft);
+        color: #9a4312;
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .controls {
+        padding: 6px 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .button-row,
+      .setting-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button,
+      select {
+        min-height: 28px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      button {
+        padding: 4px 10px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover {
+        background: #f1f5f9;
+      }
+
+      button.primary {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.48;
+        cursor: not-allowed;
+      }
+
+      select {
+        padding: 3px 8px;
+      }
+
+      label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      input[type="range"] {
+        width: 132px;
+        accent-color: var(--primary);
+      }
+
+      .step-counter {
+        min-width: 114px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .progress-wrap {
+        height: 6px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--orange));
+        transition: width 0.18s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(520px, 1.12fr) minmax(300px, 0.68fr) minmax(360px, 0.82fr);
+        gap: 8px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 900;
+      }
+
+      .head-note {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: right;
+      }
+
+      .code-tools {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .mini-button {
+        min-height: 26px;
+        padding: 3px 8px;
+        border-color: #bfdbfe;
+        background: #eff6ff;
+        color: var(--primary);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .mini-button.active {
+        border-color: #fb923c;
+        background: var(--orange-soft);
+        color: #9a3412;
+      }
+
+      .code-panel,
+      .tree-panel,
+      .stack-panel,
+      .log-panel {
+        min-width: 0;
+        min-height: 0;
+        padding: 8px;
+      }
+
+      .code-panel {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 6px;
+      }
+
+      .code-card {
+        min-height: 0;
+        margin: 0;
+        padding: 10px;
+        overflow: auto;
+        border-radius: 8px;
+        border: 1px solid var(--soft-line);
+        background: var(--code-bg);
+        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      .code-line {
+        display: block;
+        padding: 1px 6px;
+        border-radius: 5px;
+        color: #111827;
+        white-space: pre;
+      }
+
+      .code-line.active {
+        background: #dbeafe;
+        outline: 2px solid #93c5fd;
+      }
+
+      .line-no {
+        display: inline-block;
+        width: 24px;
+        color: #64748b;
+        user-select: none;
+      }
+
+      .cm {
+        color: #15803d;
+        font-weight: 800;
+      }
+
+      .kw {
+        color: #a21caf;
+        font-weight: 900;
+      }
+
+      .fn {
+        color: #2563eb;
+        font-weight: 900;
+      }
+
+      .vr {
+        color: #0f766e;
+        font-weight: 900;
+      }
+
+      .num {
+        color: #dc2626;
+        font-weight: 900;
+      }
+
+      .code-callout {
+        position: relative;
+        padding: 8px 10px 8px 12px;
+        border: 1px solid #fb923c;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #1f2937;
+        font-size: 13px;
+        font-weight: 800;
+        line-height: 1.45;
+      }
+
+      .code-callout strong {
+        color: var(--purple);
+      }
+
+      .tree-panel {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto auto;
+        gap: 6px;
+      }
+
+      .tree-stage {
+        position: relative;
+        min-height: 0;
+        border: 1px solid var(--soft-line);
+        border-radius: 9px;
+        overflow: hidden;
+        background:
+          linear-gradient(180deg, rgba(255, 240, 220, 0.82) 0 24%, rgba(255, 255, 255, 0.96) 24% 100%),
+          #fff;
+      }
+
+      svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+      }
+
+      .edge {
+        stroke: #4b5563;
+        stroke-width: 5.5;
+        stroke-linecap: round;
+        opacity: 0.88;
+        transition: stroke 0.2s ease, opacity 0.2s ease, stroke-dasharray 0.2s ease;
+      }
+
+      .edge.active {
+        stroke: var(--orange);
+        opacity: 1;
+      }
+
+      .edge.seen {
+        stroke: var(--green);
+        opacity: 0.92;
+      }
+
+      .node circle {
+        fill: #fff;
+        stroke: #111827;
+        stroke-width: 3;
+        filter: drop-shadow(0 6px 9px rgba(15, 23, 42, 0.16));
+        transition: fill 0.2s ease, stroke 0.2s ease, r 0.2s ease;
+      }
+
+      .node text {
+        fill: #1f2937;
+        font-size: 28px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+        pointer-events: none;
+      }
+
+      .node.visited circle {
+        fill: var(--green-soft);
+        stroke: var(--green);
+      }
+
+      .node.on-stack circle {
+        fill: var(--primary-soft);
+        stroke: var(--primary);
+      }
+
+      .node.current circle {
+        fill: #fff7ad;
+        stroke: var(--orange);
+        r: 34;
+      }
+
+      .node.candidate circle {
+        stroke: var(--purple);
+        stroke-dasharray: 9 6;
+      }
+
+      .visit-label rect {
+        fill: #f8e5d7;
+        stroke: #111827;
+        stroke-width: 1.5;
+      }
+
+      .visit-label text {
+        fill: #111827;
+        font-size: 18px;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: central;
+      }
+
+      .order-panel {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fbfdff;
+      }
+
+      .order-title {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .order-row {
+        min-height: 32px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .order-cell {
+        min-width: 30px;
+        min-height: 28px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #fb923c;
+        border-radius: 7px;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .data-table-wrap {
+        overflow: auto;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+      }
+
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .data-table th,
+      .data-table td {
+        position: relative;
+        padding: 5px 6px;
+        border: 1px solid var(--soft-line);
+        text-align: center;
+      }
+
+      .data-table th {
+        background: #f8fafc;
+        color: var(--muted);
+      }
+
+      .data-table td.active-col {
+        background: #eff6ff;
+        color: var(--primary);
+      }
+
+      .data-table td.push-target {
+        background: #fff7ed;
+        color: #c2410c;
+      }
+
+      .data-table td.push-target::after {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        pointer-events: none;
+        border-radius: 4px;
+        background:
+          linear-gradient(90deg, var(--orange) 50%, transparent 0) 0 0 / 12px 2px repeat-x,
+          linear-gradient(90deg, var(--orange) 50%, transparent 0) 0 100% / 12px 2px repeat-x,
+          linear-gradient(0deg, var(--orange) 50%, transparent 0) 0 0 / 2px 12px repeat-y,
+          linear-gradient(0deg, var(--orange) 50%, transparent 0) 100% 0 / 2px 12px repeat-y;
+        animation: dashAround 0.55s linear infinite;
+      }
+
+      @keyframes dashAround {
+        to {
+          background-position:
+            12px 0,
+            -12px 100%,
+            0 -12px,
+            100% 12px;
+        }
+      }
+
+      .right-stack {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: minmax(250px, 0.88fr) minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .stack-panel {
+        display: grid;
+        grid-template-rows: auto minmax(150px, 1fr) auto auto;
+        gap: 5px;
+      }
+
+      .stack-action {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .stack-action.push {
+        color: var(--orange);
+      }
+
+      .stack-action.pop {
+        color: var(--primary);
+      }
+
+      .stack-action.done {
+        color: var(--green);
+      }
+
+      .stack-area {
+        position: relative;
+        min-height: 150px;
+        display: grid;
+        align-content: end;
+        justify-items: center;
+        padding: 12px 16px 8px;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #fbfdff;
+      }
+
+      .stack-body {
+        position: relative;
+        z-index: 1;
+        width: min(132px, 48vw);
+        min-height: 128px;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: flex-start;
+        padding: 4px;
+        border-left: 5px solid #111827;
+        border-right: 5px solid #111827;
+        border-bottom: 5px solid #111827;
+      }
+
+      .stack-empty {
+        margin: auto;
+        color: var(--muted);
+        font-size: 15px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .stack-item {
+        height: 32px;
+        display: grid;
+        place-items: center;
+        border: 1px solid #2b6cb0;
+        background: #dcfce7;
+        color: #0070c0;
+        font-size: 19px;
+        font-style: italic;
+        font-weight: 900;
+      }
+
+      .stack-item.top {
+        background: #d1fae5;
+        outline: 3px solid rgba(37, 99, 235, 0.22);
+      }
+
+      .stack-arrow {
+        position: absolute;
+        left: 50%;
+        top: 12px;
+        display: none;
+        transform: translateX(-50%);
+        font-size: 44px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
+      }
+
+      .pop-value {
+        position: absolute;
+        left: 50%;
+        top: 6px;
+        z-index: 2;
+        width: calc(min(132px, 48vw) - 18px);
+        height: 32px;
+        display: none;
+        place-items: center;
+        transform: translateX(-50%);
+        border: 1px solid #2b6cb0;
+        border-radius: 0;
+        background: #dcfce7;
+        color: #0070c0;
+        font-size: 19px;
+        font-style: italic;
+        font-weight: 900;
+        box-shadow: 0 6px 10px rgba(37, 99, 235, 0.14);
+        pointer-events: none;
+      }
+
+      .stack-area.has-pop-value .pop-value {
+        display: grid;
+        animation: popValueFloat 0.72s ease-in-out infinite;
+      }
+
+      .stack-area.has-pop-value .stack-arrow.pop {
+        top: 36px;
+      }
+
+      @keyframes popValueFloat {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(-4px);
+        }
+      }
+
+      .stack-arrow.push {
+        color: #fb923c;
+      }
+
+      .stack-arrow.pop {
+        color: #3b82f6;
+      }
+
+      .stack-area.is-push .stack-arrow.push,
+      .stack-area.is-pop .stack-arrow.pop {
+        display: block;
+        animation: arrowMove 0.72s ease-in-out infinite;
+      }
+
+      @keyframes arrowMove {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+          opacity: 0.7;
+        }
+        50% {
+          transform: translateX(-50%) translateY(10px);
+          opacity: 1;
+        }
+      }
+
+      .stack-area.is-pop .stack-arrow.pop {
+        animation-name: arrowPop;
+      }
+
+      @keyframes arrowPop {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(10px);
+          opacity: 0.7;
+        }
+        50% {
+          transform: translateX(-50%) translateY(0);
+          opacity: 1;
+        }
+      }
+
+      .stack-caption {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .state-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .state-card {
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .state-label {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .state-value {
+        min-height: 18px;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .note-box {
+        padding: 7px 8px;
+        border: 1px solid #c4b5fd;
+        border-radius: 8px;
+        background: #faf5ff;
+        color: #4c1d95;
+        font-size: 12px;
+        font-weight: 900;
+        line-height: 1.45;
+      }
+
+      .log-panel {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      .steps-list {
+        min-height: 0;
+        margin: 8px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 5px;
+        overflow: auto;
+        list-style: none;
+      }
+
+      .step-item {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 8px;
+        align-items: start;
+        padding: 6px 8px;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .step-item:hover {
+        border-color: #bfdbfe;
+        background: #f8fbff;
+      }
+
+      .step-item.active {
+        border-color: var(--primary);
+        background: #eff6ff;
+      }
+
+      .step-no {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: #e5e7eb;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .step-item.active .step-no {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .step-title {
+        color: var(--ink);
+        font-size: 13px;
+        font-weight: 900;
+        line-height: 1.25;
+      }
+
+      .step-note {
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      @media (max-width: 1240px) {
+        html,
+        body {
+          height: auto;
+          min-height: 100%;
+          overflow: auto;
+        }
+
+        body {
+          display: block;
+        }
+
+        main {
+          height: auto;
+        }
+
+        .intro,
+        .controls,
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .tree-stage {
+          min-height: 360px;
+        }
+
+        .step-counter {
+          text-align: left;
+        }
+
+        .right-stack {
+          grid-template-rows: auto auto;
+        }
+      }
+
+      @media (max-width: 640px) {
+        main {
+          padding: 8px;
+        }
+
+        h1 {
+          font-size: 18px;
+        }
+
+        .state-grid,
+        .order-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .stack-area {
+          min-height: 210px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          scroll-behavior: auto !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>非再帰版の走査</h1>
+    </header>
+
+    <main>
+      <section class="panel intro">
+        <p>
+          <strong>data</strong> をスタックとして扱い、<strong>append</strong> で訪問候補を追加し、<strong>pop()</strong> で最後に追加した候補を取り出します。
+        </p>
+        <div id="sequenceBadge" class="mode-badge">訪問順: -</div>
+      </section>
+
+      <section class="panel controls" aria-label="操作">
+        <div class="button-row">
+          <button id="playBtn" class="primary" type="button">▶ 再生</button>
+          <button id="prevBtn" type="button">← 前へ</button>
+          <button id="nextBtn" type="button">次へ →</button>
+          <button id="resetBtn" type="button">↺ リセット</button>
+          <label for="speedRange">速度
+            <input id="speedRange" type="range" min="350" max="1600" step="50" value="820" />
+          </label>
+        </div>
+        <div class="setting-row">
+          <label for="modeSelect">Push順
+            <select id="modeSelect">
+              <option value="slide">左→右でPush（スライドコード）</option>
+              <option value="preorder">右→左でPush（前順に直す）</option>
+            </select>
+          </label>
+          <span id="stepCounter" class="step-counter">手順 0 / 0</span>
+        </div>
+        <div class="progress-wrap" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="panel tree-panel">
+          <div class="section-head">
+            <h2 class="section-title">2次元リストの木</h2>
+            <span id="statusText" class="head-note">開始前</span>
+          </div>
+          <div class="tree-stage">
+            <svg id="treeSvg" viewBox="0 0 760 500" role="img" aria-label="2次元リストで表した木">
+              <g id="edgeLayer"></g>
+              <g id="nodeLayer"></g>
+              <g id="labelLayer"></g>
+            </svg>
+          </div>
+          <section class="order-panel">
+            <h2 class="order-title">node_order</h2>
+            <div id="orderRow" class="order-row" aria-label="訪問順リスト"></div>
+          </section>
+          <div class="data-table-wrap">
+            <table class="data-table" aria-label="treeの内容">
+              <thead id="tableHead"></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="right-stack">
+          <section class="panel stack-panel">
+            <div class="section-head">
+              <h2 class="section-title">data（スタック）</h2>
+              <span id="actionText" class="stack-action">待機</span>
+            </div>
+            <div id="stackArea" class="stack-area" aria-label="スタック">
+              <div id="popValue" class="pop-value" aria-hidden="true"></div>
+              <div class="stack-arrow push">↓</div>
+              <div class="stack-arrow pop">↑</div>
+              <div id="stackBody" class="stack-body"></div>
+            </div>
+            <div class="stack-caption">上から Pop / 末尾を取り出す</div>
+            <div class="state-grid">
+              <div class="state-card">
+                <span class="state-label">pos</span>
+                <div id="posValue" class="state-value">-</div>
+              </div>
+              <div class="state-card">
+                <span class="state-label">data</span>
+                <div id="dataValue" class="state-value">[]</div>
+              </div>
+            </div>
+            <div id="messageBox" class="note-box">
+              ルート 0 をPushして、while文でスタックが空になるまで処理します。
+            </div>
+          </section>
+
+          <section class="panel log-panel">
+            <div class="section-head">
+              <h2 class="section-title">操作ログ</h2>
+              <span class="head-note">クリックで移動</span>
+            </div>
+            <ol id="stepsList" class="steps-list"></ol>
+          </section>
+        </aside>
+
+        <section class="panel code-panel">
+          <div class="section-head">
+            <h2 class="section-title">Pythonコード</h2>
+            <div class="code-tools">
+              <button id="reverseToggleBtn" class="mini-button" type="button" aria-pressed="false">for文をreversedにする</button>
+              <span id="codeNote" class="head-note">line 1</span>
+            </div>
+          </div>
+          <pre id="codeCard" class="code-card" aria-label="非再帰走査のPythonコード"></pre>
+          <div id="codeCallout" class="code-callout">
+            <strong>push</strong> は、そのノードを今後訪問する候補としてスタックに追加する操作です。
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script>
+      const tree = [[1, 2], [3, 4], [5], [6], [], [], []];
+      const positions = {
+        0: { x: 380, y: 60 },
+        1: { x: 245, y: 180 },
+        2: { x: 520, y: 180 },
+        3: { x: 150, y: 320 },
+        4: { x: 330, y: 320 },
+        5: { x: 520, y: 320 },
+        6: { x: 90, y: 440 }
+      };
+
+      const modes = {
+        slide: {
+          label: "左→右でPush",
+          loopHtml: '    <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="vr">tree</span>[<span class="vr">pos</span>]:',
+          pushChildren(children) {
+            return [...children];
+          },
+          guide: "tree[pos] の左の子、右の子の順でPushします。スタックなので、最後にPushした右の子が先にPopされます。"
+        },
+        preorder: {
+          label: "右→左でPush",
+          loopHtml: '    <span class="kw">for</span> <span class="vr">i</span> <span class="kw">in</span> <span class="fn">reversed</span>(<span class="vr">tree</span>[<span class="vr">pos</span>]):',
+          pushChildren(children) {
+            return [...children].reverse();
+          },
+          guide: "右の子を先にPushしてから左の子をPushします。左の子がスタック上部に来るので、行きがけ順になります。"
+        }
+      };
+
+      const baseCodeLines = [
+        { no: 1, html: '<span class="cm"># 探索したノードを格納するリスト</span>' },
+        { no: 2, html: '<span class="vr">node_order</span> = []' },
+        { no: 3, html: "" },
+        { no: 4, html: '<span class="cm"># dataをスタックとして扱う</span>' },
+        { no: 5, html: '<span class="vr">data</span> = []' },
+        { no: 6, html: "" },
+        { no: 7, html: '<span class="cm"># ルートをPush</span>' },
+        { no: 8, html: '<span class="vr">data</span>.<span class="fn">append</span>(<span class="num">0</span>)' },
+        { no: 9, html: '<span class="kw">while</span> <span class="fn">len</span>(<span class="vr">data</span>) &gt; <span class="num">0</span>:' },
+        { no: 10, html: '    <span class="cm"># Pop: dataの末尾（最後）の要素を取り出す</span>' },
+        { no: 11, html: '    <span class="vr">pos</span> = <span class="vr">data</span>.<span class="fn">pop</span>()' },
+        { no: 12, html: '    <span class="vr">node_order</span>.<span class="fn">append</span>(<span class="vr">pos</span>)' },
+        { no: 13, html: "" },
+        { no: 14, dynamic: "loop" },
+        { no: 15, html: '        <span class="cm"># 子をPushして訪問候補にする</span>' },
+        { no: 16, html: '        <span class="vr">data</span>.<span class="fn">append</span>(<span class="vr">i</span>)' },
+        { no: 17, html: "" },
+        { no: 18, html: '<span class="cm"># print(data)</span>' }
+      ];
+
+      const edgeLayer = document.getElementById("edgeLayer");
+      const nodeLayer = document.getElementById("nodeLayer");
+      const labelLayer = document.getElementById("labelLayer");
+      const codeCard = document.getElementById("codeCard");
+      const codeNote = document.getElementById("codeNote");
+      const codeCallout = document.getElementById("codeCallout");
+      const reverseToggleBtn = document.getElementById("reverseToggleBtn");
+      const playBtn = document.getElementById("playBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const speedRange = document.getElementById("speedRange");
+      const modeSelect = document.getElementById("modeSelect");
+      const sequenceBadge = document.getElementById("sequenceBadge");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const statusText = document.getElementById("statusText");
+      const orderRow = document.getElementById("orderRow");
+      const tableHead = document.getElementById("tableHead");
+      const tableBody = document.getElementById("tableBody");
+      const stackArea = document.getElementById("stackArea");
+      const popValue = document.getElementById("popValue");
+      const stackBody = document.getElementById("stackBody");
+      const actionText = document.getElementById("actionText");
+      const posValue = document.getElementById("posValue");
+      const dataValue = document.getElementById("dataValue");
+      const messageBox = document.getElementById("messageBox");
+      const stepsList = document.getElementById("stepsList");
+
+      let mode = "slide";
+      let steps = [];
+      let currentStep = 0;
+      let playing = false;
+      let timer = null;
+
+      function createSvgElement(name, attrs = {}) {
+        const element = document.createElementNS("http://www.w3.org/2000/svg", name);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+      }
+
+      function edgeKey(from, to) {
+        return `${from}-${to}`;
+      }
+
+      function formatArray(items) {
+        return `[${items.join(", ")}]`;
+      }
+
+      function makeStep(title, message, state, extra = {}) {
+        return {
+          title,
+          message,
+          stack: [...state.stack],
+          order: [...state.order],
+          current: extra.current ?? state.current ?? null,
+          candidate: extra.candidate ?? null,
+          activeEdge: extra.activeEdge ?? null,
+          tableCol: extra.tableCol ?? null,
+          line: extra.line ?? 1,
+          action: extra.action ?? "wait",
+          actionText: extra.actionText ?? "待機",
+          status: extra.status ?? title
+        };
+      }
+
+      function buildSteps() {
+        const config = modes[mode];
+        const state = { stack: [], order: [], current: null };
+        const result = [];
+
+        result.push(makeStep(
+          "開始前",
+          "node_order と data を空リストとして用意します。",
+          state,
+          { line: 2, status: "初期化" }
+        ));
+
+        result.push(makeStep(
+          "data = []",
+          "data はスタックとして使います。末尾がスタックの上です。",
+          state,
+          { line: 5, status: "スタックを用意" }
+        ));
+
+        state.stack.push(0);
+        result.push(makeStep(
+          "ルート0をPush",
+          "data.append(0) で根のノード0を訪問候補に入れます。",
+          state,
+          { line: 8, action: "push", actionText: "Push 0", candidate: 0, status: "Push 0" }
+        ));
+
+        while (state.stack.length > 0) {
+          result.push(makeStep(
+            "while判定",
+            `data = ${formatArray(state.stack)} なので、while文の中を実行します。`,
+            state,
+            { line: 9, status: "while 継続" }
+          ));
+
+          const pos = state.stack.pop();
+          state.current = pos;
+          result.push(makeStep(
+            `Pop ${pos}`,
+            `pop() は引数なしなら末尾を取り出します。pos = ${pos} になります。`,
+            state,
+            { line: 11, action: "pop", actionText: `Pop ${pos}`, current: pos, status: `Pop ${pos}` }
+          ));
+
+          state.order.push(pos);
+          result.push(makeStep(
+            `${pos}を訪問`,
+            `node_order.append(pos) で ${pos} を訪問順へ追加します。`,
+            state,
+            { line: 12, current: pos, status: `訪問 ${pos}` }
+          ));
+
+          const rawChildren = tree[pos] ?? [];
+          const children = config.pushChildren(rawChildren);
+          if (children.length === 0) {
+            result.push(makeStep(
+              `子なし`,
+              `tree[${pos}] は空リストなので、Pushする子はありません。`,
+              state,
+              { line: 14, current: pos, tableCol: pos, status: `tree[${pos}] = []` }
+            ));
+            continue;
+          }
+
+          result.push(makeStep(
+            `tree[${pos}]を確認`,
+            `${config.label}: ${children.join(", ")} の順にPushします。`,
+            state,
+            { line: 14, current: pos, tableCol: pos, status: `tree[${pos}] = ${formatArray(rawChildren)}` }
+          ));
+
+          children.forEach((child) => {
+            state.stack.push(child);
+            result.push(makeStep(
+              `Push ${child}`,
+              `${child} を今後訪問する候補として data の末尾に追加します。`,
+              state,
+              {
+                line: 16,
+                action: "push",
+                actionText: `Push ${child}`,
+                current: pos,
+                candidate: child,
+                activeEdge: edgeKey(pos, child),
+                tableCol: pos,
+                status: `Push ${child}`
+              }
+            ));
+          });
+        }
+
+        result.push(makeStep(
+          "終了",
+          "data が空になったため、非再帰版の走査は終了です。",
+          state,
+          { line: 9, action: "done", actionText: "完了", status: "探索完了" }
+        ));
+
+        return result;
+      }
+
+      function renderCode(activeLine) {
+        const config = modes[mode];
+        codeNote.textContent = `line ${activeLine}`;
+        codeCard.innerHTML = baseCodeLines.map((line) => {
+          const html = line.dynamic === "loop" ? config.loopHtml : line.html;
+          const active = line.no === activeLine ? " active" : "";
+          return `<span class="code-line${active}"><span class="line-no">${line.no}</span>${html}</span>`;
+        }).join("");
+      }
+
+      function updateReverseButton() {
+        const reversed = mode === "preorder";
+        reverseToggleBtn.textContent = reversed ? "通常のtree[pos]に戻す" : "for文をreversedにする";
+        reverseToggleBtn.classList.toggle("active", reversed);
+        reverseToggleBtn.setAttribute("aria-pressed", reversed ? "true" : "false");
+      }
+
+      function renderTree(step) {
+        edgeLayer.replaceChildren();
+        nodeLayer.replaceChildren();
+        labelLayer.replaceChildren();
+        const stackSet = new Set(step.stack);
+        const visitedSet = new Set(step.order);
+
+        tree.forEach((children, from) => {
+          children.forEach((to) => {
+            const a = positions[from];
+            const b = positions[to];
+            const line = createSvgElement("line", {
+              x1: a.x,
+              y1: a.y,
+              x2: b.x,
+              y2: b.y,
+              class: [
+                "edge",
+                step.activeEdge === edgeKey(from, to) ? "active" : "",
+                visitedSet.has(from) && visitedSet.has(to) ? "seen" : ""
+              ].filter(Boolean).join(" ")
+            });
+            edgeLayer.appendChild(line);
+          });
+        });
+
+        Object.entries(positions).forEach(([id, pos]) => {
+          const node = createSvgElement("g", {
+            class: [
+              "node",
+              visitedSet.has(Number(id)) ? "visited" : "",
+              stackSet.has(Number(id)) ? "on-stack" : "",
+              step.current === Number(id) ? "current" : "",
+              step.candidate === Number(id) ? "candidate" : ""
+            ].filter(Boolean).join(" "),
+            transform: `translate(${pos.x}, ${pos.y})`
+          });
+          node.appendChild(createSvgElement("circle", { r: 30 }));
+          const text = createSvgElement("text");
+          text.textContent = id;
+          node.appendChild(text);
+          nodeLayer.appendChild(node);
+
+          const visitIndex = step.order.indexOf(Number(id));
+          if (visitIndex !== -1) {
+            const label = createSvgElement("g", {
+              class: "visit-label",
+              transform: `translate(${pos.x - 42}, ${pos.y - 38})`
+            });
+            label.appendChild(createSvgElement("rect", { x: -17, y: -15, width: 34, height: 30 }));
+            const labelText = createSvgElement("text");
+            labelText.textContent = String(visitIndex + 1);
+            label.appendChild(labelText);
+            labelLayer.appendChild(label);
+          }
+        });
+      }
+
+      function renderOrder(step) {
+        orderRow.replaceChildren();
+        if (step.order.length === 0) {
+          const empty = document.createElement("span");
+          empty.className = "head-note";
+          empty.textContent = "空";
+          orderRow.appendChild(empty);
+          return;
+        }
+        step.order.forEach((value) => {
+          const cell = document.createElement("div");
+          cell.className = "order-cell";
+          cell.textContent = value;
+          orderRow.appendChild(cell);
+        });
+      }
+
+      function renderTable(step) {
+        tableHead.innerHTML = `<tr><th>親ノード</th>${tree.map((_, index) => `<th class="${step.tableCol === index ? "active-col" : ""}">${index}</th>`).join("")}</tr>`;
+        const rows = [
+          { label: "左の子", index: 0 },
+          { label: "右の子", index: 1 }
+        ];
+        tableBody.innerHTML = rows.map((row) => {
+          const cells = tree.map((children, index) => {
+            const value = children[row.index] ?? "";
+            const classes = [
+              step.tableCol === index ? "active-col" : "",
+              step.action === "push" && step.tableCol === index && value === step.candidate ? "push-target" : ""
+            ].filter(Boolean).join(" ");
+            return `<td class="${classes}">${value}</td>`;
+          }).join("");
+          return `<tr><th>${row.label}</th>${cells}</tr>`;
+        }).join("");
+      }
+
+      function renderStack(step) {
+        stackArea.classList.toggle("is-push", step.action === "push");
+        stackArea.classList.toggle("is-pop", step.action === "pop");
+        stackArea.classList.toggle("has-pop-value", step.action === "pop");
+        popValue.textContent = step.action === "pop" ? step.current : "";
+        actionText.className = `stack-action ${step.action}`;
+        actionText.textContent = step.actionText;
+        stackBody.replaceChildren();
+        if (step.stack.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "stack-empty";
+          empty.textContent = "空";
+          stackBody.appendChild(empty);
+        } else {
+          step.stack.forEach((value, index) => {
+            const item = document.createElement("div");
+            item.className = `stack-item${index === step.stack.length - 1 ? " top" : ""}`;
+            item.textContent = value;
+            stackBody.appendChild(item);
+          });
+        }
+        posValue.textContent = step.current ?? "-";
+        dataValue.textContent = formatArray(step.stack);
+        messageBox.textContent = step.message;
+      }
+
+      function renderLog() {
+        stepsList.replaceChildren();
+        steps.forEach((step, index) => {
+          const item = document.createElement("li");
+          item.className = `step-item${index === currentStep ? " active" : ""}`;
+          item.innerHTML = `
+            <div class="step-no">${index}</div>
+            <div>
+              <div class="step-title">${step.title}</div>
+              <div class="step-note">${step.message}</div>
+            </div>
+          `;
+          item.addEventListener("click", () => {
+            stop();
+            setStep(index);
+          });
+          stepsList.appendChild(item);
+        });
+        const active = stepsList.querySelector(".step-item.active");
+        active?.scrollIntoView({ block: "nearest" });
+      }
+
+      function setStep(index) {
+        currentStep = Math.max(0, Math.min(index, steps.length - 1));
+        const step = steps[currentStep];
+        renderCode(step.line);
+        renderTree(step);
+        renderOrder(step);
+        renderTable(step);
+        renderStack(step);
+        renderLog();
+        statusText.textContent = step.status;
+        stepCounter.textContent = `手順 ${currentStep} / ${steps.length - 1}`;
+        progressBar.style.width = `${steps.length <= 1 ? 0 : (currentStep / (steps.length - 1)) * 100}%`;
+        prevBtn.disabled = currentStep === 0;
+        nextBtn.disabled = currentStep === steps.length - 1;
+        if (currentStep === steps.length - 1) stop();
+      }
+
+      function rebuild() {
+        stop();
+        steps = buildSteps();
+        const finalOrder = steps[steps.length - 1].order;
+        sequenceBadge.textContent = `訪問順: ${finalOrder.join(" → ")}`;
+        codeCallout.innerHTML = `<strong>push</strong> は、そのノードを今後訪問する候補として追加する操作です。${modes[mode].guide}`;
+        modeSelect.value = mode;
+        updateReverseButton();
+        setStep(0);
+      }
+
+      function next() {
+        if (currentStep < steps.length - 1) setStep(currentStep + 1);
+      }
+
+      function prev() {
+        if (currentStep > 0) setStep(currentStep - 1);
+      }
+
+      function play() {
+        if (playing) {
+          stop();
+          return;
+        }
+        playing = true;
+        playBtn.textContent = "一時停止";
+        timer = window.setInterval(() => {
+          if (currentStep >= steps.length - 1) {
+            stop();
+          } else {
+            next();
+          }
+        }, Number(speedRange.value));
+      }
+
+      function stop() {
+        playing = false;
+        playBtn.textContent = "▶ 再生";
+        if (timer) {
+          window.clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      playBtn.addEventListener("click", play);
+      nextBtn.addEventListener("click", () => {
+        stop();
+        next();
+      });
+      prevBtn.addEventListener("click", () => {
+        stop();
+        prev();
+      });
+      resetBtn.addEventListener("click", () => {
+        stop();
+        setStep(0);
+      });
+      speedRange.addEventListener("input", () => {
+        if (playing) {
+          stop();
+          play();
+        }
+      });
+      modeSelect.addEventListener("change", () => {
+        mode = modeSelect.value;
+        rebuild();
+      });
+      reverseToggleBtn.addEventListener("click", () => {
+        mode = mode === "slide" ? "preorder" : "slide";
+        rebuild();
+      });
+
+      rebuild();
+    </script>
+  </body>
+</html>
