@@ -1,0 +1,1373 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>教科書版クイックソート</title>
+    <style>
+      :root {
+        --fg: #111827;
+        --muted: #64748b;
+        --line: #d1d5db;
+        --soft-line: #e5e7eb;
+        --bg: #f8fafc;
+        --panel: #ffffff;
+        --blue: #2563eb;
+        --blue-soft: #dbeafe;
+        --red: #dc2626;
+        --red-soft: #fee2e2;
+        --green: #16a34a;
+        --green-soft: #dcfce7;
+        --amber: #d97706;
+        --amber-soft: #fef3c7;
+        --purple: #9333ea;
+        --purple-soft: #f3e8ff;
+        --side-width: 380px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        flex: 0 0 auto;
+        padding: 5px 12px 4px;
+        border-bottom: 1px solid var(--soft-line);
+        background: #fff;
+      }
+
+      header p {
+        margin: 0 0 1px;
+        font-size: 11px;
+      }
+
+      header a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      header a:hover { text-decoration: underline; }
+
+      h1 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 1.25;
+      }
+
+      main {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto auto;
+        gap: 6px;
+        padding: 6px calc(var(--side-width) + 16px) 8px 8px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+      }
+
+      .summary {
+        display: block;
+        padding: 6px 10px;
+      }
+
+      .rules {
+        margin: 0;
+        padding-left: 18px;
+        columns: 2;
+        column-gap: 28px;
+        font-size: 12px;
+        line-height: 1.3;
+      }
+
+      .rules li {
+        break-inside: avoid;
+        margin: 0;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 5px 10px;
+      }
+
+      .control-lines {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        min-width: 0;
+      }
+
+      input,
+      select,
+      button {
+        font: inherit;
+      }
+
+      select,
+      input[type="text"] {
+        height: 27px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        padding: 3px 8px;
+        font-size: 12px;
+      }
+
+      input[type="text"] {
+        width: 250px;
+      }
+
+      input[type="range"] {
+        width: 140px;
+      }
+
+      button {
+        min-height: 27px;
+        padding: 2px 9px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fff;
+        color: var(--fg);
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      button:hover { background: #f1f5f9; }
+
+      button.primary {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .step-count {
+        align-self: center;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .left-panel {
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto auto auto auto auto;
+        padding: 8px 10px;
+      }
+
+      .section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 5px;
+      }
+
+      .section-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 900;
+      }
+
+      .head-note {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .message {
+        padding: 6px 9px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .array-wrap {
+        display: grid;
+        justify-content: center;
+        gap: 3px;
+        margin: 10px 0 8px;
+        overflow-x: auto;
+      }
+
+      .array-row,
+      .index-row,
+      .pointer-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 46px;
+        gap: 3px;
+      }
+
+      .idx {
+        height: 18px;
+        color: #0070c0;
+        font-size: 15px;
+        font-style: italic;
+        font-weight: 900;
+        text-align: center;
+      }
+
+      .cell {
+        position: relative;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border: 1.8px solid #111827;
+        background: #fff;
+        font-size: 23px;
+        font-weight: 900;
+      }
+
+      .cell.in-range { background: #f8fafc; }
+      .cell.pivot { background: var(--purple-soft); border-color: var(--purple); color: var(--purple); }
+      .cell.left { background: var(--blue-soft); border-color: var(--blue); }
+      .cell.right { background: var(--red-soft); border-color: var(--red); }
+      .cell.both { background: #e0e7ff; border-color: #4f46e5; color: #4f46e5; }
+      .cell.swap { background: var(--amber-soft); border-color: var(--amber); color: #92400e; }
+      .cell.fixed { background: var(--green-soft); border-color: var(--green); }
+      .cell.out { opacity: 0.35; }
+
+      .ptr {
+        height: 30px;
+        font-size: 11px;
+        font-weight: 900;
+        line-height: 1.1;
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .ptr-left { color: var(--blue); }
+      .ptr-right { color: var(--red); }
+      .ptr-both {
+        display: grid;
+        justify-content: center;
+        gap: 0;
+      }
+      .ptr-both .ptr-right-label { color: var(--red); }
+      .ptr-both .ptr-left-label { color: var(--blue); }
+
+      .range-bars {
+        position: relative;
+        height: 42px;
+        top: -12px;
+        max-width: 100%;
+        margin: 0 auto -10px;
+      }
+
+      .bar {
+        position: absolute;
+        top: 4px;
+        height: 13px;
+        border-bottom: 2px solid var(--amber);
+        border-left: 2px solid var(--amber);
+        border-right: 2px solid var(--amber);
+      }
+
+      .bar-label {
+        position: absolute;
+        top: 18px;
+        transform: translateX(-50%);
+        color: var(--amber);
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .tree-stage {
+        position: relative;
+        min-height: 520px;
+        overflow: hidden;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .tree-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .tree-link {
+        stroke: #94a3b8;
+        stroke-width: 2;
+        stroke-dasharray: 6 6;
+      }
+
+      .tree-node {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: grid;
+        gap: 3px;
+        justify-items: center;
+      }
+
+      .tree-label {
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .tree-node.current .tree-label {
+        background: var(--amber-soft);
+        color: #92400e;
+      }
+
+      .tree-node.done .tree-label {
+        background: var(--green-soft);
+        color: #166534;
+      }
+
+      .tree-array {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 0;
+      }
+
+      .tree-cell {
+        width: 28px;
+        height: 25px;
+        display: grid;
+        place-items: center;
+        border: 1.5px solid #111827;
+        border-right-width: 0;
+        background: #fff;
+        font-size: 16px;
+        font-weight: 900;
+      }
+
+      .tree-cell:last-child { border-right-width: 1.5px; }
+      .tree-cell.pivot { background: var(--purple-soft); color: var(--purple); border-color: var(--purple); }
+      .tree-cell.final-value {
+        background: #fde047;
+        border-color: #ca8a04;
+        color: #713f12;
+        box-shadow: 0 0 0 2px rgba(202, 138, 4, 0.22);
+        animation: treeFinalValue 0.55s ease both;
+        animation-delay: calc(var(--final-order, 0) * 0.06s);
+      }
+
+      @keyframes treeFinalValue {
+        0% { background: #fef9c3; border-color: #eab308; }
+        100% { background: #fde047; border-color: #ca8a04; }
+      }
+
+      .right-col {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        bottom: 8px;
+        z-index: 20;
+        width: var(--side-width);
+        min-height: 0;
+        display: grid;
+        grid-template-rows: auto minmax(95px, 125px) minmax(95px, 135px);
+        align-content: start;
+        gap: 6px;
+      }
+
+      .side-panel {
+        min-height: 0;
+        padding: 8px 10px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        gap: 5px;
+      }
+
+      .code-panel {
+        grid-template-rows: auto auto auto;
+        align-content: start;
+      }
+
+      .call-stack,
+      .history {
+        min-height: 0;
+        overflow: auto;
+        display: grid;
+        align-content: start;
+        gap: 4px;
+      }
+
+      .stack-item,
+      .history-item {
+        padding: 5px 7px;
+        border: 1px solid var(--soft-line);
+        border-radius: 6px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .stack-item.current,
+      .history-item.current {
+        border-color: #93c5fd;
+        background: #eff6ff;
+        color: #1d4ed8;
+      }
+
+      .history-item.partition { color: #7e22ce; }
+      .history-item.return { color: #166534; }
+      .history-item.base { color: #64748b; }
+
+      .code-list {
+        margin: 0;
+        padding: 6px 0 0;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #f8fafc;
+        overflow-y: auto;
+        overflow-x: hidden;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.42;
+        list-style: none;
+      }
+
+      .var-strip {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 3px;
+        align-items: center;
+        min-height: 24px;
+        padding: 3px 4px;
+        border: 1px solid var(--soft-line);
+        border-radius: 7px;
+        background: #fff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        overflow: hidden;
+      }
+
+      .var-chip {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 1px;
+        padding: 2px 3px;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #f8fafc;
+        font-size: 9px;
+        font-weight: 900;
+        line-height: 1.25;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+
+      .var-chip b { color: #0f766e; }
+      .var-chip span { color: #111827; }
+      .var-chip.pivot b,
+      .var-chip.pivot span { color: var(--purple); }
+      .var-chip.left b,
+      .var-chip.left span { color: var(--blue); }
+      .var-chip.right b,
+      .var-chip.right span { color: var(--red); }
+      .var-chip.fixed b,
+      .var-chip.fixed span { color: var(--green); }
+
+      .code-line {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        padding: 0 7px;
+        white-space: normal;
+      }
+
+      .code-line.active {
+        background: #fef08a;
+        font-weight: 900;
+      }
+
+      .ln {
+        color: #94a3b8;
+        user-select: none;
+      }
+
+      .code-text {
+        display: block;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .indent-1 { padding-left: 2ch; }
+      .indent-2 { padding-left: 4ch; }
+
+      .kw { color: #9333ea; font-weight: 900; }
+      .fn { color: #0369a1; font-weight: 900; }
+      .var { color: #0f766e; font-weight: 900; }
+      .num { color: #b45309; font-weight: 900; }
+      .comment { color: #64748b; }
+
+      @media (max-width: 1100px) {
+        :root {
+          --side-width: 360px;
+        }
+
+        html,
+        body {
+          min-height: 100vh;
+          overflow-x: hidden;
+          overflow-y: auto;
+        }
+
+        main,
+        .controls,
+        .workspace {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        input[type="text"] {
+          width: min(100%, 250px);
+        }
+
+        .rules {
+          columns: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+      <h1>教科書版クイックソート（基準値 = a[head]）</h1>
+    </header>
+
+    <main>
+      <section class="panel summary">
+        <ol class="rules">
+          <li>範囲 <b>head ... tail</b> の先頭 <b>a[head]</b> を基準値にする</li>
+          <li><a href="https://jkushida.github.io/Web_demo/DSA/quick-sort-partition-head-pivot.html"><b>divideArray</b></a> で基準値より小さい要素を前へ、大きい要素を後ろへ分ける</li>
+          <li>最後に <b>a[head]</b> と <b>a[right]</b> を交換し、基準値の位置を確定する</li>
+          <li>返ってきた <b>right</b> の左側と右側を再帰的に整列する</li>
+        </ol>
+      </section>
+
+      <section class="panel controls">
+        <div class="control-lines">
+          <label>配列 a =
+            <select id="presetSelect">
+              <option value="textbook">教科書練習</option>
+              <option value="slide">スライド例</option>
+              <option value="sorted">ソート済み</option>
+              <option value="reverse">逆順</option>
+              <option value="direct">直接入力</option>
+            </select>
+          </label>
+          <input id="arrayInput" type="text" value="4, 7, 1, 6, 2, 5, 3" />
+          <button id="randomBtn" type="button">乱数生成</button>
+          <button id="prevBtn" type="button">1ステップ戻る</button>
+          <button id="nextBtn" type="button">1ステップ進む</button>
+          <button id="playBtn" class="primary" type="button">再生</button>
+          <button id="pauseBtn" type="button">一時停止</button>
+          <button id="resetBtn" type="button">リセット</button>
+          <label>速度 <input id="speedInput" type="range" min="0.6" max="2.4" value="1.3" step="0.1" /></label>
+          <span id="speedLabel" class="head-note">1.3x</span>
+          <a class="head-note" href="https://jkushida.github.io/Web_demo/DSA/quick-sort-partition-head-pivot.html">分割だけ詳しく見る</a>
+        </div>
+        <div id="stepCount" class="step-count">ステップ 1 / 1</div>
+      </section>
+
+      <section class="workspace">
+        <section class="panel left-panel">
+          <div class="section-head">
+            <h2 class="section-title">配列と再帰の流れ</h2>
+            <div id="rangeInfo" class="head-note"></div>
+          </div>
+          <div id="message" class="message"></div>
+          <div id="arrayWrap" class="array-wrap"></div>
+          <div id="rangeBars" class="range-bars"></div>
+          <div id="treeStage" class="tree-stage">
+            <svg id="treeSvg" class="tree-svg" viewBox="0 0 1000 520" preserveAspectRatio="none"></svg>
+            <div id="treeNodes"></div>
+          </div>
+        </section>
+
+        <aside class="right-col">
+          <section class="panel side-panel code-panel">
+            <div class="section-head">
+              <h2 class="section-title">疑似コード</h2>
+              <span id="codeNote" class="head-note">line 1</span>
+            </div>
+            <div id="varStrip" class="var-strip"></div>
+            <ol id="codeList" class="code-list">
+              <li class="code-line" data-line="1"><span class="ln">1</span><span class="code-text"><span class="kw">def</span> <span class="fn">sortArray</span>(<span class="var">a</span>, <span class="var">head</span>, <span class="var">tail</span>):</span></li>
+              <li class="code-line" data-line="2"><span class="ln">2</span><span class="code-text indent-1"><span class="kw">if</span> <span class="var">head</span> &lt; <span class="var">tail</span>:</span></li>
+              <li class="code-line" data-line="3"><span class="ln">3</span><span class="code-text indent-2"><span class="var">pivot</span> = <span class="fn">divideArray</span>(<span class="var">a</span>, <span class="var">head</span>, <span class="var">tail</span>)</span></li>
+              <li class="code-line" data-line="4"><span class="ln">4</span><span class="code-text indent-2"><span class="fn">sortArray</span>(<span class="var">a</span>, <span class="var">head</span>, <span class="var">pivot</span> - <span class="num">1</span>)</span></li>
+              <li class="code-line" data-line="5"><span class="ln">5</span><span class="code-text indent-2"><span class="fn">sortArray</span>(<span class="var">a</span>, <span class="var">pivot</span> + <span class="num">1</span>, <span class="var">tail</span>)</span></li>
+              <li class="code-line" data-line="6"><span class="ln">6</span><span class="code-text"></span></li>
+              <li class="code-line" data-line="7"><span class="ln">7</span><span class="code-text"><span class="kw">def</span> <span class="fn">divideArray</span>(<span class="var">a</span>, <span class="var">head</span>, <span class="var">tail</span>): <span class="comment"># 分割関数</span></span></li>
+              <li class="code-line" data-line="8"><span class="ln">8</span><span class="code-text indent-1"><span class="var">left</span> = <span class="var">head</span> + <span class="num">1</span> <span class="comment"># 左位置</span></span></li>
+              <li class="code-line" data-line="9"><span class="ln">9</span><span class="code-text indent-1"><span class="var">right</span> = <span class="var">tail</span> <span class="comment"># 右位置</span></span></li>
+              <li class="code-line" data-line="10"><span class="ln">10</span><span class="code-text indent-1"><span class="var">pivot</span> = <span class="var">a</span>[<span class="var">head</span>] <span class="comment"># 基準値</span></span></li>
+              <li class="code-line" data-line="11"><span class="ln">11</span><span class="code-text indent-1"><span class="kw">while</span> <span class="kw">True</span>: <span class="comment"># 探索を繰り返す</span></span></li>
+              <li class="code-line" data-line="12"><span class="ln">12</span><span class="code-text indent-2"><span class="kw">while</span> <span class="var">left</span> &lt;= <span class="var">tail</span> <span class="kw">and</span> <span class="var">pivot</span> &gt;= <span class="var">a</span>[<span class="var">left</span>]: <span class="var">left</span> += <span class="num">1</span> <span class="comment"># 左探索</span></span></li>
+              <li class="code-line" data-line="13"><span class="ln">13</span><span class="code-text indent-2"><span class="kw">while</span> <span class="var">pivot</span> &lt; <span class="var">a</span>[<span class="var">right</span>]: <span class="var">right</span> -= <span class="num">1</span> <span class="comment"># 右探索</span></span></li>
+              <li class="code-line" data-line="14"><span class="ln">14</span><span class="code-text indent-2"><span class="kw">if</span> <span class="var">left</span> &gt;= <span class="var">right</span>: <span class="kw">break</span> <span class="comment"># 交差で終了</span></span></li>
+              <li class="code-line" data-line="15"><span class="ln">15</span><span class="code-text indent-2"><span class="var">a</span>[<span class="var">left</span>], <span class="var">a</span>[<span class="var">right</span>] = <span class="var">a</span>[<span class="var">right</span>], <span class="var">a</span>[<span class="var">left</span>] <span class="comment"># 交換</span></span></li>
+              <li class="code-line" data-line="16"><span class="ln">16</span><span class="code-text indent-2"><span class="var">left</span> += <span class="num">1</span>; <span class="var">right</span> -= <span class="num">1</span> <span class="comment"># 内側へ移動</span></span></li>
+              <li class="code-line" data-line="17"><span class="ln">17</span><span class="code-text indent-1"><span class="var">a</span>[<span class="var">head</span>], <span class="var">a</span>[<span class="var">right</span>] = <span class="var">a</span>[<span class="var">right</span>], <span class="var">a</span>[<span class="var">head</span>] <span class="comment"># 基準値を確定</span></span></li>
+              <li class="code-line" data-line="18"><span class="ln">18</span><span class="code-text indent-1"><span class="kw">return</span> <span class="var">right</span> <span class="comment"># 確定位置を返す</span></span></li>
+              <li class="code-line code-gap" aria-hidden="true"><span class="ln"></span><span class="code-text"></span></li>
+              <li class="code-line" data-line="20"><span class="ln">20</span><span class="code-text"><span class="fn">sortArray</span>(<span class="var">a</span>, <span class="num">0</span>, <span class="fn">len</span>(<span class="var">a</span>) - <span class="num">1</span>) <span class="comment"># 最初の呼び出し</span></span></li>
+            </ol>
+          </section>
+
+          <section class="panel side-panel">
+            <div class="section-head">
+              <h2 class="section-title">呼び出しスタック</h2>
+              <span class="head-note">上が現在</span>
+            </div>
+            <div id="callStack" class="call-stack"></div>
+          </section>
+
+          <section class="panel side-panel">
+            <div class="section-head">
+              <h2 class="section-title">操作履歴</h2>
+              <span class="head-note">再帰 + 分割</span>
+            </div>
+            <div id="history" class="history"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const presets = {
+        textbook: [4, 7, 1, 6, 2, 5, 3],
+        slide: [6, 5, 4, 2, 7, 3, 1, 8],
+        sorted: [1, 2, 3, 4, 5, 6, 7, 8],
+        reverse: [8, 7, 6, 5, 4, 3, 2, 1],
+      };
+
+      const els = {
+        presetSelect: document.getElementById("presetSelect"),
+        arrayInput: document.getElementById("arrayInput"),
+        randomBtn: document.getElementById("randomBtn"),
+        prevBtn: document.getElementById("prevBtn"),
+        nextBtn: document.getElementById("nextBtn"),
+        playBtn: document.getElementById("playBtn"),
+        pauseBtn: document.getElementById("pauseBtn"),
+        resetBtn: document.getElementById("resetBtn"),
+        speedInput: document.getElementById("speedInput"),
+        speedLabel: document.getElementById("speedLabel"),
+        stepCount: document.getElementById("stepCount"),
+        rangeInfo: document.getElementById("rangeInfo"),
+        message: document.getElementById("message"),
+        arrayWrap: document.getElementById("arrayWrap"),
+        rangeBars: document.getElementById("rangeBars"),
+        treeStage: document.getElementById("treeStage"),
+        treeSvg: document.getElementById("treeSvg"),
+        treeNodes: document.getElementById("treeNodes"),
+        callStack: document.getElementById("callStack"),
+        history: document.getElementById("history"),
+        varStrip: document.getElementById("varStrip"),
+        codeList: document.getElementById("codeList"),
+        codeNote: document.getElementById("codeNote"),
+      };
+
+      let steps = [];
+      let current = 0;
+      let timer = null;
+
+      function parseArray() {
+        const values = els.arrayInput.value
+          .split(/[,\s]+/)
+          .map((value) => value.trim())
+          .filter(Boolean)
+          .map(Number);
+        if (values.length < 2 || values.some((value) => !Number.isFinite(value))) {
+          return presets.textbook.slice();
+        }
+        return values.slice(0, 12);
+      }
+
+      function describeRange(head, tail) {
+        return `{${head},${tail}}`;
+      }
+
+      function rangeValues(array, head, tail) {
+        return head <= tail ? array.slice(head, tail + 1) : [];
+      }
+
+      function cloneTree(nodes) {
+        return nodes.map((node) => ({
+          id: node.id,
+          parent: node.parent,
+          head: node.head,
+          tail: node.tail,
+          depth: node.depth,
+          values: node.values.slice(),
+          pivotValue: node.pivotValue,
+          pivotIndex: node.pivotIndex,
+          state: node.state,
+          order: node.order,
+          role: node.role || "range",
+        }));
+      }
+
+      function cloneStack(stack) {
+        return stack.map((call) => ({ ...call }));
+      }
+
+      function buildSteps(initialArray) {
+        steps = [];
+        const a = initialArray.slice();
+        const tree = [];
+        const nodeMap = new Map();
+        const callStack = [];
+        let callSeq = 0;
+        let partitionSeq = 0;
+
+        function key(head, tail, callId) {
+          return `${callId}:${head}-${tail}`;
+        }
+
+        function ensureNode(call) {
+          const id = key(call.head, call.tail, call.id);
+          let node = nodeMap.get(id);
+          if (!node) {
+            node = tree.find((item) =>
+              item.id.startsWith("pending:") &&
+              item.parent === call.parent &&
+              item.head === call.head &&
+              item.tail === call.tail
+            );
+            if (node) {
+              nodeMap.delete(node.id);
+              node.id = id;
+              nodeMap.set(id, node);
+            }
+          }
+          if (!node) {
+            node = {
+              id,
+              parent: call.parent,
+              head: call.head,
+              tail: call.tail,
+              depth: call.depth,
+              values: rangeValues(a, call.head, call.tail),
+              pivotValue: null,
+              pivotIndex: null,
+              state: "pending",
+              order: null,
+              role: "range",
+            };
+            nodeMap.set(id, node);
+            tree.push(node);
+          }
+          node.values = rangeValues(a, call.head, call.tail);
+          return node;
+        }
+
+        function addPendingNode(parentId, head, tail, depth, side) {
+          if (head > tail) return null;
+          const id = `pending:${parentId}:${side}:${head}-${tail}`;
+          if (nodeMap.has(id)) return nodeMap.get(id);
+          const node = {
+            id,
+            parent: parentId,
+            head,
+            tail,
+            depth,
+            values: rangeValues(a, head, tail),
+            pivotValue: null,
+            pivotIndex: null,
+            state: "pending",
+            order: null,
+            role: "range",
+          };
+          nodeMap.set(id, node);
+          tree.push(node);
+          return node;
+        }
+
+        function snapshot(kind, data) {
+          steps.push({
+            kind,
+            array: a.slice(),
+            head: data.head,
+            tail: data.tail,
+            left: data.left ?? null,
+            right: data.right ?? null,
+            pivotValue: data.pivotValue ?? null,
+            pivotIndex: data.pivotIndex ?? null,
+            pivotPos: data.pivotPos ?? null,
+            swap: data.swap ? data.swap.slice() : null,
+            fixedIndex: data.fixedIndex ?? null,
+            callId: data.callId ?? null,
+            nodeId: data.nodeId ?? null,
+            message: data.message,
+            codeLine: data.codeLine,
+            action: data.action,
+            stack: cloneStack(callStack),
+            tree: cloneTree(tree),
+          });
+        }
+
+        function divideArray(call) {
+          let left = call.head + 1;
+          let right = call.tail;
+          const pivotValue = a[call.head];
+          const node = ensureNode(call);
+          partitionSeq += 1;
+          node.order = partitionSeq;
+          node.pivotValue = pivotValue;
+          node.state = "partitioning";
+
+          snapshot("partition-start", {
+            head: call.head,
+            tail: call.tail,
+            left,
+            right,
+            pivotValue,
+            pivotIndex: call.head,
+            callId: call.id,
+            nodeId: node.id,
+            codeLine: 10,
+            action: `分割開始 ${describeRange(call.head, call.tail)}`,
+            message: `${describeRange(call.head, call.tail)} を分割します。基準値は先頭 a[head] = ${pivotValue} です。`,
+          });
+
+          while (true) {
+            while (left <= call.tail && pivotValue >= a[left]) {
+              snapshot("left-scan", {
+                head: call.head,
+                tail: call.tail,
+                left,
+                right,
+                pivotValue,
+                pivotIndex: call.head,
+                callId: call.id,
+                nodeId: node.id,
+                codeLine: 12,
+                action: `left移動 ${left}`,
+                message: `a[left] = a[${left}] = ${a[left]} は基準値 ${pivotValue} 以下なので、left を右へ進めます。`,
+              });
+              left += 1;
+            }
+
+            snapshot("left-stop", {
+              head: call.head,
+              tail: call.tail,
+              left,
+              right,
+              pivotValue,
+              pivotIndex: call.head,
+              callId: call.id,
+              nodeId: node.id,
+              codeLine: 12,
+              action: "left停止",
+              message: left > call.tail
+                ? `left = ${left} が tail = ${call.tail} を越えたので、左からの探索を止めます。`
+                : `a[left] = a[${left}] = ${a[left]} は基準値 ${pivotValue} より大きいので、left を止めます。`,
+            });
+
+            while (pivotValue < a[right]) {
+              snapshot("right-scan", {
+                head: call.head,
+                tail: call.tail,
+                left,
+                right,
+                pivotValue,
+                pivotIndex: call.head,
+                callId: call.id,
+                nodeId: node.id,
+                codeLine: 13,
+                action: `right移動 ${right}`,
+                message: `a[right] = a[${right}] = ${a[right]} は基準値 ${pivotValue} より大きいので、right を左へ戻します。`,
+              });
+              right -= 1;
+            }
+
+            snapshot("right-stop", {
+              head: call.head,
+              tail: call.tail,
+              left,
+              right,
+              pivotValue,
+              pivotIndex: call.head,
+              callId: call.id,
+              nodeId: node.id,
+              codeLine: 13,
+              action: "right停止",
+              message: `a[right] = a[${right}] = ${a[right]} は基準値 ${pivotValue} 以下なので、right を止めます。`,
+            });
+
+            if (left >= right) {
+              snapshot("cross", {
+                head: call.head,
+                tail: call.tail,
+                left,
+                right,
+                pivotValue,
+                pivotIndex: call.head,
+                callId: call.id,
+                nodeId: node.id,
+                codeLine: 14,
+                action: "探索終了",
+                message: `left(${left}) >= right(${right}) なので、探索を終了します。次に基準値を right の位置へ移します。`,
+              });
+              break;
+            }
+
+            const swapLeft = left;
+            const swapRight = right;
+            const beforeLeft = a[left];
+            const beforeRight = a[right];
+            [a[left], a[right]] = [a[right], a[left]];
+            snapshot("swap", {
+              head: call.head,
+              tail: call.tail,
+              left,
+              right,
+              pivotValue,
+              pivotIndex: call.head,
+              swap: [swapLeft, swapRight],
+              callId: call.id,
+              nodeId: node.id,
+              codeLine: 15,
+              action: `交換 ${swapLeft}<->${swapRight}`,
+              message: `a[left] = ${beforeLeft} と a[right] = ${beforeRight} を交換します。`,
+            });
+            left += 1;
+            right -= 1;
+            snapshot("advanced", {
+              head: call.head,
+              tail: call.tail,
+              left,
+              right,
+              pivotValue,
+              pivotIndex: call.head,
+              callId: call.id,
+              nodeId: node.id,
+              codeLine: 16,
+              action: "内側へ移動",
+              message: `交換後、left = ${left}、right = ${right} に更新します。`,
+            });
+          }
+
+          const pivotDest = right;
+          const beforeRight = a[right];
+          [a[call.head], a[right]] = [a[right], a[call.head]];
+          node.state = "done";
+          node.pivotIndex = pivotDest;
+          node.values = rangeValues(a, call.head, call.tail);
+
+          snapshot("pivot-fixed", {
+            head: call.head,
+            tail: call.tail,
+            left,
+            right,
+            pivotValue,
+            pivotIndex: pivotDest,
+            fixedIndex: pivotDest,
+            swap: [call.head, pivotDest],
+            callId: call.id,
+            nodeId: node.id,
+            codeLine: 17,
+            action: `基準値確定 ${pivotDest}`,
+            message: `a[head] = ${pivotValue} と a[right] = ${beforeRight} を交換し、基準値 ${pivotValue} の位置を ${pivotDest} に確定します。`,
+          });
+
+          snapshot("return-pivot", {
+            head: call.head,
+            tail: call.tail,
+            left,
+            right,
+            pivotValue,
+            pivotIndex: pivotDest,
+            fixedIndex: pivotDest,
+            callId: call.id,
+            nodeId: node.id,
+            codeLine: 18,
+            action: `return ${pivotDest}`,
+            message: `戻り値として、基準値の位置 right = ${pivotDest} を返します。`,
+          });
+
+          return pivotDest;
+        }
+
+        function quickSort(head, tail, depth, parent) {
+          const call = { id: ++callSeq, head, tail, depth, parent };
+          callStack.push(call);
+          let node = null;
+          if (head <= tail) {
+            node = ensureNode(call);
+            node.state = head < tail ? "current" : "base";
+          }
+
+          if (head >= tail) {
+            if (node) node.state = "done";
+            snapshot("base", {
+              head,
+              tail,
+              callId: call.id,
+              nodeId: node ? node.id : null,
+              codeLine: 2,
+              action: `終了 ${describeRange(head, tail)}`,
+              message: `sortArray(a, ${head}, ${tail}) では head(${head}) < tail(${tail}) が成り立たないので、if文の中に入らず戻ります。`,
+            });
+            callStack.pop();
+            return;
+          }
+
+          snapshot("call", {
+            head,
+            tail,
+            callId: call.id,
+            nodeId: node ? node.id : null,
+            codeLine: call.parent ? 1 : 20,
+            action: `呼出 ${describeRange(head, tail)}`,
+            message: `sortArray(a, ${head}, ${tail}) を呼び出します。`,
+          });
+
+          snapshot("if", {
+            head,
+            tail,
+            callId: call.id,
+            nodeId: node.id,
+            codeLine: 2,
+            action: `判定 ${describeRange(head, tail)}`,
+            message: `head(${head}) < tail(${tail}) なので、divideArray で分割します。`,
+          });
+
+          const pivotPos = divideArray(call);
+          const leftHead = head;
+          const leftTail = pivotPos - 1;
+          const rightHead = pivotPos + 1;
+          const rightTail = tail;
+          const leftNode = addPendingNode(node.id, leftHead, leftTail, depth + 1, "left");
+          const rightNode = addPendingNode(node.id, rightHead, rightTail, depth + 1, "right");
+          snapshot("left-recursive", {
+            head: leftHead,
+            tail: leftTail,
+            pivotPos,
+            callId: call.id,
+            nodeId: leftNode ? leftNode.id : null,
+            codeLine: 4,
+            action: `左再帰 ${describeRange(leftHead, leftTail)}`,
+            message: `基準値の左側 ${describeRange(leftHead, leftTail)} を再帰的に整列します。`,
+          });
+          quickSort(leftHead, leftTail, depth + 1, node.id);
+
+          snapshot("right-recursive", {
+            head: rightHead,
+            tail: rightTail,
+            pivotPos,
+            callId: call.id,
+            nodeId: rightNode ? rightNode.id : null,
+            codeLine: 5,
+            action: `右再帰 ${describeRange(rightHead, rightTail)}`,
+            message: `基準値の右側 ${describeRange(rightHead, rightTail)} を再帰的に整列します。`,
+          });
+          quickSort(rightHead, rightTail, depth + 1, node.id);
+
+          node.state = "done";
+          snapshot("return", {
+            head,
+            tail,
+            callId: call.id,
+            nodeId: node.id,
+            codeLine: 5,
+            action: `戻る ${describeRange(head, tail)}`,
+            message: `${describeRange(head, tail)} の左側と右側の整列が終わったので、この呼び出しから戻ります。`,
+          });
+          callStack.pop();
+        }
+
+        quickSort(0, a.length - 1, 0, null);
+        snapshot("done", {
+          head: 0,
+          tail: a.length - 1,
+          codeLine: 20,
+          action: "完了",
+          message: "すべての再帰呼び出しが終了し、配列全体が整列しました。",
+        });
+      }
+
+      function rangeContains(step, index) {
+        return step.head <= index && index <= step.tail;
+      }
+
+      function showsProcessingRange(step) {
+        return step.kind !== "return" && step.head != null && step.tail != null && step.head <= step.tail;
+      }
+
+      function renderArray(step) {
+        const indices = step.array.map((_, index) => `<div class="idx">${index}</div>`).join("");
+        const cells = step.array.map((value, index) => {
+          const classes = ["cell"];
+          if (!rangeContains(step, index)) classes.push("out");
+          else classes.push("in-range");
+          if (index === step.pivotIndex || (step.kind !== "pivot-fixed" && index === step.head && step.pivotValue !== null)) classes.push("pivot");
+          if (index === step.left && index === step.right) classes.push("both");
+          else if (index === step.left) classes.push("left");
+          else if (index === step.right) classes.push("right");
+          if (step.swap && step.swap.includes(index)) classes.push("swap");
+          if (index === step.fixedIndex) classes.push("fixed");
+          return `<div class="${classes.join(" ")}">${value}</div>`;
+        }).join("");
+        const pointers = step.array.map((_, index) => {
+          const isLeft = index === step.left;
+          const isRight = index === step.right;
+          if (isLeft && isRight) return `<div class="ptr ptr-both"><span class="ptr-right-label">↑ right</span><span class="ptr-left-label">↑ left</span></div>`;
+          if (isLeft) return `<div class="ptr ptr-left">↑ left</div>`;
+          if (isRight) return `<div class="ptr ptr-right">↑ right</div>`;
+          return `<div class="ptr"></div>`;
+        }).join("");
+        els.arrayWrap.innerHTML = `
+          <div class="index-row">${indices}</div>
+          <div class="array-row">${cells}</div>
+          <div class="pointer-row">${pointers}</div>
+        `;
+      }
+
+      function renderRangeBars(step) {
+        if (!showsProcessingRange(step)) {
+          els.rangeBars.innerHTML = "";
+          return;
+        }
+        const n = step.array.length;
+        const cellWidth = 46;
+        const gap = 3;
+        const pitch = cellWidth + gap;
+        const total = n * cellWidth + (n - 1) * gap;
+        const left = step.head * pitch;
+        const width = (step.tail - step.head + 1) * cellWidth + (step.tail - step.head) * gap;
+        els.rangeBars.innerHTML = `
+          <div class="bar" style="left:${left}px;width:${width}px"></div>
+          <div class="bar-label" style="left:${left + width / 2}px">処理範囲 ${describeRange(step.head, step.tail)}</div>
+        `;
+        els.rangeBars.style.width = `${total}px`;
+      }
+
+      function treePosition(node, arrayLength) {
+        const center = node.head <= node.tail ? (node.head + node.tail) / 2 : node.head;
+        const spread = Math.max(arrayLength - 1, 1);
+        return {
+          x: 80 + (center / spread) * 840,
+          y: 34 + node.depth * 96,
+        };
+      }
+
+      function renderTree(step) {
+        const nodes = step.tree;
+        const n = step.array.length;
+        const maxDepth = nodes.reduce((max, node) => Math.max(max, node.depth), 0);
+        const stageHeight = Math.max(520, 110 + maxDepth * 96);
+        els.treeStage.style.height = `${stageHeight}px`;
+        els.treeSvg.setAttribute("viewBox", `0 0 1000 ${stageHeight}`);
+        const byId = new Map(nodes.map((node) => [node.id, node]));
+        const links = nodes
+          .filter((node) => node.parent && byId.has(node.parent))
+          .map((node) => {
+            const from = treePosition(byId.get(node.parent), n);
+            const to = treePosition(node, n);
+            return `<line class="tree-link" x1="${from.x}" y1="${from.y + 22}" x2="${to.x}" y2="${to.y - 24}"></line>`;
+          })
+          .join("");
+        els.treeSvg.innerHTML = links;
+        els.treeNodes.innerHTML = nodes.map((node) => {
+          const pos = treePosition(node, n);
+          const label = node.order
+            ? `${node.order}. ${describeRange(node.head, node.tail)} pivot=${node.pivotValue}`
+            : describeRange(node.head, node.tail);
+          const cells = node.values.map((value, offset) => {
+            const index = node.head + offset;
+            const classes = ["tree-cell"];
+            const isFinalValue = step.kind === "done" && node.state === "done" && (node.head === node.tail || index === node.pivotIndex);
+            if (index === node.pivotIndex) classes.push("pivot");
+            if (isFinalValue) classes.push("final-value");
+            const style = isFinalValue ? ` style="--final-order:${index}"` : "";
+            return `<div class="${classes.join(" ")}"${style}>${value}</div>`;
+          }).join("");
+          const classes = ["tree-node"];
+          if (node.id === step.nodeId) classes.push("current");
+          if (node.state === "done") classes.push("done");
+          return `
+            <div class="${classes.join(" ")}" style="left:${pos.x / 10}%;top:${(pos.y / stageHeight) * 100}%">
+              <div class="tree-label">${label}</div>
+              <div class="tree-array">${cells}</div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      function renderStack(step) {
+        const items = step.stack.slice().reverse().map((call, index) => {
+          const currentClass = index === 0 ? " current" : "";
+          return `<div class="stack-item${currentClass}">sortArray(a, ${call.head}, ${call.tail})</div>`;
+        }).join("");
+        els.callStack.innerHTML = items || `<div class="stack-item">空</div>`;
+      }
+
+      function renderHistory() {
+        els.history.innerHTML = steps.map((step, index) => {
+          const classes = ["history-item", step.kind];
+          if (index === current) classes.push("current");
+          return `<div class="${classes.join(" ")}"><b>${index + 1}.</b> ${step.action}</div>`;
+        }).join("");
+        const active = els.history.querySelector(".current");
+        if (active) active.scrollIntoView({ block: "nearest" });
+      }
+
+      function renderCode(step) {
+        els.codeList.querySelectorAll(".code-line").forEach((line) => {
+          line.classList.toggle("active", Number(line.dataset.line) === step.codeLine);
+        });
+        els.codeNote.textContent = `line ${step.codeLine}`;
+      }
+
+      function renderVariables(step) {
+        const chips = [];
+        const add = (name, value, cls = "") => {
+          if (value === null || value === undefined) return;
+          chips.push(`<span class="var-chip ${cls}"><b>${name}</b><span>=${value}</span></span>`);
+        };
+
+        add("head", step.head);
+        add("tail", step.tail);
+        add("基準値", step.pivotValue, "pivot");
+        add("left", step.left, "left");
+        add("right", step.right, "right");
+        add("pivot", step.pivotPos ?? step.fixedIndex, "fixed");
+        els.varStrip.innerHTML = chips.join("");
+      }
+
+      function render() {
+        const step = steps[current];
+        renderArray(step);
+        renderRangeBars(step);
+        renderTree(step);
+        renderStack(step);
+        renderHistory();
+        renderCode(step);
+        renderVariables(step);
+        els.message.textContent = step.message;
+        els.rangeInfo.textContent = showsProcessingRange(step) ? `処理範囲 ${describeRange(step.head, step.tail)}` : "";
+        els.stepCount.textContent = `ステップ ${current + 1} / ${steps.length}`;
+        els.prevBtn.disabled = current === 0;
+        els.nextBtn.disabled = current === steps.length - 1;
+        els.playBtn.disabled = current === steps.length - 1;
+      }
+
+      function rebuild() {
+        stop();
+        buildSteps(parseArray());
+        current = 0;
+        render();
+      }
+
+      function next() {
+        if (current < steps.length - 1) {
+          current += 1;
+          render();
+        } else {
+          stop();
+        }
+      }
+
+      function prev() {
+        stop();
+        if (current > 0) {
+          current -= 1;
+          render();
+        }
+      }
+
+      function play() {
+        if (timer || current >= steps.length - 1) return;
+        timer = setInterval(next, 1300 / Number(els.speedInput.value));
+      }
+
+      function stop() {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      function randomArray() {
+        const values = Array.from({ length: 9 }, (_, index) => index + 1);
+        for (let i = values.length - 1; i > 0; i -= 1) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [values[i], values[j]] = [values[j], values[i]];
+        }
+        els.presetSelect.value = "direct";
+        els.arrayInput.value = values.join(", ");
+        rebuild();
+      }
+
+      els.presetSelect.addEventListener("change", () => {
+        const key = els.presetSelect.value;
+        if (presets[key]) els.arrayInput.value = presets[key].join(", ");
+        rebuild();
+      });
+      els.arrayInput.addEventListener("change", () => {
+        els.presetSelect.value = "direct";
+        rebuild();
+      });
+      els.randomBtn.addEventListener("click", randomArray);
+      els.prevBtn.addEventListener("click", prev);
+      els.nextBtn.addEventListener("click", () => {
+        stop();
+        next();
+      });
+      els.playBtn.addEventListener("click", play);
+      els.pauseBtn.addEventListener("click", stop);
+      els.resetBtn.addEventListener("click", rebuild);
+      els.speedInput.addEventListener("input", () => {
+        els.speedLabel.textContent = `${Number(els.speedInput.value).toFixed(1)}x`;
+        if (timer) {
+          stop();
+          play();
+        }
+      });
+
+      rebuild();
+    </script>
+  </body>
+</html>
