@@ -1011,37 +1011,53 @@
 
       .life-flow {
         min-width: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding-left: calc(var(--life-depth) * 26px);
+        position: relative;
+        display: block;
+        height: 22px;
         white-space: nowrap;
       }
 
       .life-timeline.dense .life-flow {
-        gap: 4px;
-        padding-left: calc(var(--life-depth) * 16px);
+        height: 15px;
       }
 
       .life-birth {
-        color: var(--scope-active, #cbd5e1);
+        position: absolute;
+        left: var(--life-birth);
+        top: 50%;
+        z-index: 2;
+        width: 7px;
+        height: 7px;
+        transform: translate(-50%, -50%);
+        border: 1px solid #242424;
+        border-radius: 999px;
+        background: var(--scope-line, #38bdf8);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--scope-line, #38bdf8) 22%, transparent);
+        color: transparent;
+        font-size: 0;
       }
 
       .life-line {
-        width: var(--life-width);
-        max-width: 158px;
+        position: absolute;
+        left: var(--life-birth);
+        top: 50%;
+        width: calc(var(--life-end) - var(--life-birth));
         height: 2px;
-        flex: 0 0 auto;
+        transform: translateY(-50%);
         border-radius: 999px;
         background: var(--scope-line, #38bdf8);
         box-shadow: 0 0 0 1px color-mix(in srgb, var(--scope-line, #38bdf8) 28%, transparent);
       }
 
       .life-timeline.dense .life-line {
-        max-width: 116px;
+        height: 1.5px;
       }
 
       .life-state {
+        position: absolute;
+        left: var(--life-end);
+        top: 50%;
+        transform: translate(-50%, -50%);
         min-width: 54px;
         padding: 1px 6px 2px;
         border-radius: 999px;
@@ -1085,6 +1101,12 @@
         border-color: #facc15;
         background: rgba(250, 204, 21, 0.18);
         color: #fef3c7;
+      }
+
+      .life-row.returning .life-state {
+        border-color: #f97316;
+        background: rgba(249, 115, 22, 0.24);
+        color: #fed7aa;
       }
 
       .call-stack {
@@ -2059,22 +2081,31 @@
         }
 
         lifeTimeline.classList.toggle("dense", visible.length > 9);
+        const maxStepIndex = Math.max(1, steps.length - 1);
+        const axisStart = 7;
+        const axisEnd = 90;
+        const axisRange = axisEnd - axisStart;
+        const toAxisPct = (index) => axisStart + (index / maxStepIndex) * axisRange;
         lifeTimeline.innerHTML = visible.map((lifetime) => {
-          const dead = stepIndex >= lifetime.death;
-          const alive = step.stack.includes(lifetime.pos) && !dead;
+          const finished = stepIndex >= lifetime.death;
+          const returning = finished && step.type === "return" && step.current === lifetime.pos;
+          const dead = finished && !returning;
+          const alive = step.stack.includes(lifetime.pos) && !finished;
           const current = step.current === lifetime.pos;
-          const span = Math.max(1, lifetime.death - lifetime.birth);
-          const width = Math.min(158, 34 + span * 5);
-          const stateText = dead ? "消滅" : current ? "アクティブ" : "生存中";
+          const endIndex = Math.min(stepIndex, lifetime.death);
+          const birthPct = toAxisPct(lifetime.birth);
+          const endPct = Math.max(birthPct + 1.4, toAxisPct(endIndex));
+          const stateText = returning ? "消滅中" : dead ? "消滅" : current ? "アクティブ" : "生存中";
           const classes = [
             "life-row",
             `scope-${lifetime.pos}`,
             alive ? "alive" : "",
             dead ? "dead" : "",
+            returning ? "returning" : "",
             current ? "current" : ""
           ].filter(Boolean).join(" ");
           return `
-            <div class="${classes}" style="--life-depth: ${lifetime.depth}; --life-width: ${width}px">
+            <div class="${classes}" style="--life-birth: ${birthPct.toFixed(2)}%; --life-end: ${endPct.toFixed(2)}%">
               <span class="life-name">search(${lifetime.pos})</span>
               <span class="life-flow">
                 <span class="life-birth">誕生</span>
