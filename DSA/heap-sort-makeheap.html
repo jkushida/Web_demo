@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Heap Sort Visualizer - slide sift-down</title>
+    <title>Heap Sort Visualizer - makeHeap</title>
     <style>
       :root {
         --bg: #f6f8fb;
@@ -169,6 +169,10 @@
         gap: 10px;
         margin-bottom: 4px;
       }
+      .section-head h2 {
+        flex: 0 0 auto;
+        white-space: nowrap;
+      }
       .array-panel { padding: 6px 10px; }
       .array-view {
         display: flex;
@@ -205,6 +209,21 @@
       .array-cell.compare .value { background: #fef3c7; border-color: var(--warn); }
       .array-cell.swap .value { background: var(--err-soft); border-color: var(--err); color: #991b1b; }
       .array-cell.fixed .value { background: var(--fixed); border-color: var(--fixed-border); }
+      .array-cell.current .value {
+        background: #dbeafe;
+        border-color: #2563eb;
+        color: #1e3a8a;
+      }
+      .array-cell.pending .value {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #94a3b8;
+      }
+      .array-cell.added .value {
+        background: #dcfce7;
+        border-color: #22c55e;
+        color: #14532d;
+      }
       .array-boundary {
         color: var(--muted);
         font-size: 12px;
@@ -219,7 +238,6 @@
         font-weight: 800;
         line-height: 1.3;
         font-size: 13px;
-        min-height: calc(2lh + 10px);
       }
       body.phase-build .message-box {
         border-color: #86efac;
@@ -339,6 +357,9 @@
       .node.compare { fill: #fef3c7; stroke: var(--warn); }
       .node.swap { fill: var(--err-soft); stroke: var(--err); }
       .node.heap-fixed { fill: var(--fixed); stroke: var(--fixed-border); }
+      .node.pending { fill: #f8fafc; stroke: #cbd5e1; }
+      .node.added { fill: #dcfce7; stroke: #22c55e; }
+      .node.current { fill: #dbeafe; stroke: #2563eb; stroke-width: 3; }
       .node-label {
         font-size: 16px;
         font-weight: 900;
@@ -353,6 +374,14 @@
         font-weight: 800;
         text-anchor: middle;
         dominant-baseline: hanging;
+        pointer-events: none;
+      }
+      .role-label {
+        font-size: 13px;
+        fill: #1d4ed8;
+        font-weight: 900;
+        text-anchor: middle;
+        dominant-baseline: auto;
         pointer-events: none;
       }
       .side-col {
@@ -501,6 +530,15 @@
       .pseudo-code .num { color: #b45309; font-weight: 800; }
       .pseudo-code .op { color: #dc2626; font-weight: 900; }
       .pseudo-code .comment { color: #15803d; font-weight: 900; }
+      .pseudo-code .makeheap-block {
+        background: #f0fdf4;
+      }
+      .pseudo-code .heapsort-block {
+        background: #eff6ff;
+      }
+      .pseudo-code .downheap-block {
+        background: #fff7ed;
+      }
       .pseudo-code li.active {
         border-left-color: #f97316;
         background: #fef3c7;
@@ -510,6 +548,18 @@
       .pseudo-code li.active .line-no { color: #64748b; }
       .pseudo-code li.active .comment {
         color: #166534;
+      }
+      .pseudo-code li.makeheap-block.active {
+        border-left-color: #22c55e;
+        background: #dcfce7;
+      }
+      .pseudo-code li.heapsort-block.active {
+        border-left-color: #3b82f6;
+        background: #dbeafe;
+      }
+      .pseudo-code li.downheap-block.active {
+        border-left-color: #f97316;
+        background: #ffedd5;
       }
       .pseudo-code .indent-1 { padding-left: 8px; }
       .pseudo-code .indent-2 { padding-left: 8px; }
@@ -610,13 +660,12 @@
         .array-cell .value { width: 36px; height: 30px; font-size: 18px; }
         .array-panel .section-head {
           align-items: flex-start;
-          flex-direction: column;
-          gap: 2px;
+          flex-wrap: wrap;
         }
         .array-panel .array-boundary {
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          flex: 1 0 100%;
+          text-align: left;
+          white-space: normal;
         }
       }
     </style>
@@ -624,23 +673,30 @@
   <body class="phase-build">
     <header>
       <p><a href="../index.html">← デモ一覧へ戻る</a></p>
-      <h1>Heap Sort Visualizer（スライド方式 / sift-down）</h1>
+      <h1>Heap Sort Visualizer（makeHeap / sift-up）</h1>
     </header>
     <main>
       <section class="workspace-row">
         <div class="left-col">
           <section class="guide panel" aria-label="heap sort guide">
             <ol>
-              <li>配列全体を <span class="green">最大ヒープ</span> にする</li>
+              <li>先頭から末尾へ1つずつ <span class="green">heap に追加</span> する</li>
+              <li>追加した子を親と比べ、必要なら <span class="green">上へ交換</span> する</li>
               <li>根（最大値）と末尾を <span class="orange">交換</span> する</li>
-              <li>末尾を <span class="green">確定領域</span> にし、ヒープサイズを 1 減らす</li>
-              <li>残ったヒープを再び heapifyDown する</li>
+              <li>残ったヒープを <span class="purple">downHeap</span> で再構築する</li>
             </ol>
-            <div class="guide-note">親→子（上から下へ）</div>
+            <div class="guide-note">makeHeap は子→親（下から上へ）</div>
           </section>
 
           <section class="controls panel" aria-label="controls">
-            <label class="control-field">要素数 <input id="size" type="range" min="3" max="24" value="8" /> <span id="sizeLabel">8</span></label>
+            <label class="control-field">例
+              <select id="preset">
+                <option value="default">標準</option>
+                <option value="small-8357">8, 3, 5, 7</option>
+                <option value="random">乱数</option>
+              </select>
+            </label>
+            <label class="control-field">要素数 <input id="size" type="range" min="3" max="24" value="7" /> <span id="sizeLabel">7</span></label>
             <label class="control-field">速度 <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" /> <span id="speedLabel">1.00x</span></label>
             <button id="btnRandom">乱数生成</button>
             <button id="btnBack" disabled>戻る</button>
@@ -656,7 +712,7 @@
               <div id="arrayBoundary" class="array-boundary"></div>
             </div>
             <div id="arrayView" class="array-view"></div>
-            <div id="currentMessage" class="message-box">最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。</div>
+            <div id="currentMessage" class="message-box">makeHeap: data[0] から順に heap へ追加し、追加した子を親方向へ上げます。</div>
           </section>
 
           <div class="tree-col">
@@ -680,7 +736,9 @@
                 <div><i style="background:#fff"></i>通常</div>
                 <div><i style="background:#fef3c7; border-color:#f59e0b"></i>比較</div>
                 <div><i style="background:#fee2e2; border-color:#ef4444"></i>交換</div>
+                <div><i style="background:#dcfce7; border-color:#22c55e"></i>追加直後</div>
                 <div><i style="background:#e0f2fe; border-color:#38bdf8"></i>確定</div>
+                <div><i style="background:#f8fafc; border-color:#cbd5e1"></i>未追加</div>
               </div>
             </section>
 
@@ -697,37 +755,46 @@
         <aside class="side-col" aria-label="side information">
           <section class="pseudo-wrap panel" aria-label="pseudocode">
             <div class="pseudo-header">
-              <strong>疑似言語 heapSort(a) と heapify_down()</strong>
+              <strong>疑似言語 プログラム1 + プログラム2</strong>
               <span class="small">現在行を強調</span>
             </div>
             <div class="pseudo-card" aria-label="擬似コード">
               <div class="global-code-block" aria-label="準備">
-<span class="global-code-title">準備: 配列とヒープ領域</span>
-<span class="global-code-line"><span class="comment"># 配列 a をそのままヒープとして使う</span></span>
-<span class="global-code-line"><span class="var">n</span> <span class="op">=</span> <span id="pseudoN">12</span> <span class="comment"># 要素数</span> <span id="pseudoPhaseBadge" class="live-badge phase">現在の段階 = ヒープ構築</span></span>
-<span class="global-code-line"><span class="var">heap_size</span> <span class="op">=</span> <span id="pseudoHeapSize">12</span> <span class="comment"># まだ整える範囲</span> <span id="pseudoHeapBadge" class="live-badge heap">現在の heap_size = 12</span></span>
+<span class="global-code-title">プログラム1: makeHeap → プログラム2: heapSort / downHeap</span>
+<span class="global-code-line"><span class="var">hnum</span> <span class="op">=</span> <span id="pseudoN">7</span> <span class="comment">/* 要素数 */</span> <span id="pseudoPhaseBadge" class="live-badge phase">現在の段階 = makeHeap</span></span>
+<span class="global-code-line"><span class="var">heap_count</span>/<span class="var">heap_size</span> <span class="op">=</span> <span id="pseudoHeapSize">0</span> <span class="comment">/* 構築済みまたは未確定の個数 */</span> <span id="pseudoHeapBadge" class="live-badge heap">現在の heap_count = 0</span></span>
               </div>
               <ol id="pseudoCode" class="pseudo-code">
-                <li data-line="1"><span class="line-no">1.</span><span class="line-code"><span class="kw">def</span> <span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="var">parent</span>, <span class="var">heap_size</span>): <span class="comment"># parent から下へ修復</span> <span id="pseudoCurrentBadge" class="live-badge current hidden"></span></span></li>
-                <li data-line="2" class="indent-1"><span class="line-no">2.</span><span class="line-code"><span class="kw">while</span> <span class="kw">True</span>:                         <span class="comment"># 子がある間くり返す</span></span></li>
-                <li data-line="3" class="indent-2"><span class="line-no">3.</span><span class="line-code"><span class="var">left</span> <span class="op">=</span> <span class="num">2</span> <span class="op">*</span> <span class="var">parent</span> <span class="op">+</span> <span class="num">1</span>              <span class="comment"># 左の子</span></span></li>
-                <li data-line="4" class="indent-2"><span class="line-no">4.</span><span class="line-code"><span class="var">right</span> <span class="op">=</span> <span class="num">2</span> <span class="op">*</span> <span class="var">parent</span> <span class="op">+</span> <span class="num">2</span>             <span class="comment"># 右の子</span></span></li>
-                <li data-line="5" class="indent-2"><span class="line-no">5.</span><span class="line-code"><span class="kw">if</span> <span class="var">left</span> &gt;= <span class="var">heap_size</span>: <span class="kw">break</span>          <span class="comment"># 子がなければ終了</span></span></li>
-                <li data-line="6" class="indent-2"><span class="line-no">6.</span><span class="line-code"><span class="var">child</span> <span class="op">=</span> <span class="var">left</span>                       <span class="comment"># まず左の子を選ぶ</span></span></li>
-                <li data-line="7" class="indent-2"><span class="line-no">7.</span><span class="line-code"><span class="kw">if</span> <span class="var">right</span> &lt; <span class="var">heap_size</span> <span class="kw">and</span> <span class="var">a</span>[<span class="var">right</span>] &gt; <span class="var">a</span>[<span class="var">left</span>]:</span></li>
-                <li data-line="8" class="indent-3"><span class="line-no">8.</span><span class="line-code"><span class="var">child</span> <span class="op">=</span> <span class="var">right</span>                      <span class="comment"># 大きい子を選ぶ</span></span></li>
-                <li data-line="9" class="indent-2"><span class="line-no">9.</span><span class="line-code"><span class="kw">if</span> <span class="var">a</span>[<span class="var">child</span>] &gt; <span class="var">a</span>[<span class="var">parent</span>]:            <span class="comment"># 子の方が大きい</span></span></li>
-                <li data-line="10" class="indent-3"><span class="line-no">10.</span><span class="line-code"><span class="var">a</span>[<span class="var">parent</span>], <span class="var">a</span>[<span class="var">child</span>] <span class="op">=</span> <span class="var">a</span>[<span class="var">child</span>], <span class="var">a</span>[<span class="var">parent</span>] <span class="comment"># 交換</span></span></li>
-                <li data-line="11" class="indent-3"><span class="line-no">11.</span><span class="line-code"><span class="var">parent</span> <span class="op">=</span> <span class="var">child</span>                     <span class="comment"># 下へ進む</span></span></li>
-                <li data-line="12" class="indent-2"><span class="line-no">12.</span><span class="line-code"><span class="kw">else</span>: <span class="kw">break</span>                         <span class="comment"># ヒープ条件OK</span></span></li>
-                <li data-line="13" class="section-gap"><span class="line-no">13.</span><span class="line-code"><span class="var">n</span> <span class="op">=</span> <span class="fn">len</span>(<span class="var">a</span>)                         <span class="comment"># 要素数</span></span></li>
-                <li data-line="14"><span class="line-no">14.</span><span class="line-code"><span class="var">last_parent</span> <span class="op">=</span> <span class="var">n</span> // <span class="num">2</span> - <span class="num">1</span>              <span class="comment"># 最後の親</span></span></li>
-                <li data-line="15"><span class="line-no">15.</span><span class="line-code"><span class="kw">for</span> <span class="var">parent</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="var">last_parent</span>, -<span class="num">1</span>, -<span class="num">1</span>):</span></li>
-                <li data-line="16" class="indent-1"><span class="line-no">16.</span><span class="line-code"><span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="var">parent</span>, <span class="var">n</span>)          <span class="comment"># 最大ヒープに直す</span></span></li>
-                <li data-line="17" class="section-gap"><span class="line-no">17.</span><span class="line-code"><span class="kw">for</span> <span class="var">end</span> <span class="kw">in</span> <span class="fn">range</span>(<span class="var">n</span> - <span class="num">1</span>, <span class="num">0</span>, -<span class="num">1</span>):      <span class="comment"># 末尾から確定</span></span></li>
-                <li data-line="18" class="indent-1"><span class="line-no">18.</span><span class="line-code"><span class="var">a</span>[<span class="num">0</span>], <span class="var">a</span>[<span class="var">end</span>] <span class="op">=</span> <span class="var">a</span>[<span class="var">end</span>], <span class="var">a</span>[<span class="num">0</span>]       <span class="comment"># 最大値を末尾へ</span></span></li>
-                <li data-line="19" class="indent-1"><span class="line-no">19.</span><span class="line-code"><span class="var">heap_size</span> <span class="op">=</span> <span class="var">end</span>                   <span class="comment"># 確定領域を除く</span></span></li>
-                <li data-line="20" class="indent-1"><span class="line-no">20.</span><span class="line-code"><span class="fn">heapify_down</span>(<span class="var">a</span>, <span class="num">0</span>, <span class="var">heap_size</span>)     <span class="comment"># 根から整える</span></span></li>
+                <li data-line="1" class="makeheap-block"><span class="line-no">1</span><span class="line-code">○ 副プログラム: <span class="fn">makeHeap</span>( 整数型: <span class="var">data</span>[], 整数型: <span class="var">heap</span>[], 整数型: <span class="var">hnum</span> )</span></li>
+                <li data-line="2" class="makeheap-block"><span class="line-no">2</span><span class="line-code">○ 整数型: <span class="var">i</span>, <span class="var">k</span></span></li>
+                <li data-line="3" class="makeheap-block"><span class="line-no">3</span><span class="line-code">■ <span class="var">i</span>: <span class="num">0</span>, <span class="var">i</span> &lt; <span class="var">hnum</span>, <span class="num">1</span></span></li>
+                <li data-line="4" class="makeheap-block indent-1"><span class="line-no">4</span><span class="line-code">・<span class="var">heap</span>[<span class="var">i</span>] <span class="op">←</span> <span class="var">data</span>[<span class="var">i</span>] <span class="comment">/* heap にデータを追加 */</span></span></li>
+                <li data-line="5" class="makeheap-block indent-1"><span class="line-no">5</span><span class="line-code">・<span class="var">k</span> <span class="op">←</span> <span class="var">i</span> <span id="pseudoCurrentBadge" class="live-badge current hidden"></span></span></li>
+                <li data-line="6" class="makeheap-block indent-1"><span class="line-no">6</span><span class="line-code">■ <span class="var">k</span> &gt; <span class="num">0</span></span></li>
+                <li data-line="7" class="makeheap-block indent-2"><span class="line-no">7</span><span class="line-code">▲ <span class="var">heap</span>[<span class="var">k</span>] &gt; <span class="var">heap</span>[<span class="fn">parent</span>(<span class="var">k</span>)] <span id="pseudoCompareKBadge" class="live-badge current hidden"></span> <span id="pseudoParentBadge" class="live-badge heap hidden"></span></span></li>
+                <li data-line="8" class="makeheap-block indent-2"><span class="line-no">8</span><span class="line-code">・<span class="fn">swap</span>(<span class="var">heap</span>, <span class="var">k</span>, <span class="fn">parent</span>(<span class="var">k</span>))</span></li>
+                <li data-line="9" class="makeheap-block indent-2"><span class="line-no">9</span><span class="line-code">・<span class="var">k</span> <span class="op">←</span> <span class="fn">parent</span>(<span class="var">k</span>)</span></li>
+                <li data-line="10" class="makeheap-block indent-2"><span class="line-no">10</span><span class="line-code">・<span class="kw">break</span> <span class="comment">/* 内側の繰返し処理から抜ける */</span></span></li>
+
+                <li data-line="11" class="heapsort-block section-gap"><span class="line-no">1</span><span class="line-code">○ 副プログラム: <span class="fn">heapSort</span>( 整数型: <span class="var">data</span>[], 整数型: <span class="var">heap</span>[], 整数型: <span class="var">hnum</span> )</span></li>
+                <li data-line="12" class="heapsort-block"><span class="line-no">2</span><span class="line-code">○ 整数型: <span class="var">last</span></span></li>
+                <li data-line="13" class="heapsort-block"><span class="line-no">3</span><span class="line-code">・<span class="fn">makeHeap</span>(<span class="var">data</span>, <span class="var">heap</span>, <span class="var">hnum</span>)</span></li>
+                <li data-line="14" class="heapsort-block"><span class="line-no">4</span><span class="line-code">■ <span class="var">last</span>: <span class="var">hnum</span> - <span class="num">1</span>, <span class="var">last</span> &gt; <span class="num">0</span>, -<span class="num">1</span></span></li>
+                <li data-line="15" class="heapsort-block indent-1"><span class="line-no">5</span><span class="line-code">・<span class="fn">swap</span>(<span class="var">heap</span>, <span class="num">0</span>, <span class="var">last</span>) <span class="comment">/* heap[0] と heap[last] の値を交換 */</span></span></li>
+                <li data-line="16" class="heapsort-block indent-1"><span class="line-no">6</span><span class="line-code">・<span class="fn">downHeap</span>(<span class="var">heap</span>, <span class="var">last</span> - <span class="num">1</span>) <span class="comment">/* heap を再構成 */</span></span></li>
+
+                <li data-line="17" class="downheap-block section-gap"><span class="line-no">1</span><span class="line-code">○ 副プログラム: <span class="fn">downHeap</span>( 整数型: <span class="var">heap</span>[], 整数型: <span class="var">hlast</span> )</span></li>
+                <li data-line="18" class="downheap-block"><span class="line-no">2</span><span class="line-code">○ 整数型: <span class="var">n</span>, <span class="var">tmp</span></span></li>
+                <li data-line="19" class="downheap-block"><span class="line-no">3</span><span class="line-code">・<span class="var">n</span> <span class="op">←</span> <span class="num">0</span></span></li>
+                <li data-line="20" class="downheap-block"><span class="line-no">4</span><span class="line-code">■ <span class="fn">lchild</span>(<span class="var">n</span>) ≦ <span class="var">hlast</span></span></li>
+                <li data-line="21" class="downheap-block indent-1"><span class="line-no">5</span><span class="line-code">・<span class="var">tmp</span> <span class="op">←</span> <span class="fn">lchild</span>(<span class="var">n</span>)</span></li>
+                <li data-line="22" class="downheap-block indent-1"><span class="line-no">6</span><span class="line-code">▲ <span class="fn">rchild</span>(<span class="var">n</span>) ≦ <span class="var">hlast</span></span></li>
+                <li data-line="23" class="downheap-block indent-2"><span class="line-no">7</span><span class="line-code">▲ <span class="var">heap</span>[<span class="var">tmp</span>] ≦ <span class="var">heap</span>[<span class="fn">rchild</span>(<span class="var">n</span>)]</span></li>
+                <li data-line="24" class="downheap-block indent-2"><span class="line-no">8</span><span class="line-code">・<span class="var">tmp</span> <span class="op">←</span> <span class="fn">rchild</span>(<span class="var">n</span>)</span></li>
+                <li data-line="25" class="downheap-block indent-1"><span class="line-no">11</span><span class="line-code">▲ <span class="var">heap</span>[<span class="var">tmp</span>] &gt; <span class="var">heap</span>[<span class="var">n</span>]</span></li>
+                <li data-line="26" class="downheap-block indent-2"><span class="line-no">12</span><span class="line-code">・<span class="fn">swap</span>(<span class="var">heap</span>, <span class="var">n</span>, <span class="var">tmp</span>)</span></li>
+                <li data-line="27" class="downheap-block indent-2"><span class="line-no">13</span><span class="line-code">・<span class="kw">return</span> <span class="comment">/* downHeap から抜ける */</span></span></li>
+                <li data-line="28" class="downheap-block indent-1"><span class="line-no">15</span><span class="line-code">・<span class="var">n</span> <span class="op">←</span> <span class="var">tmp</span></span></li>
               </ol>
             </div>
           </section>
@@ -749,9 +816,10 @@
 
     <script>
       // 可視化対象の配列状態と、アルゴリズム手順（ステップ）を管理
-      /** @typedef {{type:'compare'|'swap'|'heapSize'|'phase', a?:number, b?:number, value?:number, name?:string}} Step */
+      /** @typedef {{type:'append'|'compare'|'swap'|'moveK'|'heapSize'|'phase', a?:number, b?:number, index?:number, from?:number, to?:number, value?:number, heapSize?:number, name?:string}} Step */
 
       const heapTree = document.getElementById('heapTree');
+      const presetSelect = document.getElementById('preset');
       const sizeInput = document.getElementById('size');
       const sizeLabel = document.getElementById('sizeLabel');
       const speedInput = document.getElementById('speed');
@@ -778,7 +846,13 @@
       const pseudoPhaseBadge = document.getElementById('pseudoPhaseBadge');
       const pseudoHeapBadge = document.getElementById('pseudoHeapBadge');
       const pseudoCurrentBadge = document.getElementById('pseudoCurrentBadge');
-      const DEFAULT_DATA = [4, 2, 5, 7, 1, 8, 6, 3];
+      const pseudoCompareKBadge = document.getElementById('pseudoCompareKBadge');
+      const pseudoParentBadge = document.getElementById('pseudoParentBadge');
+      const DEFAULT_DATA = [20, 30, 45, 15, 5, 10, 60];
+      const PRESETS = {
+        default: DEFAULT_DATA,
+        'small-8357': [8, 3, 5, 7],
+      };
 
       /** グローバル状態 */
       let base = [];
@@ -791,9 +865,9 @@
       let timer = null;
       let phase = 'build-heap';
       let lastFixedIndex = -1;
-      let activePseudoLine = 15;
+      let activePseudoLine = 13;
       let currentIdx = null;
-      let currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+      let currentText = 'makeHeap: data[0] から順に heap へ追加し、追加した子を親方向へ上げます。';
       let swapPopupTimer = null;
 
       function randArray(n) {
@@ -811,12 +885,12 @@
         arr = base.slice();
         steps = buildSteps(arr.slice()); // 手順はシミュレーション配列で生成
         cursor = 0;
-        heapSize = arr.length;
+        heapSize = 0;
         phase = 'build-heap';
         lastFixedIndex = -1;
-        activePseudoLine = 15;
+        activePseudoLine = 13;
         currentIdx = null;
-        currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+        currentText = 'makeHeap: data[0] から順に heap へ追加し、追加した子を親方向へ上げます。';
         hideSwapPopup();
         updateLabels();
         clearLog();
@@ -826,7 +900,7 @@
 
       function updateLabels() {
         const phaseNames = {
-          'build-heap': 'ヒープ構築',
+          'build-heap': 'makeHeap',
           sort: 'ソート',
         };
         document.body.classList.toggle('phase-build', phase === 'build-heap');
@@ -838,11 +912,24 @@
         if (pseudoN) pseudoN.textContent = String(arr.length);
         if (pseudoHeapSize) pseudoHeapSize.textContent = String(heapSize);
         if (pseudoPhaseBadge) pseudoPhaseBadge.textContent = `現在の段階 = ${phaseNames[phase] || phase}`;
-        if (pseudoHeapBadge) pseudoHeapBadge.textContent = `現在の heap_size = ${heapSize}`;
+        if (pseudoHeapBadge) {
+          const label = phase === 'build-heap' ? 'heap_count' : 'heap_size';
+          pseudoHeapBadge.textContent = `現在の ${label} = ${heapSize}`;
+        }
         if (pseudoCurrentBadge) {
-          const hasCurrent = Number.isInteger(currentIdx);
+          const hasCurrent = phase === 'build-heap' && Number.isInteger(currentIdx) && currentIdx > 0;
           pseudoCurrentBadge.classList.toggle('hidden', !hasCurrent);
-          pseudoCurrentBadge.textContent = hasCurrent ? `現在の currentIdx = ${currentIdx}` : '';
+          pseudoCurrentBadge.textContent = hasCurrent ? `現在の k = ${currentIdx}` : '';
+        }
+        const hasBuildK = phase === 'build-heap' && Number.isInteger(currentIdx) && currentIdx > 0;
+        if (pseudoCompareKBadge) {
+          pseudoCompareKBadge.classList.toggle('hidden', !hasBuildK);
+          pseudoCompareKBadge.textContent = hasBuildK ? `現在の k = ${currentIdx}` : '';
+        }
+        if (pseudoParentBadge) {
+          const hasParent = hasBuildK && currentIdx > 0;
+          pseudoParentBadge.classList.toggle('hidden', !hasBuildK);
+          pseudoParentBadge.textContent = hasParent ? `parent(k) = ${Math.floor((currentIdx - 1) / 2)}` : 'parent(k) なし';
         }
       }
 
@@ -858,41 +945,57 @@
         const n = a.length;
         let hs = n;
         s.push({ type: 'phase', name: 'build-heap' });
-        // 配列を二分木として解釈し、最後の親から上へ最大ヒープに直す
-        const lastParent = Math.floor(n / 2) - 1;
-        for (let parent = lastParent; parent >= 0; parent--) {
-          heapifyDown(a, parent, n, s);
+        // makeHeap: data[i] を末尾に追加し、追加した子を親方向へ上げる
+        for (let i = 0; i < n; i++) {
+          s.push({ type: 'append', index: i, value: a[i], heapSize: i + 1 });
+          siftUp(a, i, s);
         }
         s.push({ type: 'phase', name: 'sort' });
-        // 根の最大値を末尾へ移し、残りのヒープを下方向に修復する
+        // sort down
         for (let end = n - 1; end > 0; end--) {
           s.push({ type: 'swap', a: 0, b: end });
           [a[0], a[end]] = [a[end], a[0]];
           hs = end;
           s.push({ type: 'heapSize', value: hs });
-          heapifyDown(a, 0, hs, s);
+          downHeap(a, 0, hs, s);
         }
         s.push({ type: 'heapSize', value: 0 });
         return s;
       }
 
-      function heapifyDown(a, parent, heapSizeLimit, s) {
-        while (true) {
-          const left = parent * 2 + 1;
-          const right = parent * 2 + 2;
-          if (left >= heapSizeLimit) break;
-
-          let child = left;
-          if (right < heapSizeLimit) {
-            s.push({ type: 'compare', a: right, b: left });
-            if (a[right] > a[left]) child = right;
+      function siftUp(a, i, s) {
+        let k = i;
+        while (k > 0) {
+          const parent = Math.floor((k - 1) / 2);
+          s.push({ type: 'compare', a: k, b: parent });
+          if (a[k] > a[parent]) {
+            s.push({ type: 'swap', a: k, b: parent });
+            [a[k], a[parent]] = [a[parent], a[k]];
+            s.push({ type: 'moveK', from: k, to: parent });
+            k = parent;
+          } else {
+            break;
           }
+        }
+      }
 
-          s.push({ type: 'compare', a: child, b: parent });
-          if (a[child] > a[parent]) {
-            s.push({ type: 'swap', a: parent, b: child });
-            [a[parent], a[child]] = [a[child], a[parent]];
-            parent = child;
+      function downHeap(a, i, hs, s) {
+        while (true) {
+          const l = i * 2 + 1;
+          const r = i * 2 + 2;
+          let largest = i;
+          if (l < hs) {
+            s.push({ type: 'compare', a: l, b: largest });
+            if (a[l] > a[largest]) largest = l;
+          }
+          if (r < hs) {
+            s.push({ type: 'compare', a: r, b: largest });
+            if (a[r] > a[largest]) largest = r;
+          }
+          if (largest !== i) {
+            s.push({ type: 'swap', a: i, b: largest });
+            [a[i], a[largest]] = [a[largest], a[i]];
+            i = largest;
           } else {
             break;
           }
@@ -1021,11 +1124,14 @@
           heapTree.appendChild(group);
         }
 
-        const drawNode = (i, fixedOutsideHeap) => {
+        const drawNode = (i, status = '') => {
           const level = Math.floor(Math.log2(i + 1));
           const idx = i - (2 ** level - 1);
           const cx = xFor(level, idx);
           const cy = yFor(level);
+          const relation = highlight && (highlight.type === 'compare' || highlight.type === 'swap')
+            ? relationForPair(highlight.a, highlight.b)
+            : null;
           const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
           g.dataset.index = String(i);
           const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1036,9 +1142,14 @@
           let cls = 'node';
           const isCompare = highlight && highlight.type === 'compare' && (i === highlight.a || i === highlight.b);
           const isSwap = highlight && highlight.type === 'swap' && (i === highlight.a || i === highlight.b);
+          const isAdded = highlight && highlight.type === 'append' && i === highlight.index;
+          const isCurrent = highlight && highlight.type === 'moveK' && i === highlight.to;
           if (isCompare) cls += ' compare';
           if (isSwap) cls += ' swap';
-          if (fixedOutsideHeap) cls += ' heap-fixed';
+          if (isAdded) cls += ' added';
+          if (isCurrent) cls += ' current';
+          if (status === 'fixed') cls += ' heap-fixed';
+          if (status === 'pending') cls += ' pending';
           circle.setAttribute('class', cls);
           const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
           text.setAttribute('x', cx);
@@ -1050,14 +1161,53 @@
           idxText.setAttribute('y', cy + radius + 7);
           idxText.setAttribute('class', 'idx-label');
           idxText.textContent = `idx ${i}`;
+          let roleTextValue = '';
+          if (phase === 'build-heap' && relation) {
+            if (i === relation.child) roleTextValue = 'k';
+            if (i === relation.parent) roleTextValue = 'parent(k)';
+          } else if (phase === 'build-heap' && highlight?.type === 'moveK' && i === highlight.to) {
+            roleTextValue = 'k';
+          } else if (phase !== 'build-heap' && relation) {
+            if (i === relation.parent) roleTextValue = 'n';
+            if (i === relation.child) roleTextValue = 'tmp';
+          } else if (phase !== 'build-heap' && highlight?.type === 'compare') {
+            const parentOfA = Math.floor((highlight.a - 1) / 2);
+            const parentOfB = Math.floor((highlight.b - 1) / 2);
+            if (highlight.a > 0 && parentOfA === parentOfB) {
+              if (i === parentOfA) roleTextValue = 'n';
+              if (i === highlight.b) roleTextValue = 'tmp';
+            }
+          }
+          if (roleTextValue) {
+            const roleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            roleText.setAttribute('x', cx);
+            roleText.setAttribute('y', cy - radius - 7);
+            roleText.setAttribute('class', 'role-label');
+            roleText.textContent = roleTextValue;
+            g.appendChild(roleText);
+          }
           g.appendChild(circle);
           g.appendChild(text);
           g.appendChild(idxText);
           heapTree.appendChild(g);
         };
 
-        for (let i = 0; i < hs; i++) drawNode(i, false);
-        for (let i = hs; i < arr.length; i++) drawNode(i, true);
+        if (phase === 'build-heap' && hs === 0) {
+          const emptyText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          emptyText.setAttribute('x', w / 2);
+          emptyText.setAttribute('y', h / 2);
+          emptyText.setAttribute('text-anchor', 'middle');
+          emptyText.setAttribute('dominant-baseline', 'middle');
+          emptyText.setAttribute('class', 'idx-label');
+          emptyText.textContent = 'heap はまだ空';
+          heapTree.appendChild(emptyText);
+          return;
+        }
+
+        for (let i = 0; i < hs; i++) drawNode(i);
+        if (phase !== 'build-heap') {
+          for (let i = hs; i < arr.length; i++) drawNode(i, 'fixed');
+        }
       }
 
       function renderArray(highlight = null) {
@@ -1066,12 +1216,17 @@
         for (let i = 0; i < arr.length; i++) {
           const cell = document.createElement('div');
           cell.className = 'array-cell';
-          if (i >= heapSize) cell.classList.add('fixed');
+          if (phase === 'build-heap' && i >= heapSize) cell.classList.add('pending');
+          if (phase !== 'build-heap' && i >= heapSize) cell.classList.add('fixed');
+          if (highlight?.type === 'append' && i === highlight.index) cell.classList.add('added');
           if (highlight?.type === 'compare' && (i === highlight.a || i === highlight.b)) {
             cell.classList.add('compare');
           }
           if (highlight?.type === 'swap' && (i === highlight.a || i === highlight.b)) {
             cell.classList.add('swap');
+          }
+          if (highlight?.type === 'moveK' && i === highlight.to) {
+            cell.classList.add('current');
           }
 
           const idx = document.createElement('div');
@@ -1087,7 +1242,15 @@
           arrayView.appendChild(cell);
         }
 
-        if (heapSize === arr.length) {
+        if (phase === 'build-heap') {
+          if (heapSize === 0) {
+            arrayBoundary.textContent = `構築済みヒープなし / 未追加: data[0] から data[${arr.length - 1}]`;
+          } else if (heapSize === arr.length) {
+            arrayBoundary.textContent = `makeHeap 完了: heap[0] から heap[${arr.length - 1}]`;
+          } else {
+            arrayBoundary.textContent = `構築済みヒープ: heap[0] から heap[${heapSize - 1}] / 未追加: data[${heapSize}] から data[${arr.length - 1}]`;
+          }
+        } else if (heapSize === arr.length) {
           arrayBoundary.textContent = `ヒープ領域: a[0] から a[${arr.length - 1}] / 確定領域なし`;
         } else if (heapSize === 0) {
           arrayBoundary.textContent = `全要素が確定: a[0] から a[${arr.length - 1}]`;
@@ -1118,6 +1281,13 @@
       function renderSorted() {
         if (!sortedList) return;
         sortedList.innerHTML = '';
+        if (phase === 'build-heap') {
+          const empty = document.createElement('span');
+          empty.className = 'small';
+          empty.textContent = 'makeHeap 中は未確定';
+          sortedList.appendChild(empty);
+          return;
+        }
         for (let i = heapSize; i < arr.length; i++) {
           const chip = document.createElement('span');
           chip.className = 'chip' + (i === lastFixedIndex ? ' highlight' : '');
@@ -1208,14 +1378,26 @@
         const tag = document.createElement('span');
         const text = document.createElement('span');
         tag.className = 'tag';
-        if (step.type === 'compare') {
+        if (step.type === 'append') {
+          tag.classList.add('heap');
+          tag.textContent = '追加';
+          text.textContent = `data[${step.index}] = ${before[step.index]} を heap[${step.index}] に追加`;
+        } else if (step.type === 'moveK') {
+          tag.classList.add('phase');
+          tag.textContent = '更新';
+          text.textContent = `k ← parent(k): ${step.from} から ${step.to} へ移動`;
+        } else if (step.type === 'compare') {
           tag.classList.add('compare');
           tag.textContent = '比較';
           const va = before?.[step.a];
           const vb = before?.[step.b];
           const relation = relationForPair(step.a, step.b);
           if (relation) {
-            text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を比較（${childSummary(relation.parent, before)}）`;
+            if (phase === 'build-heap') {
+              text.textContent = `子 heap[${relation.child}] = ${before[relation.child]} と親 heap[${relation.parent}] = ${before[relation.parent]} を比較`;
+            } else {
+              text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を比較（${childSummary(relation.parent, before)}）`;
+            }
           } else {
             text.textContent = `a[${step.a}] = ${va} と a[${step.b}] = ${vb}`;
           }
@@ -1228,7 +1410,11 @@
           const ab = after?.[step.b];
           const relation = relationForPair(step.a, step.b);
           if (relation) {
-            text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を交換（${childSummary(relation.parent, before)}）`;
+            if (phase === 'build-heap') {
+              text.textContent = `子 heap[${relation.child}] = ${before[relation.child]} と親 heap[${relation.parent}] = ${before[relation.parent]} を交換`;
+            } else {
+              text.textContent = `親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を交換（${childSummary(relation.parent, before)}）`;
+            }
           } else {
             text.textContent = `a[${step.a}] = ${ba} と a[${step.b}] = ${bb} を交換 → [${aa}, ${ab}]`;
           }
@@ -1239,7 +1425,7 @@
         } else if (step.type === 'phase') {
           tag.classList.add('phase');
           tag.textContent = '段階';
-          text.textContent = step.name === 'build-heap' ? 'ヒープ構築' : 'ソート';
+          text.textContent = step.name === 'build-heap' ? 'makeHeap' : 'ソート';
         }
         entry.appendChild(tag);
         entry.appendChild(text);
@@ -1250,12 +1436,21 @@
       }
 
       function describeStep(step, before) {
+        if (step.type === 'append') {
+          return `追加: data[${step.index}] = ${before[step.index]} を heap[${step.index}] に入れます。ここから親方向へ sift-up します。`;
+        }
+        if (step.type === 'moveK') {
+          return `k ← parent(k): k を ${step.from} から親 ${step.to} に更新します。次はこの位置からさらに親と比較します。`;
+        }
         if (step.type === 'compare') {
           const va = before[step.a];
           const vb = before[step.b];
           const winner = va >= vb ? step.a : step.b;
           const relation = relationForPair(step.a, step.b);
           if (relation) {
+            if (phase === 'build-heap') {
+              return `比較: 追加側の子 heap[${relation.child}] = ${before[relation.child]} と親 heap[${relation.parent}] = ${before[relation.parent]} を比べます。子が大きければ上へ交換します。`;
+            }
             return `比較: 親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を比べます。${childSummary(relation.parent, before)}。大きい方の a[${winner}] を親候補にします。`;
           }
           return `比較: a[${step.a}] = ${va} と a[${step.b}] = ${vb} を比べます。大きい方の a[${winner}] を親候補にします。`;
@@ -1268,6 +1463,9 @@
           }
           const relation = relationForPair(step.a, step.b);
           if (relation) {
+            if (phase === 'build-heap') {
+              return `交換: 子 heap[${relation.child}] = ${before[relation.child]} が親 heap[${relation.parent}] = ${before[relation.parent]} より大きいので、上へ交換します。`;
+            }
             return `交換: 親 a[${relation.parent}] = ${before[relation.parent]} と ${relation.childName} a[${relation.child}] = ${before[relation.child]} を入れ替えます。${childSummary(relation.parent, before)}。`;
           }
           return `交換: a[${step.a}] = ${va} と a[${step.b}] = ${vb} を入れ替え、最大値が親側に来るようにします。`;
@@ -1278,7 +1476,7 @@
         }
         if (step.type === 'phase') {
           return step.name === 'build-heap'
-            ? 'ヒープ構築: 下の親ノードから順に、親が子以上になるように整えます。'
+            ? 'makeHeap: 先頭から1つずつ追加し、追加した子を親方向へ上げて最大ヒープを作ります。'
             : 'ソート: 根の最大値を末尾へ移し、確定領域を右から広げます。';
         }
         return '';
@@ -1286,24 +1484,32 @@
 
       function pseudoLineForStep(step) {
         if (step.type === 'phase') {
-          return step.name === 'build-heap' ? 15 : 17;
+          return step.name === 'build-heap' ? 13 : 14;
         }
-        if (step.type === 'compare') {
-          return relationForPair(step.a, step.b) ? 9 : 7;
-        }
+        if (step.type === 'append') return 4;
+        if (step.type === 'moveK') return 9;
+        if (step.type === 'compare') return phase === 'build-heap' ? 7 : 25;
         if (step.type === 'swap') {
-          return phase === 'sort' && step.a === 0 && step.b === heapSize - 1 ? 18 : 10;
+          if (phase === 'build-heap') return 8;
+          return phase === 'sort' && step.a === 0 && step.b === heapSize - 1 ? 15 : 26;
         }
         if (step.type === 'heapSize') {
-          return step.value === 0 ? 20 : 19;
+          return 16;
         }
         return activePseudoLine;
       }
 
       function currentIdxForStep(step) {
+        if (step.type === 'append') return step.index;
+        if (step.type === 'moveK') return step.to;
         if (step.type === 'compare' || step.type === 'swap') {
           const relation = relationForPair(step.a, step.b);
-          if (relation) return relation.parent;
+          if (relation) {
+            if (phase === 'build-heap') {
+              return relation.child;
+            }
+            return relation.parent;
+          }
           if (phase === 'sort' && step.type === 'swap' && step.a === 0) return 0;
         }
         return null;
@@ -1316,6 +1522,14 @@
         activePseudoLine = pseudoLineForStep(step);
         currentIdx = currentIdxForStep(step);
         switch (step.type) {
+          case 'append':
+            hideSwapPopup();
+            heapSize = step.heapSize;
+            lastFixedIndex = -1;
+            updateLabels();
+            render(step);
+            appendLog(step, before, arr);
+            break;
           case 'compare':
             hideSwapPopup();
             updateLabels();
@@ -1327,6 +1541,12 @@
             updateLabels();
             render(step);
             showSwapPopup(step, before);
+            appendLog(step, before, arr);
+            break;
+          case 'moveK':
+            hideSwapPopup();
+            updateLabels();
+            render(step);
             appendLog(step, before, arr);
             break;
           case 'heapSize':
@@ -1361,12 +1581,12 @@
       function rebuildTo(targetCursor) {
         arr = base.slice();
         cursor = 0;
-        heapSize = arr.length;
+        heapSize = 0;
         phase = 'build-heap';
         lastFixedIndex = -1;
-        activePseudoLine = 15;
+        activePseudoLine = 13;
         currentIdx = null;
-        currentText = '最大ヒープを作るため、最後の親ノードから heapifyDown を始めます。';
+        currentText = 'makeHeap: data[0] から順に heap へ追加し、追加した子を親方向へ上げます。';
         hideSwapPopup();
         updateLabels();
         clearLog();
@@ -1422,12 +1642,22 @@
         sizeLabel.textContent = sizeInput.value;
       });
       sizeInput.addEventListener('change', () => {
+        presetSelect.value = 'random';
         init(Number(sizeInput.value));
       });
       speedInput.addEventListener('input', () => {
         updateLabels();
       });
+      presetSelect.addEventListener('change', () => {
+        if (presetSelect.value === 'random') {
+          init(Number(sizeInput.value));
+          return;
+        }
+        const values = PRESETS[presetSelect.value] || DEFAULT_DATA;
+        init(values.length, values);
+      });
       btnRandom.addEventListener('click', () => {
+        presetSelect.value = 'random';
         init(Number(sizeInput.value));
       });
       btnBack.addEventListener('click', stepBack);
