@@ -12,6 +12,7 @@
         --panel-alt: #f8fafc;
         --text: #1f2937;
         --muted: #5b6472;
+        --empty: #9aa4b2;
         --line: #d7dce5;
         --accent: #2563eb;
         --accent-soft: #dbeafe;
@@ -19,6 +20,7 @@
         --good-soft: #dcfce7;
         --warn: #b45309;
         --warn-soft: #fef3c7;
+        --danger: #dc2626;
       }
 
       @media (prefers-color-scheme: dark) {
@@ -28,6 +30,7 @@
           --panel-alt: #243041;
           --text: #f3f4f6;
           --muted: #c4cad4;
+          --empty: #8f9baa;
           --line: #374151;
           --accent: #60a5fa;
           --accent-soft: #1e3a8a;
@@ -35,6 +38,7 @@
           --good-soft: #14532d;
           --warn: #fbbf24;
           --warn-soft: #78350f;
+          --danger: #f87171;
         }
       }
 
@@ -44,28 +48,28 @@
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         background: var(--bg);
         color: var(--text);
-        line-height: 1.6;
+        line-height: 1.5;
       }
       main {
         max-width: 1080px;
         margin: 0 auto;
-        padding: 20px 16px 48px;
+        padding: 12px 14px 36px;
       }
       a { color: var(--accent); }
       h1 {
-        margin: 0 0 8px;
-        font-size: clamp(28px, 4vw, 38px);
+        margin: 0;
+        font-size: clamp(24px, 3vw, 32px);
       }
       h2 {
-        margin: 0 0 10px;
-        font-size: 22px;
+        margin: 0 0 8px;
+        font-size: 20px;
       }
       h3 {
-        margin: 0 0 8px;
-        font-size: 18px;
+        margin: 0 0 6px;
+        font-size: 17px;
       }
       p {
-        margin: 0 0 12px;
+        margin: 0 0 8px;
         color: var(--muted);
       }
       code {
@@ -85,21 +89,36 @@
         border-radius: 14px;
       }
       .hero {
-        padding: 20px;
-        margin-bottom: 16px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 4px 14px;
+        align-items: center;
       }
-      .hero p:last-child { margin-bottom: 0; }
+      .hero .back-link {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-size: 13px;
+      }
+      .hero .lead {
+        margin: 0;
+        font-size: 14px;
+      }
       .section {
-        padding: 18px;
-        margin-bottom: 16px;
+        padding: 14px;
+        margin-bottom: 10px;
+      }
+      .section.simulator-section {
+        padding: 12px;
       }
       .grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 12px;
+        gap: 8px;
       }
       .card {
-        padding: 14px;
+        padding: 10px 12px;
       }
       .mini-title {
         font-size: 13px;
@@ -125,8 +144,8 @@
         background: var(--accent-soft);
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 10px 12px;
-        margin-top: 10px;
+        padding: 7px 10px;
+        margin-top: 6px;
         display: inline-block;
       }
       .example-strip {
@@ -136,10 +155,10 @@
         margin-top: 12px;
       }
       .example-slot {
-        min-height: 72px;
+        min-height: 58px;
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 8px 6px;
+        padding: 6px;
         background: var(--panel-alt);
         display: flex;
         flex-direction: column;
@@ -155,21 +174,26 @@
         font-weight: 500;
         color: var(--muted);
       }
+      .example-slot:not(.active) span {
+        color: var(--empty);
+        font-weight: 400;
+      }
       .example-slot.active {
         background: var(--good-soft);
         border-color: var(--good);
       }
       .demo-layout {
         display: grid;
-        grid-template-columns: minmax(280px, 360px) 1fr;
-        gap: 14px;
+        grid-template-columns: minmax(300px, 340px) 1fr;
+        gap: 10px;
+        align-items: start;
       }
       .panel {
-        padding: 16px;
+        padding: 12px;
       }
       .controls {
         display: grid;
-        gap: 12px;
+        gap: 8px;
       }
       label {
         display: grid;
@@ -184,7 +208,7 @@
       input,
       select {
         width: 100%;
-        padding: 10px 12px;
+        padding: 8px 10px;
         border-radius: 10px;
         border: 1px solid var(--line);
         background: var(--panel);
@@ -192,14 +216,17 @@
       }
       .button-row {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
+      }
+      .button-row.compact {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
       button {
         width: 100%;
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 9px 12px;
+        padding: 7px 10px;
         background: var(--panel);
         color: var(--text);
         cursor: pointer;
@@ -209,8 +236,94 @@
         border-color: var(--accent);
         color: white;
       }
+      button.secondary {
+        background: var(--accent-soft);
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+      }
       button:hover {
         filter: brightness(1.03);
+      }
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 3px solid var(--accent-soft);
+        outline-offset: 2px;
+      }
+      .quick-values {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .quick-values button {
+        width: auto;
+        min-width: 44px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 13px;
+      }
+      .input-hint {
+        min-height: 0;
+        margin-top: -6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .input-hint.error {
+        color: var(--danger);
+        font-weight: 700;
+      }
+      .phase-status {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: var(--panel-alt);
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .phase-status.search {
+        border-color: var(--good);
+        background: var(--good-soft);
+        color: var(--good);
+      }
+      .sample-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: -2px;
+      }
+      .sample-chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: var(--panel-alt);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        position: relative;
+      }
+      .sample-chip.collision {
+        border-color: var(--warn);
+        background: var(--warn-soft);
+        color: var(--text);
+        font-weight: 700;
+      }
+      .sample-chip.current-target {
+        outline: 2px dashed var(--accent);
+        outline-offset: 3px;
+        animation: marchingTarget 0.9s linear infinite;
+      }
+      @keyframes marchingTarget {
+        0% { outline-offset: 2px; }
+        50% { outline-offset: 5px; }
+        100% { outline-offset: 2px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sample-chip.current-target {
+          animation: none;
+        }
       }
       .stats {
         display: grid;
@@ -220,7 +333,7 @@
       .stat {
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 10px 12px;
+        padding: 8px 10px;
       }
       .stat strong {
         display: block;
@@ -228,12 +341,12 @@
         color: var(--muted);
       }
       .stat span {
-        font-size: 20px;
+        font-size: 18px;
         font-weight: 700;
       }
       .stat small {
-        display: block;
-        margin-top: 4px;
+        display: none;
+        margin-top: 0;
         font-size: 12px;
         color: var(--muted);
         line-height: 1.5;
@@ -241,21 +354,21 @@
       .history-panel {
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 12px;
+        padding: 10px;
         background: var(--panel-alt);
       }
       .history-panel strong {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       .history-list {
         display: grid;
-        gap: 8px;
+        gap: 5px;
       }
       .history-item {
         border: 1px solid var(--line);
         border-radius: 10px;
-        padding: 8px 10px;
+        padding: 5px 8px;
         background: var(--panel);
         font-size: 14px;
       }
@@ -269,16 +382,78 @@
       .status {
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 12px;
+        padding: 10px;
         background: var(--panel-alt);
       }
       .status strong {
         display: block;
         margin-bottom: 6px;
       }
+      .summary-panel {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .summary-item {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 9px;
+        background: var(--panel-alt);
+      }
+      .summary-item strong {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .summary-item span {
+        display: block;
+        font-size: 17px;
+        font-weight: 800;
+      }
+      .step-trace {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        font-size: 13px;
+        margin-top: 2px;
+      }
+      .step-explanation {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 6px 10px;
+        background: var(--panel-alt);
+        color: var(--text);
+      }
+      .step-explanation strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+      .step-chip {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 9px;
+        background: var(--panel);
+        font-weight: 700;
+      }
+      .step-chip.collision-step {
+        border-color: var(--warn);
+        background: var(--warn-soft);
+      }
+      .step-chip.success-step {
+        border-color: var(--good);
+        background: var(--good-soft);
+      }
+      .step-arrow {
+        color: var(--muted);
+        font-weight: 900;
+      }
       .table-wrap {
         display: grid;
-        gap: 10px;
+        gap: 6px;
+        align-content: start;
       }
       .table-head {
         display: flex;
@@ -288,7 +463,7 @@
         align-items: center;
       }
       .mode-note {
-        font-size: 14px;
+        font-size: 13px;
         color: var(--muted);
       }
       .mode-note.mode-open {
@@ -302,50 +477,113 @@
       .open-table,
       .chain-table {
         display: grid;
-        gap: 8px;
+        gap: 3px;
       }
-      .open-row,
+      .open-table {
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+      .open-grid {
+        min-width: 720px;
+        display: grid;
+        grid-template-columns: 90px repeat(10, minmax(54px, 1fr));
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--line);
+        gap: 1px;
+      }
       .chain-row {
         display: grid;
-        gap: 8px;
+        gap: 0;
         align-items: center;
+        grid-template-columns: 46px 1fr;
+        min-height: 38px;
       }
-      .open-row {
-        grid-template-columns: 72px 1fr;
+      .table-cell {
+        min-height: 42px;
+        padding: 7px 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--panel-alt);
+        text-align: center;
       }
-      .chain-row {
-        grid-template-columns: 72px 1fr;
+      .table-cell.index-cell {
+        min-height: 34px;
+        font-weight: 800;
+        background: var(--panel);
+      }
+      .table-cell.row-label {
+        justify-content: flex-start;
+        padding-left: 10px;
+        background: var(--panel);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+      .table-cell.value-cell {
+        font-size: 18px;
+        font-weight: 800;
       }
       .index-badge {
         border: 1px solid var(--line);
         border-radius: 999px;
         text-align: center;
-        padding: 6px 10px;
+        padding: 4px 8px;
         font-weight: 700;
         background: var(--panel-alt);
       }
+      .chain-row .index-badge {
+        min-height: 36px;
+        border-radius: 0;
+        border-color: #1f2f4d;
+        background: #1f2f4d;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 15px;
+      }
       .slot,
       .bucket {
-        min-height: 56px;
+        min-height: 46px;
         border: 1px solid var(--line);
         border-radius: 12px;
-        padding: 8px 12px;
+        padding: 6px 10px;
         display: flex;
         align-items: center;
         gap: 10px;
         background: var(--panel-alt);
       }
+      .chain-row .bucket {
+        min-height: 36px;
+        border: 0;
+        border-radius: 0;
+        padding: 2px 6px;
+        background: transparent;
+      }
+      .chain-row .bucket.visited,
+      .chain-row .bucket.found {
+        background: transparent;
+      }
       .slot.empty,
+      .table-cell.empty,
       .node.empty {
-        color: var(--muted);
+        color: var(--empty);
+        font-weight: 500;
       }
       .slot.visited,
+      .table-cell.visited,
       .bucket.visited,
       .node.visited {
         border-color: var(--warn);
         background: var(--warn-soft);
       }
       .slot.found,
+      .table-cell.found,
       .bucket.found,
       .node.found {
         border-color: var(--good);
@@ -354,34 +592,146 @@
       .chain-nodes {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 6px;
         align-items: center;
+        min-height: 36px;
+      }
+      .chain-nodes::before {
+        content: "→";
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        min-height: 36px;
+        margin-left: -6px;
+        margin-right: 2px;
+        background: #dbeafe;
+        color: #2563eb;
+        font-size: 22px;
+        font-weight: 900;
       }
       .node {
         border: 1px solid var(--line);
-        border-radius: 999px;
-        padding: 6px 12px;
-        min-width: 54px;
+        border-radius: 6px;
+        padding: 5px 12px;
+        min-width: 58px;
         text-align: center;
+        background: var(--panel);
+        color: var(--text);
+        font-weight: 900;
+        line-height: 1.2;
+      }
+      .node.empty {
+        border-color: var(--line);
+        background: var(--panel-alt);
+        color: var(--empty);
+        font-weight: 500;
+      }
+      .node.visited {
+        border-color: var(--warn);
+        background: var(--warn-soft);
+        color: var(--text);
+      }
+      .node.found {
+        border-color: var(--good);
+        background: var(--good-soft);
+        color: var(--good);
       }
       .arrow {
         color: var(--muted);
         font-weight: 700;
+        font-size: 18px;
       }
       .log-list {
         margin: 0;
         padding-left: 20px;
+        line-height: 1.45;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        font-size: 13px;
+        color: var(--muted);
+        align-items: center;
+      }
+      .legend-title {
+        font-weight: 800;
+        color: var(--text);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 8px;
+        background: var(--panel);
+      }
+      .legend span::before {
+        content: "";
+        width: 12px;
+        height: 12px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--panel-alt);
+      }
+      .legend .visited-swatch::before {
+        border-color: var(--warn);
+        background: var(--warn-soft);
+      }
+      .legend .found-swatch::before {
+        border-color: var(--good);
+        background: var(--good-soft);
       }
       .note {
         font-size: 13px;
+        margin: 0;
         color: var(--muted);
+      }
+      .compact-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(220px, .9fr);
+        gap: 10px;
+        align-items: start;
+      }
+      .compact-intro p:last-child,
+      .card p:last-child {
+        margin-bottom: 0;
+      }
+      .compact-list {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+      }
+      .compact-list li {
+        margin: 2px 0;
       }
       @media (max-width: 840px) {
         .demo-layout {
           grid-template-columns: 1fr;
         }
+        .hero,
+        .compact-intro {
+          grid-template-columns: 1fr;
+        }
         .example-strip {
           grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+        .open-table,
+        .summary-panel {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 520px) {
+        .button-row,
+        .button-row.compact,
+        .stats,
+        .summary-panel {
+          grid-template-columns: 1fr;
+        }
+        .open-table {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
       }
     </style>
@@ -389,38 +739,140 @@
   <body>
     <main>
       <section class="hero">
-        <p><a href="../index.html">← デモ一覧へ戻る</a></p>
+        <p class="back-link"><a href="../index.html">← デモ一覧へ戻る</a></p>
         <h1>ハッシュ法探索</h1>
-        <p>
-          ハッシュ法は、ハッシュ関数で求めた番地を使ってデータの位置を直接見つける探索法です。
-        </p>
+        <p class="lead">ハッシュ関数で格納位置を求め、探索時も同じ計算で確認位置を絞ります。</p>
+      </section>
+
+      <section class="section simulator-section">
+        <h2>ハッシュ法シミュレータ</h2>
+        <div class="demo-layout">
+          <aside class="panel controls">
+            <label>
+              衝突処理
+              <select id="collisionMode">
+                <option value="open">オープンアドレス法（線形探索）</option>
+                <option value="chain">チェイン法</option>
+              </select>
+            </label>
+
+            <label>
+              サンプル配列
+              <select id="samplePattern">
+                <option value="basic">衝突なし: [12, 23, 34, 45, 56]</option>
+                <option value="collision">基本衝突: [12, 22, 32, 45, 15]</option>
+                <option value="cluster">連続衝突: [10, 20, 30, 11, 21, 31]</option>
+              </select>
+            </label>
+            <div id="samplePreview" class="sample-preview" aria-label="選択中のサンプル配列"></div>
+
+            <label>
+              操作する値
+              <input id="keyInput" type="number" min="0" max="999" step="1" value="12" />
+            </label>
+            <div id="inputHint" class="input-hint"></div>
+
+            <div class="formula" id="formulaPreview">h(12) = 12 mod 10 = 2</div>
+
+            <div class="quick-values" aria-label="入力候補">
+              <button type="button" data-key="12">12</button>
+              <button type="button" data-key="22">22</button>
+              <button type="button" data-key="32">32</button>
+              <button type="button" data-key="45">45</button>
+              <button type="button" data-key="15">15</button>
+            </div>
+            <div id="phaseStatus" class="phase-status">挿入フェーズ: サンプルを順に入れます</div>
+
+            <div class="button-row">
+              <button id="insertButton" class="primary">挿入</button>
+              <button id="searchButton">探索</button>
+            </div>
+            <div class="button-row compact">
+              <button id="loadSampleButton" class="secondary">配列読込</button>
+              <button id="randomButton">ランダム</button>
+              <button id="resetButton">リセット</button>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <strong>データ数</strong>
+                <span id="usedCount">0 / 10</span>
+                <small>現在格納されている値の数です。</small>
+              </div>
+              <div class="stat">
+                <strong>負荷率</strong>
+                <span id="loadFactor">0.00</span>
+                <small>データ数 ÷ 表の大きさです。</small>
+              </div>
+            </div>
+
+            <div class="history-panel">
+              <strong>入力履歴</strong>
+              <div id="inputHistoryList" class="history-list"></div>
+            </div>
+
+            <div class="status">
+              <strong>操作ログ</strong>
+              <ol id="logList" class="log-list"></ol>
+            </div>
+          </aside>
+
+          <div class="panel table-wrap">
+            <div class="table-head">
+              <h3>ハッシュテーブル</h3>
+              <div class="mode-note" id="modeNote"></div>
+            </div>
+            <div class="summary-panel" aria-label="現在の操作状態">
+              <div class="summary-item">
+                <strong>現在の値</strong>
+                <span id="currentKey">12</span>
+              </div>
+              <div class="summary-item">
+                <strong>ハッシュ値</strong>
+                <span id="currentHash">2</span>
+              </div>
+              <div class="summary-item">
+                <strong>合計確認回数</strong>
+                <span id="probeCount">0</span>
+              </div>
+            </div>
+            <div class="legend" aria-label="色の意味">
+              <strong class="legend-title">色の意味</strong>
+              <span>白: 未確認/空き</span>
+              <span id="visitedLegend" class="visited-swatch">黄: 衝突した位置</span>
+              <span id="foundLegend" class="found-swatch">緑: 格納した位置</span>
+            </div>
+            <div id="tableView"></div>
+            <div class="step-explanation">
+              <strong>処理の説明</strong>
+              <div id="stepTrace" class="step-trace" aria-label="現在の処理ステップ"></div>
+              <p id="stepText" class="note"></p>
+            </div>
+            <p class="note">
+              <code>-1</code> は空の場所です。
+            </p>
+          </div>
+        </div>
       </section>
 
       <section class="section">
         <h2>ハッシュ法</h2>
-        <p>
-          配列やリストの中から目的のデータを探す方法の1つがハッシュ法です。格納時と探索時に同じハッシュ関数を使うことで、
-          目的のデータがありそうな位置をすばやく絞り込めます。
-        </p>
-        <div class="grid">
-          <article class="card">
-            <div class="mini-title">考え方</div>
-            <p>データそのものから格納位置を計算し、その番地を直接参照します。</p>
-          </article>
-          <article class="card">
-            <div class="mini-title">このページの例</div>
-            <p>ハッシュ関数として <code>key mod 10</code> を使い、0〜9 の10個の番地に格納します。</p>
-          </article>
+        <div class="compact-intro">
+          <p>
+            ハッシュ法では、データから番地を計算して直接参照します。このページでは
+            <code>key mod 10</code> で 0〜9 の位置に格納します。
+          </p>
+          <ul class="compact-list">
+            <li>格納時と探索時で同じハッシュ関数を使う</li>
+            <li><code>-1</code> は空の場所を表す</li>
+            <li>衝突時は下の2方式を比較する</li>
+          </ul>
         </div>
       </section>
 
       <section class="section">
         <h2>ハッシュ法の探索例</h2>
-        <p>
-          たとえばデータ <code>12</code> を格納するとき、<code>12 mod 10 = 2</code> なので、配列の位置 <code>2</code> に置きます。
-          探索するときも同じ計算を行えば、最初に確認すべき位置をすぐに求められます。
-        </p>
-        <p><code>-1</code> は、まだ何も格納されていない空の場所を表す初期値です。</p>
+        <p><code>12 mod 10 = 2</code> なので、<code>12</code> は位置 <code>2</code> に置きます。探索時もまず位置 <code>2</code> を確認します。</p>
         <div class="formula">h(12) = 12 mod 10 = 2</div>
         <div class="example-strip" aria-label="12 を位置 2 に格納する例">
           <div class="example-slot"><strong>0</strong><span>-1</span></div>
@@ -438,10 +890,7 @@
 
       <section class="section">
         <h2>ハッシュ法の衝突</h2>
-        <p>
-          異なるデータから同じハッシュ値が出ると衝突（コリジョン）が起きます。たとえば <code>22</code> も <code>22 mod 10 = 2</code> となり、
-          <code>12</code> と同じ位置にぶつかります。
-        </p>
+        <p><code>22 mod 10 = 2</code> のように、異なるデータが同じ番地になると衝突（コリジョン）が起きます。</p>
         <div class="grid">
           <article class="card">
             <div class="mini-title">オープンアドレス法</div>
@@ -455,74 +904,7 @@
       </section>
 
       <section class="section">
-        <h2>ハッシュ法シミュレータ</h2>
-        <div class="demo-layout">
-          <aside class="panel controls">
-            <label>
-              衝突処理
-              <select id="collisionMode">
-                <option value="open">オープンアドレス法（線形探索）</option>
-                <option value="chain">チェイン法</option>
-              </select>
-            </label>
-
-            <label>
-              操作する値
-              <input id="keyInput" type="number" min="0" max="999" step="1" value="12" />
-            </label>
-
-            <div class="formula" id="formulaPreview">h(12) = 12 mod 10 = 2</div>
-
-            <div class="button-row">
-              <button id="insertButton" class="primary">挿入</button>
-              <button id="searchButton">探索</button>
-              <button id="resetButton">リセット</button>
-            </div>
-
-            <div class="stats">
-              <div class="stat">
-                <strong>使用中スロット</strong>
-                <span id="usedCount">0 / 10</span>
-                <small>現在データが入っている場所の数です。</small>
-              </div>
-              <div class="stat">
-                <strong>負荷率（埋まり具合）</strong>
-                <span id="loadFactor">0.00</span>
-              </div>
-            </div>
-
-            <div class="history-panel">
-              <strong>入力履歴</strong>
-              <div id="inputHistoryList" class="history-list"></div>
-            </div>
-
-            <div class="status">
-              <strong>操作ログ</strong>
-              <ol id="logList" class="log-list"></ol>
-            </div>
-
-            <p class="note">
-              すべての計算は <code>key mod 10</code> です。入力は 0 以上 999 以下の整数に制限しています。表示中の
-              <code>-1</code> は、まだ何も格納されていない空の場所を表します。
-            </p>
-          </aside>
-
-          <div class="panel table-wrap">
-            <div class="table-head">
-              <h3>ハッシュテーブル</h3>
-              <div class="mode-note" id="modeNote"></div>
-            </div>
-            <div id="tableView"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
         <h2>探索計算量</h2>
-        <p>
-          ハッシュ法の探索計算量は、オープンアドレス法でもチェイン法でも、<strong>平均は O(1)、最悪は O(N)</strong>
-          です。
-        </p>
         <div class="grid">
           <article class="card">
             <div class="mini-title">オープンアドレス法</div>
@@ -533,11 +915,7 @@
             <p>平均: <code>O(1)</code> / 最悪: <code>O(N)</code></p>
           </article>
         </div>
-        <p>
-          ハッシュ値がうまく分散していれば、調べる場所は少なくて済むため平均は <code>O(1)</code> です。
-          ただし衝突が多いと、オープンアドレス法では配列を長くたどり、チェイン法では1つのバケットのリストが長くなるため、
-          最悪は <code>O(N)</code> になります。
-        </p>
+        <p>よく分散していれば平均 <code>O(1)</code>、衝突が集中すると順にたどるため最悪 <code>O(N)</code> です。</p>
       </section>
     </main>
 
@@ -552,11 +930,36 @@
         visitedBucket: null,
         visitedNodes: [],
         foundSlot: null,
-        foundNode: null
+        foundNode: null,
+        totalProbeCount: 0,
+        tableFixed: false
+      };
+      const samplePatterns = {
+        basic: {
+          label: '衝突なし',
+          keys: [12, 23, 34, 45, 56],
+          focusKey: 12,
+          note: '各値のハッシュ値が分かれるため、衝突せずに格納できます。'
+        },
+        collision: {
+          label: '基本衝突',
+          keys: [12, 22, 32, 45, 15],
+          focusKey: 22,
+          note: '2 番地に 12, 22, 32 が集まります。'
+        },
+        cluster: {
+          label: '連続衝突',
+          keys: [10, 20, 30, 11, 21, 31],
+          focusKey: 31,
+          note: '0 番地と 1 番地に集中し、線形探索では連続して埋まります。'
+        }
       };
 
       const collisionModeSelect = document.getElementById('collisionMode');
       const keyInput = document.getElementById('keyInput');
+      const inputHint = document.getElementById('inputHint');
+      const samplePatternSelect = document.getElementById('samplePattern');
+      const samplePreview = document.getElementById('samplePreview');
       const formulaPreview = document.getElementById('formulaPreview');
       const usedCount = document.getElementById('usedCount');
       const loadFactor = document.getElementById('loadFactor');
@@ -564,6 +967,15 @@
       const modeNote = document.getElementById('modeNote');
       const tableView = document.getElementById('tableView');
       const logList = document.getElementById('logList');
+      const currentKey = document.getElementById('currentKey');
+      const currentHash = document.getElementById('currentHash');
+      const probeCount = document.getElementById('probeCount');
+      const stepTrace = document.getElementById('stepTrace');
+      const stepText = document.getElementById('stepText');
+      const insertButton = document.getElementById('insertButton');
+      const phaseStatus = document.getElementById('phaseStatus');
+      const visitedLegend = document.getElementById('visitedLegend');
+      const foundLegend = document.getElementById('foundLegend');
 
       function createChainTable() {
         return Array.from({ length: tableSize }, () => []);
@@ -598,6 +1010,24 @@
         });
       }
 
+      function setStepTrace(steps, description = '') {
+        stepTrace.textContent = '';
+        stepText.textContent = description;
+        steps.forEach((step, index) => {
+          if (index > 0) {
+            const arrow = document.createElement('span');
+            arrow.className = 'step-arrow';
+            arrow.textContent = '→';
+            stepTrace.appendChild(arrow);
+          }
+
+          const chip = document.createElement('span');
+          chip.className = `step-chip ${step.type || ''}`.trim();
+          chip.textContent = step.label;
+          stepTrace.appendChild(chip);
+        });
+      }
+
       function countItems() {
         if (state.collisionMode === 'open') {
           return state.openTable.filter((value) => value !== null).length;
@@ -609,15 +1039,37 @@
         const key = getInputValue();
         if (key === null) {
           formulaPreview.textContent = 'h(x) = x mod 10';
+          currentKey.textContent = '-';
+          currentHash.textContent = '-';
+          inputHint.textContent = '0 以上 999 以下の整数を入力してください。';
+          inputHint.classList.add('error');
+          updateSampleTargetHighlight(null);
           return;
         }
         formulaPreview.textContent = `h(${key}) = ${key} mod 10 = ${hashKey(key)}`;
+        currentKey.textContent = key;
+        currentHash.textContent = hashKey(key);
+        inputHint.textContent = '';
+        inputHint.classList.remove('error');
+        updateSampleTargetHighlight(key);
       }
 
       function updateStats() {
         const itemCount = countItems();
         usedCount.textContent = `${itemCount} / ${tableSize}`;
         loadFactor.textContent = (itemCount / tableSize).toFixed(2);
+        probeCount.textContent = state.totalProbeCount;
+        updatePhaseUi();
+      }
+
+      function updatePhaseUi() {
+        insertButton.disabled = state.tableFixed;
+        phaseStatus.classList.toggle('search', state.tableFixed);
+        phaseStatus.textContent = state.tableFixed
+          ? '探索フェーズ'
+          : '挿入フェーズ: サンプルを順に入れます';
+        visitedLegend.textContent = state.tableFixed ? '黄: 確認したが不一致' : '黄: 衝突した位置';
+        foundLegend.textContent = state.tableFixed ? '緑: 発見した値' : '緑: 格納した位置';
       }
 
       function addInputHistory(action, key) {
@@ -641,9 +1093,32 @@
         state.inputHistory.forEach((entry) => {
           const item = document.createElement('div');
           item.className = 'history-item';
-          item.innerHTML = `${entry.action}<code>${entry.key}</code>`;
+          const action = document.createElement('span');
+          action.textContent = entry.action;
+          const key = document.createElement('code');
+          key.textContent = entry.key;
+          item.appendChild(action);
+          item.appendChild(key);
           inputHistoryList.appendChild(item);
         });
+      }
+
+      function getProbeCount() {
+        if (state.collisionMode === 'open') {
+          return state.visitedSlots.length;
+        }
+        if (state.visitedNodes.length > 0) {
+          return state.visitedNodes.length;
+        }
+        return state.visitedBucket === null ? 0 : 1;
+      }
+
+      function addProbeCount() {
+        state.totalProbeCount += getProbeCount();
+      }
+
+      function withProbeSummary(description) {
+        return `${description}（この操作の確認回数: ${getProbeCount()} 回）`;
       }
 
       function getModeNote() {
@@ -657,16 +1132,29 @@
         const container = document.createElement('div');
         container.className = 'open-table';
 
+        const grid = document.createElement('div');
+        grid.className = 'open-grid';
+
+        const indexLabel = document.createElement('div');
+        indexLabel.className = 'table-cell row-label';
+        indexLabel.textContent = 'インデックス';
+        grid.appendChild(indexLabel);
+
         state.openTable.forEach((value, index) => {
-          const row = document.createElement('div');
-          row.className = 'open-row';
+          const indexCell = document.createElement('div');
+          indexCell.className = 'table-cell index-cell';
+          indexCell.textContent = index;
+          grid.appendChild(indexCell);
+        });
 
-          const badge = document.createElement('div');
-          badge.className = 'index-badge';
-          badge.textContent = index;
+        const valueLabel = document.createElement('div');
+        valueLabel.className = 'table-cell row-label';
+        valueLabel.textContent = 'データ';
+        grid.appendChild(valueLabel);
 
+        state.openTable.forEach((value, index) => {
           const slot = document.createElement('div');
-          slot.className = 'slot';
+          slot.className = 'table-cell value-cell';
           if (value === null) {
             slot.classList.add('empty');
             slot.textContent = '-1';
@@ -681,11 +1169,10 @@
             slot.classList.add('found');
           }
 
-          row.appendChild(badge);
-          row.appendChild(slot);
-          container.appendChild(row);
+          grid.appendChild(slot);
         });
 
+        container.appendChild(grid);
         return container;
       }
 
@@ -773,19 +1260,210 @@
       }
 
       function resetTable(keepLogs = false) {
+        if (state.collisionMode === 'open') {
+          state.openTable = Array(tableSize).fill(null);
+        } else {
+          state.chainTable = createChainTable();
+        }
+        state.inputHistory = [];
+        state.totalProbeCount = 0;
+        state.tableFixed = false;
+        clearHighlights();
+        if (!keepLogs) {
+          setLogs(['表示中のハッシュテーブルを初期値 -1 に戻しました。']);
+          setStepTrace([]);
+        }
+        renderTable();
+      }
+
+      function resetToInitialState() {
+        state.collisionMode = 'open';
         state.openTable = Array(tableSize).fill(null);
         state.chainTable = createChainTable();
         state.inputHistory = [];
+        state.totalProbeCount = 0;
+        state.tableFixed = false;
         clearHighlights();
-        if (!keepLogs) {
-          setLogs(['ハッシュテーブルを初期値 -1 に戻しました。']);
-        }
+
+        collisionModeSelect.value = state.collisionMode;
+        samplePatternSelect.value = 'basic';
+        renderSamplePreview();
+        keyInput.value = getSelectedSample().keys[0];
+        updateFormulaPreview();
+        setLogs([
+          '準備完了です。',
+          '値を入力して「挿入」または「探索」を押してください。'
+        ]);
+        setStepTrace([]);
         renderTable();
+      }
+
+      function setKeyInput(key) {
+        keyInput.value = key;
+        updateFormulaPreview();
+        keyInput.focus();
+      }
+
+      function getSelectedSample() {
+        return samplePatterns[samplePatternSelect.value];
+      }
+
+      function tableContainsKey(key) {
+        if (state.collisionMode === 'open') {
+          return state.openTable.includes(key);
+        }
+        return state.chainTable.some((bucket) => bucket.includes(key));
+      }
+
+      function isSelectedSampleInserted() {
+        return getSelectedSample().keys.every((key) => tableContainsKey(key));
+      }
+
+      function enterSearchPhase(message = '') {
+        const sample = getSelectedSample();
+        state.tableFixed = true;
+        clearHighlights();
+        setKeyInput(sample.focusKey);
+        inputHint.textContent = '挿入完了。テーブルを固定し、探索フェーズに移りました。';
+        inputHint.classList.remove('error');
+        if (message) {
+          setLogs([message, `${sample.focusKey} を探索して、確認回数や衝突の影響を見てください。`]);
+        }
+        updatePhaseUi();
+        renderTable();
+      }
+
+      function findNextSampleKey(currentKey) {
+        const sampleKeys = getSelectedSample().keys;
+        const currentIndex = sampleKeys.indexOf(currentKey);
+        if (currentIndex === -1) {
+          return sampleKeys.find((key) => !tableContainsKey(key)) ?? null;
+        }
+
+        for (let offset = 1; offset <= sampleKeys.length; offset += 1) {
+          const nextKey = sampleKeys[(currentIndex + offset) % sampleKeys.length];
+          if (!tableContainsKey(nextKey)) {
+            return nextKey;
+          }
+        }
+        return null;
+      }
+
+      function advanceSampleInput(currentKey) {
+        if (isSelectedSampleInserted()) {
+          enterSearchPhase();
+          return;
+        }
+
+        const nextKey = findNextSampleKey(currentKey);
+        if (nextKey === null) {
+          enterSearchPhase();
+          return;
+        }
+        setKeyInput(nextKey);
+      }
+
+      function updateSampleTargetHighlight(targetKey) {
+        samplePreview.querySelectorAll('.sample-chip').forEach((chip) => {
+          chip.classList.toggle('current-target', !state.tableFixed && Number(chip.dataset.key) === targetKey);
+        });
+      }
+
+      function renderSamplePreview() {
+        const sample = getSelectedSample();
+        const hashCounts = sample.keys.reduce((counts, key) => {
+          const hash = hashKey(key);
+          counts[hash] = (counts[hash] || 0) + 1;
+          return counts;
+        }, {});
+
+        samplePreview.textContent = '';
+        sample.keys.forEach((key) => {
+          const chip = document.createElement('span');
+          chip.className = hashCounts[hashKey(key)] > 1 ? 'sample-chip collision' : 'sample-chip';
+          chip.dataset.key = key;
+          chip.textContent = key;
+          chip.title = `h(${key}) = ${hashKey(key)}`;
+          samplePreview.appendChild(chip);
+        });
+        updateSampleTargetHighlight(getInputValue());
+      }
+
+      function insertOpenAddressSilently(key) {
+        const startIndex = hashKey(key);
+        for (let offset = 0; offset < tableSize; offset += 1) {
+          const slotIndex = (startIndex + offset) % tableSize;
+          if (state.openTable[slotIndex] === key) {
+            state.foundSlot = slotIndex;
+            return slotIndex;
+          }
+          if (state.openTable[slotIndex] === null) {
+            state.openTable[slotIndex] = key;
+            state.foundSlot = slotIndex;
+            return slotIndex;
+          }
+        }
+        return null;
+      }
+
+      function insertChainSilently(key) {
+        const bucketIndex = hashKey(key);
+        const bucket = state.chainTable[bucketIndex];
+        const duplicateIndex = bucket.findIndex((value) => value === key);
+        if (duplicateIndex !== -1) {
+          state.foundNode = { bucketIndex, nodeIndex: duplicateIndex };
+          return duplicateIndex;
+        }
+        bucket.push(key);
+        state.foundNode = { bucketIndex, nodeIndex: bucket.length - 1 };
+        return bucket.length - 1;
+      }
+
+      function loadSamplePattern() {
+        const sample = getSelectedSample();
+        state.tableFixed = false;
+        state.totalProbeCount = 0;
+        if (state.collisionMode === 'open') {
+          state.openTable = Array(tableSize).fill(null);
+        } else {
+          state.chainTable = createChainTable();
+        }
+        state.inputHistory = [];
+        clearHighlights();
+
+        sample.keys.forEach((key) => {
+          if (state.collisionMode === 'open') {
+            insertOpenAddressSilently(key);
+          } else {
+            insertChainSilently(key);
+          }
+          addInputHistory('例', key);
+        });
+
+        setKeyInput(sample.focusKey);
+        setLogs([
+          `${sample.label}として [${sample.keys.join(', ')}] を読み込みました。`,
+          sample.note,
+          `${sample.focusKey} を探索すると、衝突後のたどり方を確認できます。`
+        ]);
+        setStepTrace([
+          { label: `配列 [${sample.keys.join(', ')}]` },
+          { label: '読込完了', type: 'success-step' }
+        ], `${sample.label}のサンプル配列をテーブルに読み込みました。`);
+        enterSearchPhase(`${sample.label}のサンプル配列をすべて読み込み、テーブルを固定しました。`);
+      }
+
+      function setRandomKey() {
+        const key = Math.floor(Math.random() * 100);
+        setKeyInput(key);
+        setLogs([`${key} を入力しました。挿入または探索を選んでください。`]);
+        setStepTrace([]);
       }
 
       function insertOpenAddress(key) {
         const startIndex = hashKey(key);
         const logs = [`${key} の挿入を開始`, `h(${key}) = ${startIndex}`];
+        const steps = [{ label: `h(${key}) = ${startIndex}` }];
         clearHighlights();
 
         for (let offset = 0; offset < tableSize; offset += 1) {
@@ -795,9 +1473,12 @@
           if (state.openTable[slotIndex] === key) {
             state.foundSlot = slotIndex;
             logs.push(`位置 ${slotIndex} に同じ値があるため、重複挿入しません。`);
+            steps.push({ label: `位置${slotIndex}: 重複`, type: 'collision-step' });
             setLogs(logs);
+            setStepTrace(steps, withProbeSummary(`${key} は位置 ${slotIndex} にすでにあるため、同じ値は追加しませんでした。`));
+            addProbeCount();
             renderTable();
-            return;
+            return 'duplicate';
           }
 
           if (state.openTable[slotIndex] === null) {
@@ -805,20 +1486,34 @@
             state.foundSlot = slotIndex;
             if (slotIndex === startIndex) {
               logs.push(`位置 ${slotIndex} は -1 で未使用なので、そのまま格納しました。`);
+              steps.push({ label: `位置${slotIndex}: 空き`, type: 'success-step' });
+              setStepTrace(steps, withProbeSummary(`h(${key}) = ${startIndex} で求めた位置 ${slotIndex} が空きなので、${key} をそのまま格納しました。`));
             } else {
               logs.push(`衝突したため順に調べ、位置 ${slotIndex} に格納しました。`);
+              steps.push({ label: `位置${slotIndex}: 空きに格納`, type: 'success-step' });
+              const collidedSlots = state.visitedSlots
+                .filter((visitedIndex) => visitedIndex !== slotIndex)
+                .map((visitedIndex) => `位置 ${visitedIndex} の ${state.openTable[visitedIndex]}`)
+                .join('、');
+              setStepTrace(steps, withProbeSummary(`h(${key}) = ${startIndex} なので位置 ${startIndex} を確認しました。${collidedSlots} と衝突したため、+1 して位置 ${slotIndex} へ進み、空きなので ${key} を格納しました。`));
             }
             setLogs(logs);
+            addProbeCount();
             renderTable();
-            return;
+            return 'inserted';
           }
 
           logs.push(`位置 ${slotIndex} は ${state.openTable[slotIndex]} が使用中です。`);
+          steps.push({ label: `位置${slotIndex}: ${state.openTable[slotIndex]} と衝突`, type: 'collision-step' });
         }
 
         logs.push('空きが見つからないため、挿入できませんでした。');
         setLogs(logs);
+        steps.push({ label: '空きなし', type: 'collision-step' });
+        setStepTrace(steps, withProbeSummary(`${key} を入れる空き位置が見つかりませんでした。`));
+        addProbeCount();
         renderTable();
+        return 'full';
       }
 
       function insertChain(key) {
@@ -828,44 +1523,69 @@
         state.visitedBucket = bucketIndex;
 
         const logs = [`${key} の挿入を開始`, `h(${key}) = ${bucketIndex}`];
+        const steps = [{ label: `h(${key}) = ${bucketIndex}` }];
         const duplicateIndex = bucket.findIndex((value) => value === key);
         if (duplicateIndex !== -1) {
+          state.visitedNodes = bucket.slice(0, duplicateIndex + 1).map((_, nodeIndex) => {
+            return { bucketIndex, nodeIndex };
+          });
           state.foundNode = { bucketIndex, nodeIndex: duplicateIndex };
           logs.push(`バケット ${bucketIndex} に同じ値があるため、重複挿入しません。`);
+          steps.push({ label: `バケット${bucketIndex}: 重複`, type: 'collision-step' });
           setLogs(logs);
+          setStepTrace(steps, withProbeSummary(`${key} はバケット ${bucketIndex} にすでにあるため、同じ値は追加しませんでした。`));
+          addProbeCount();
           renderTable();
-          return;
+          return 'duplicate';
         }
 
         bucket.push(key);
         state.foundNode = { bucketIndex, nodeIndex: bucket.length - 1 };
+        state.visitedNodes = bucket.map((_, nodeIndex) => ({ bucketIndex, nodeIndex }));
         if (bucket.length === 1) {
           logs.push(`バケット ${bucketIndex} は -1 で未使用なので、そのまま格納しました。`);
+          steps.push({ label: `バケット${bucketIndex}: 先頭に格納`, type: 'success-step' });
+          setStepTrace(steps, withProbeSummary(`h(${key}) = ${bucketIndex} のバケットが空なので、${key} を先頭ノードとして格納しました。`));
         } else {
           logs.push(`衝突したため、バケット ${bucketIndex} の末尾へ連結しました。`);
+          steps.push({ label: `バケット${bucketIndex}: 末尾へ連結`, type: 'success-step' });
+          setStepTrace(steps, withProbeSummary(`h(${key}) = ${bucketIndex} のバケットには既に値があるため、${key} をリストの末尾へ連結しました。`));
         }
         setLogs(logs);
+        addProbeCount();
         renderTable();
+        return 'inserted';
       }
 
       function insertKey() {
+        if (state.tableFixed) {
+          setLogs(['探索フェーズです。テーブルは固定中なので、値を入れて「探索」を押してください。']);
+          return;
+        }
+
         const key = getInputValue();
         if (key === null) {
           setLogs(['0 以上 999 以下の整数を入力してください。']);
           return;
         }
-        addInputHistory('挿入', key);
-
+        let result;
         if (state.collisionMode === 'open') {
-          insertOpenAddress(key);
+          result = insertOpenAddress(key);
         } else {
-          insertChain(key);
+          result = insertChain(key);
+        }
+
+        addInputHistory(result === 'duplicate' ? '重複' : '挿入', key);
+        renderInputHistory();
+        if (result === 'inserted' || result === 'duplicate') {
+          advanceSampleInput(key);
         }
       }
 
       function searchOpenAddress(key) {
         const startIndex = hashKey(key);
         const logs = [`${key} の探索を開始`, `h(${key}) = ${startIndex}`];
+        const steps = [{ label: `h(${key}) = ${startIndex}` }];
         clearHighlights();
 
         for (let offset = 0; offset < tableSize; offset += 1) {
@@ -875,7 +1595,10 @@
 
           if (slotValue === null) {
             logs.push(`位置 ${slotIndex} は -1 で未使用なので、${key} は見つかりません。`);
+            steps.push({ label: `位置${slotIndex}: 空き`, type: 'collision-step' });
             setLogs(logs);
+            setStepTrace(steps, withProbeSummary(`位置 ${slotIndex} が空きなので、ここで探索を終了しました。格納時も同じ経路をたどるため、途中に空きがあれば ${key} はこの表に入っていません。`));
+            addProbeCount();
             renderTable();
             return;
           }
@@ -883,16 +1606,23 @@
           if (slotValue === key) {
             state.foundSlot = slotIndex;
             logs.push(`位置 ${slotIndex} で ${key} を見つけました。`);
+            steps.push({ label: `位置${slotIndex}: 発見`, type: 'success-step' });
             setLogs(logs);
+            setStepTrace(steps, withProbeSummary(`位置 ${slotIndex} の値が ${key} と一致したため、探索成功です。`));
+            addProbeCount();
             renderTable();
             return;
           }
 
           logs.push(`位置 ${slotIndex} には ${slotValue} があるため次を調べます。`);
+          steps.push({ label: `位置${slotIndex}: ${slotValue} は不一致`, type: 'collision-step' });
         }
 
         logs.push(`${key} は見つかりませんでした。`);
         setLogs(logs);
+        steps.push({ label: '未発見', type: 'collision-step' });
+        setStepTrace(steps, withProbeSummary(`${key} と一致する値は見つかりませんでした。`));
+        addProbeCount();
         renderTable();
       }
 
@@ -900,12 +1630,16 @@
         const bucketIndex = hashKey(key);
         const bucket = state.chainTable[bucketIndex];
         const logs = [`${key} の探索を開始`, `h(${key}) = ${bucketIndex}`];
+        const steps = [{ label: `h(${key}) = ${bucketIndex}` }];
         clearHighlights();
         state.visitedBucket = bucketIndex;
 
         if (bucket.length === 0) {
           logs.push(`バケット ${bucketIndex} は -1 で未使用なので、${key} は見つかりません。`);
+          steps.push({ label: `バケット${bucketIndex}: 空`, type: 'collision-step' });
           setLogs(logs);
+          setStepTrace(steps, withProbeSummary(`バケット ${bucketIndex} が空なので、${key} は見つかりませんでした。`));
+          addProbeCount();
           renderTable();
           return;
         }
@@ -916,15 +1650,22 @@
           if (nodeValue === key) {
             state.foundNode = { bucketIndex, nodeIndex };
             logs.push(`バケット ${bucketIndex} の ${nodeIndex + 1} 個目で ${key} を見つけました。`);
+            steps.push({ label: `${nodeValue}: 発見`, type: 'success-step' });
             setLogs(logs);
+            setStepTrace(steps, withProbeSummary(`バケット ${bucketIndex} のリストを順に確認し、${nodeIndex + 1} 個目で ${key} を見つけました。`));
+            addProbeCount();
             renderTable();
             return;
           }
           logs.push(`${nodeValue} を確認しましたが一致しません。`);
+          steps.push({ label: `${nodeValue}: 不一致`, type: 'collision-step' });
         }
 
         logs.push(`バケット ${bucketIndex} を最後まで確認しましたが、${key} は見つかりません。`);
         setLogs(logs);
+        steps.push({ label: '未発見', type: 'collision-step' });
+        setStepTrace(steps, withProbeSummary(`バケット ${bucketIndex} のリストを最後まで確認しましたが、${key} は見つかりませんでした。`));
+        addProbeCount();
         renderTable();
       }
 
@@ -945,26 +1686,49 @@
 
       collisionModeSelect.addEventListener('change', () => {
         state.collisionMode = collisionModeSelect.value;
-        resetTable(true);
+        state.tableFixed = false;
+        clearHighlights();
         setLogs([
           state.collisionMode === 'open'
             ? 'オープンアドレス法に切り替えました。'
             : 'チェイン法に切り替えました。',
-          '値を入力して挿入または探索を試してください。'
+          '各方式の表は別々に保持しています。必要ならリセットしてください。'
         ]);
+        setStepTrace([]);
+        updateFormulaPreview();
+        renderTable();
       });
 
       keyInput.addEventListener('input', updateFormulaPreview);
+      keyInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+          return;
+        }
+        event.preventDefault();
+        if (event.shiftKey) {
+          searchKey();
+        } else {
+          insertKey();
+        }
+      });
+      document.querySelectorAll('.quick-values button').forEach((button) => {
+        button.addEventListener('click', () => setKeyInput(button.dataset.key));
+      });
+      samplePatternSelect.addEventListener('change', () => {
+        const sample = getSelectedSample();
+        resetTable(true);
+        renderSamplePreview();
+        setKeyInput(sample.keys[0]);
+        setLogs([`${sample.label}を選択しました。「挿入」で先頭から1つずつ入れるか、「配列読込」でまとめて反映します。`]);
+        setStepTrace([]);
+      });
       document.getElementById('insertButton').addEventListener('click', insertKey);
       document.getElementById('searchButton').addEventListener('click', searchKey);
-      document.getElementById('resetButton').addEventListener('click', () => resetTable(false));
+      document.getElementById('loadSampleButton').addEventListener('click', loadSamplePattern);
+      document.getElementById('randomButton').addEventListener('click', setRandomKey);
+      document.getElementById('resetButton').addEventListener('click', resetToInitialState);
 
-      setLogs([
-        '準備完了です。',
-        '値を入力して「挿入」または「探索」を押してください。'
-      ]);
-      updateFormulaPreview();
-      renderTable();
+      resetToInitialState();
     </script>
   </body>
 </html>
