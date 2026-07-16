@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>カエルの問題 DPテーブル - 動的計画法</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #64748b;
+        --line: #d7deea;
+        --soft-line: #e8edf5;
+        --blue: #2563eb;
+        --blue-soft: #dbeafe;
+        --green: #15803d;
+        --green-soft: #dcfce7;
+        --purple: #7e22ce;
+        --purple-soft: #f3e8ff;
+        --amber: #b45309;
+        --amber-soft: #fef3c7;
+        --red: #dc2626;
+        --red-soft: #fee2e2;
+        --gray-soft: #f1f5f9;
+        --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        min-height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        min-height: 30px;
+        padding: 4px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 850;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        background: #f8fafc;
+      }
+
+      button.primary {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.56;
+        cursor: not-allowed;
+      }
+
+      input,
+      select {
+        min-height: 30px;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      a {
+        color: var(--blue);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      .page {
+        width: min(1720px, 100%);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 8px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 7px;
+      }
+
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .intro {
+        padding: 7px 10px;
+      }
+
+      .intro h1 {
+        margin: 0;
+        font-size: clamp(18px, 2vw, 25px);
+        line-height: 1.2;
+      }
+
+      .intro p {
+        margin: 3px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .rule {
+        max-width: 520px;
+        padding: 6px 10px;
+        border: 1px solid #e9d5ff;
+        border-radius: 8px;
+        background: var(--purple-soft);
+        color: #6b21a8;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.45;
+      }
+
+      .stage-rule {
+        max-width: none;
+        text-align: center;
+      }
+
+      .controls {
+        padding: 6px 9px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 6px;
+        align-items: center;
+      }
+
+      .setting-row,
+      .button-row,
+      .preset-row {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+      }
+
+      .preset-row {
+        grid-column: 1 / -1;
+      }
+
+      label,
+      .preset-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      #heightsInput {
+        width: min(430px, 56vw);
+      }
+
+      .step-counter {
+        min-width: 58px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 850;
+        text-align: right;
+      }
+
+      .progress-track {
+        grid-column: 1 / -1;
+        height: 5px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--blue), var(--purple));
+        transition: width 0.2s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(720px, 1.25fr) minmax(430px, 0.75fr);
+        gap: 7px;
+      }
+
+      .main-panel,
+      .side-panel {
+        min-height: 0;
+        padding: 10px;
+        display: grid;
+        gap: 9px;
+      }
+
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .panel-heading h2,
+      .section h2 {
+        margin: 0;
+        font-size: 15px;
+      }
+
+      .legend {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 750;
+      }
+
+      .stage-heading {
+        align-items: center;
+      }
+
+      .stage-tools {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .stage-actions {
+        gap: 5px;
+        flex-wrap: nowrap;
+      }
+
+      .stage-actions button {
+        min-height: 28px;
+        padding: 3px 9px;
+      }
+
+      .stage-wrap,
+      .table-wrap {
+        min-width: 0;
+        overflow: auto;
+        border: 1px solid var(--soft-line);
+        border-radius: 10px;
+        background: #fff;
+      }
+
+      .stone-stage {
+        min-width: 760px;
+        min-height: 350px;
+        padding: 10px 18px 12px;
+      }
+
+      .stones {
+        min-height: 278px;
+        position: relative;
+        overflow: visible;
+        border-bottom: 5px solid #172033;
+        background: #fff;
+      }
+
+      #edgeLayer {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+        pointer-events: none;
+      }
+
+      #edgeLayer .choice-path {
+        stroke-dasharray: 10 7;
+        animation: flow-dash 0.7s linear infinite;
+      }
+
+      #edgeLayer .choice-cost {
+        font-size: 17px;
+        font-weight: 950;
+        paint-order: stroke;
+        stroke: #fff;
+        stroke-width: 7px;
+        stroke-linejoin: round;
+      }
+
+      @keyframes flow-dash {
+        to {
+          stroke-dashoffset: -17;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #edgeLayer .choice-path {
+          animation: none;
+        }
+      }
+
+      .stone-item {
+        width: clamp(30px, 3.8vw, 46px);
+        height: var(--bar-height);
+        position: absolute;
+        z-index: 2;
+        bottom: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        display: flex;
+        flex-direction: column-reverse;
+        transform: translateX(-50%);
+        transition: filter 0.2s ease;
+      }
+
+      .height-cell {
+        width: 100%;
+        height: var(--block-height);
+        flex: 0 0 var(--block-height);
+        border: 1px solid #171717;
+        border-bottom: 0;
+        background: #f5ae7d;
+      }
+
+      .height-cell:first-child {
+        border-bottom: 1px solid #171717;
+      }
+
+      .stone-item.current {
+        filter: saturate(1.1);
+      }
+
+      .stone-item.current::after {
+        content: "";
+        width: var(--frame-width);
+        height: var(--frame-height);
+        position: absolute;
+        left: 50%;
+        bottom: var(--frame-bottom);
+        border: 4px solid #e11d2e;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .stone-item.path {
+        filter: saturate(1.08);
+      }
+
+      .stone-index,
+      .stone-dp {
+        position: absolute;
+        left: 50%;
+        width: 110px;
+        color: #111;
+        font-size: 12px;
+        font-weight: 900;
+        text-align: center;
+        transform: translateX(-50%);
+      }
+
+      .stone-index {
+        top: auto;
+        bottom: -55px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 850;
+      }
+
+      .stone-index.endpoint-index {
+        bottom: -63px;
+        font-size: 13px;
+        line-height: 1.15;
+      }
+
+      .endpoint-label {
+        display: block;
+        color: var(--blue);
+      }
+
+      .stone-dp {
+        bottom: -29px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 18px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+      }
+
+      .frog-mark {
+        position: absolute;
+        z-index: 5;
+        width: 52px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.88);
+        font-size: 36px;
+        transform: translate(-50%, -100%);
+        filter: drop-shadow(0 3px 3px rgba(15, 23, 42, 0.2));
+      }
+
+      .table-wrap {
+        padding: 7px 18px;
+        overflow: visible;
+      }
+
+      .dp-grid {
+        --cols: 7;
+        --row-h: 36px;
+        --label-w: 40px;
+        --label-gap: 4px;
+        width: 100%;
+        margin-left: 0;
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+        grid-template-rows: repeat(4, var(--row-h));
+      }
+
+      .dp-grid-cell,
+      .dp-row-label {
+        min-width: 0;
+        min-height: var(--row-h);
+        padding: 3px 5px;
+        border: 1px solid var(--line);
+        text-align: center;
+        display: grid;
+        place-items: center;
+      }
+
+      .dp-grid-cell {
+        font-size: 15px;
+        font-weight: 900;
+      }
+
+      .dp-head-cell,
+      .dp-row-label {
+        background: #f8fafc;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+      }
+
+      .dp-row-label {
+        width: var(--label-w);
+        position: absolute;
+        left: calc(-1 * (var(--label-w) + var(--label-gap)));
+        color: var(--muted);
+      }
+
+      .dp-grid-cell.pending {
+        color: #94a3b8;
+        background: #f8fafc;
+      }
+
+      .dp-grid-cell.done {
+        background: var(--blue-soft);
+      }
+
+      .dp-grid-cell.current {
+        border: 3px solid var(--amber);
+        background: var(--amber-soft);
+      }
+
+      .dp-grid-cell.route {
+        background: var(--green-soft);
+      }
+
+      .recurrence {
+        padding: 8px 10px;
+        border: 1px solid #e9d5ff;
+        border-radius: 8px;
+        background: var(--purple-soft);
+        color: #6b21a8;
+        font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .side-panel {
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+      }
+
+      .section {
+        min-width: 0;
+        padding: 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .message {
+        min-height: 88px;
+        margin-top: 8px;
+        padding: 9px 11px;
+        border-left: 4px solid var(--blue);
+        border-radius: 8px;
+        background: var(--blue-soft);
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.55;
+      }
+
+      .message strong {
+        color: #1d4ed8;
+      }
+
+      .candidate-list {
+        margin-top: 8px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .candidate-list.with-vs {
+        grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+        align-items: center;
+      }
+
+      .candidate {
+        min-height: 86px;
+        padding: 8px 9px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        position: relative;
+      }
+
+      .vs-mark {
+        width: 42px;
+        height: 42px;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #fff;
+        color: #334155;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 950;
+        letter-spacing: 0;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      }
+
+      .candidate.chosen {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .candidate.candidate-one {
+        border-color: #0070c0;
+        background: #eff6ff;
+      }
+
+      .candidate.candidate-one .candidate-label,
+      .candidate.candidate-one .candidate-value {
+        color: #075985;
+      }
+
+      .candidate.candidate-two {
+        border-color: #ff0000;
+        background: #fff1f2;
+      }
+
+      .candidate.candidate-two .candidate-label,
+      .candidate.candidate-two .candidate-value {
+        color: var(--red);
+      }
+
+      .candidate.candidate-one.chosen,
+      .candidate.candidate-two.chosen {
+        box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.08);
+      }
+
+      .candidate.candidate-one.chosen {
+        border-color: #0070c0;
+        background: var(--blue-soft);
+      }
+
+      .candidate.candidate-two.chosen {
+        border-color: #ff0000;
+        background: var(--red-soft);
+      }
+
+      .win-badge {
+        min-width: 42px;
+        height: 22px;
+        padding: 2px 8px;
+        position: absolute;
+        top: 7px;
+        right: 8px;
+        border-radius: 999px;
+        background: #111827;
+        color: #fff;
+        display: inline-grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 950;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .candidate-one .win-badge {
+        background: #0070c0;
+      }
+
+      .candidate-two .win-badge {
+        background: #ff0000;
+      }
+
+      .candidate.unavailable {
+        color: #94a3b8;
+        background: #f8fafc;
+      }
+
+      .candidate-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .candidate-value {
+        margin-top: 4px;
+        font-size: 17px;
+        font-weight: 950;
+        line-height: 1.3;
+      }
+
+      .candidate-detail {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+
+      .score-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .score-item {
+        min-height: 64px;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        text-align: center;
+      }
+
+      .score-label {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+      }
+
+      .score-value {
+        margin-top: 4px;
+        font-size: 18px;
+        font-weight: 950;
+      }
+
+      .path-line {
+        margin-top: 8px;
+        padding: 8px 9px;
+        border-radius: 8px;
+        background: var(--green-soft);
+        color: #166534;
+        font-size: 13px;
+        font-weight: 850;
+        line-height: 1.5;
+      }
+
+      .code-box {
+        margin: 8px 0 0;
+        padding: 8px 0;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #0f172a;
+        color: #e2e8f0;
+        overflow: auto;
+      }
+
+      .code-line {
+        min-height: 25px;
+        padding: 3px 12px;
+        white-space: pre;
+        font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 750;
+      }
+
+      .code-line.active {
+        background: #f59e0b;
+        color: #111827;
+      }
+
+      .error {
+        display: none;
+        grid-column: 1 / -1;
+        padding: 7px 10px;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: var(--red-soft);
+        color: #991b1b;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      @media (max-width: 1320px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .side-panel {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: auto auto;
+        }
+
+        .section:last-child {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          padding: 6px;
+        }
+
+        .controls {
+          grid-template-columns: 1fr;
+        }
+
+        .rule,
+        .step-counter {
+          max-width: none;
+          text-align: left;
+        }
+
+        #heightsInput {
+          width: 100%;
+        }
+
+        .side-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .section:last-child {
+          grid-column: auto;
+        }
+
+        .candidate-list,
+        .score-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .candidate-list.with-vs {
+          grid-template-columns: 1fr;
+        }
+
+        .vs-mark {
+          justify-self: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel intro">
+        <div>
+          <h1>カエルの問題 DPテーブル</h1>
+          <p>足場ごとの最小コスト dp[i] を、左から順番に埋める。</p>
+        </div>
+      </section>
+
+      <section class="panel controls" aria-label="操作">
+        <div class="setting-row">
+          <label for="heightsInput">足場の高さ</label>
+          <input id="heightsInput" type="text" value="2, 9, 4, 5, 1, 6, 10" />
+          <button id="applyBtn" class="primary" type="button">反映</button>
+          <label for="presetSelect">例</label>
+          <select id="presetSelect">
+            <option value="">カスタム</option>
+            <option value="case1" selected>例1</option>
+            <option value="case2">例2</option>
+            <option value="case3">例3</option>
+          </select>
+        </div>
+        <div id="errorText" class="error"></div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel main-panel">
+          <div class="panel-heading stage-heading">
+            <h2>足場と現在の遷移</h2>
+            <div class="stage-tools">
+              <span class="legend">赤枠: 計算中 / 点線: 参照元候補 / 緑: 選択経路</span>
+              <div class="button-row stage-actions">
+                <button id="firstBtn" type="button">先頭</button>
+                <button id="prevBtn" type="button">戻る</button>
+                <button id="nextBtn" class="primary" type="button">次へ</button>
+                <button id="lastBtn" type="button">結果まで</button>
+                <button id="playBtn" type="button">自動</button>
+                <span id="stepCounter" class="step-counter"></span>
+              </div>
+            </div>
+          </div>
+          <div class="stage-wrap">
+            <div id="stoneStage" class="stone-stage">
+              <div id="stones" class="stones">
+                <svg id="edgeLayer" aria-hidden="true"></svg>
+                <div id="frogMark" class="frog-mark" aria-label="カエル">🐸</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-heading">
+            <h2>DPテーブル</h2>
+            <span class="legend">dp[i] は足場 i へ行く最小コスト</span>
+          </div>
+          <div class="table-wrap">
+            <div id="dpGrid" class="dp-grid" role="table" aria-label="DPテーブル"></div>
+          </div>
+
+          <div id="recurrenceText" class="recurrence"></div>
+          <div class="rule stage-rule">
+            dp[i] = min(dp[i-1] + |h[i]-h[i-1]|, dp[i-2] + |h[i]-h[i-2]|)
+          </div>
+        </section>
+
+        <aside class="panel side-panel">
+          <section class="section">
+            <h2>現在のセル</h2>
+            <div id="message" class="message"></div>
+            <div id="candidateList" class="candidate-list"></div>
+          </section>
+
+          <section class="section">
+            <h2>ここまでの解</h2>
+            <div class="score-grid">
+              <div class="score-item">
+                <div class="score-label">対象</div>
+                <div id="currentNode" class="score-value"></div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">最小コスト</div>
+                <div id="currentCost" class="score-value"></div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">ジャンプ数</div>
+                <div id="jumpCount" class="score-value"></div>
+              </div>
+            </div>
+            <div id="pathLine" class="path-line"></div>
+          </section>
+
+          <section class="section">
+            <h2>擬似コード</h2>
+            <div class="code-box">
+              <div class="code-line" data-line="base">dp[0] = 0</div>
+              <div class="code-line" data-line="loop">for i = 1 ... n-1:</div>
+              <div class="code-line" data-line="one">    cost1 = dp[i-1] + abs(h[i] - h[i-1])</div>
+              <div class="code-line" data-line="branch">    if i >= 2:</div>
+              <div class="code-line" data-line="two">        cost2 = dp[i-2] + abs(h[i] - h[i-2])</div>
+              <div class="code-line" data-line="choose">        dp[i] = min(cost1, cost2)</div>
+              <div class="code-line" data-line="only">    else: dp[i] = cost1</div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <script>
+      const presets = {
+        case1: [2, 9, 4, 5, 1, 6, 10],
+        case2: [1, 12, 5, 10, 1, 7, 8, 5, 3],
+        case3: [9, 1, 5, 2, 10, 5, 6, 3, 2, 5, 6],
+      };
+
+      const state = {
+        heights: presets.case1.slice(),
+        dp: [],
+        prev: [],
+        steps: [],
+        current: 0,
+        timer: null,
+      };
+
+      const heightsInput = document.getElementById("heightsInput");
+      const presetSelect = document.getElementById("presetSelect");
+      const applyBtn = document.getElementById("applyBtn");
+      const firstBtn = document.getElementById("firstBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const lastBtn = document.getElementById("lastBtn");
+      const playBtn = document.getElementById("playBtn");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const errorText = document.getElementById("errorText");
+      const stones = document.getElementById("stones");
+      const stoneStage = document.getElementById("stoneStage");
+      const edgeLayer = document.getElementById("edgeLayer");
+      const frogMark = document.getElementById("frogMark");
+      const dpGrid = document.getElementById("dpGrid");
+      const recurrenceText = document.getElementById("recurrenceText");
+      const message = document.getElementById("message");
+      const candidateList = document.getElementById("candidateList");
+      const currentNode = document.getElementById("currentNode");
+      const currentCost = document.getElementById("currentCost");
+      const jumpCount = document.getElementById("jumpCount");
+      const pathLine = document.getElementById("pathLine");
+
+      function parseHeights(text) {
+        const values = text
+          .split(/[,\s]+/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map(Number);
+
+        if (values.length < 2) {
+          throw new Error("高さは2個以上入力してください。");
+        }
+
+        if (values.length > 12) {
+          throw new Error("画面で追いやすいように、高さは12個までにしてください。");
+        }
+
+        if (!values.every((value) => Number.isInteger(value) && value >= 0 && value <= 30)) {
+          throw new Error("高さは0以上30以下の整数で入力してください。");
+        }
+
+        return values;
+      }
+
+      function buildModel() {
+        const n = state.heights.length;
+        state.dp = Array(n).fill(Infinity);
+        state.prev = Array(n).fill(null);
+        state.steps = [];
+
+        state.dp[0] = 0;
+        state.steps.push({
+          index: 0,
+          value: 0,
+          prev: null,
+          candidates: [],
+          activeLine: "base",
+          formula: "dp[0] = 0",
+          reason: "足場0はスタート地点なので、必要なコストは0です。",
+        });
+
+        for (let i = 1; i < n; i += 1) {
+          const fromOneCost = Math.abs(state.heights[i] - state.heights[i - 1]);
+          const one = {
+            kind: "one",
+            label: "1つ前から",
+            from: i - 1,
+            jumpCost: fromOneCost,
+            total: state.dp[i - 1] + fromOneCost,
+          };
+
+          let two = null;
+          if (i >= 2) {
+            const fromTwoCost = Math.abs(state.heights[i] - state.heights[i - 2]);
+            two = {
+              kind: "two",
+              label: "2つ前から",
+              from: i - 2,
+              jumpCost: fromTwoCost,
+              total: state.dp[i - 2] + fromTwoCost,
+            };
+          }
+
+          const chosen = two && two.total < one.total ? two : one;
+          state.dp[i] = chosen.total;
+          state.prev[i] = chosen.from;
+
+          const formula = two
+            ? `dp[${i}] = min(${one.total}, ${two.total}) = ${state.dp[i]}`
+            : `dp[${i}] = ${one.total}`;
+          const reason = two
+            ? `足場${i}へ行く候補は、足場${i - 1}から来る経路と足場${i - 2}から来る経路です。小さい方の ${state.dp[i]} を採用します。`
+            : `足場1へ行く方法は足場0からの1通りなので、そのコストをそのまま採用します。`;
+
+          state.steps.push({
+            index: i,
+            value: state.dp[i],
+            prev: chosen.from,
+            candidates: two ? [one, two] : [one],
+            activeLine: two ? "choose" : "only",
+            formula,
+            reason,
+          });
+        }
+      }
+
+      function getPathTo(index) {
+        const path = [];
+        let cursor = index;
+        while (cursor !== null && cursor >= 0) {
+          path.push(cursor);
+          cursor = state.prev[cursor];
+        }
+        return path.reverse();
+      }
+
+      function showError(text) {
+        errorText.textContent = text;
+        errorText.classList.add("show");
+      }
+
+      function clearError() {
+        errorText.textContent = "";
+        errorText.classList.remove("show");
+      }
+
+      function stopAuto() {
+        if (state.timer !== null) {
+          window.clearInterval(state.timer);
+          state.timer = null;
+        }
+        playBtn.textContent = "自動";
+      }
+
+      function setCurrent(index) {
+        state.current = Math.max(0, Math.min(index, state.heights.length - 1));
+        render();
+      }
+
+      function applyHeights(nextHeights) {
+        stopAuto();
+        state.heights = nextHeights.slice();
+        state.current = 0;
+        heightsInput.value = state.heights.join(", ");
+        buildModel();
+        render();
+      }
+
+      function renderStones() {
+        const maxHeight = Math.max(...state.heights, 1);
+        const blockHeight = Math.min(31, 250 / maxHeight);
+        const path = new Set(getPathTo(state.current));
+        const step = state.steps[state.current];
+        stones.querySelectorAll(".stone-item").forEach((stone) => stone.remove());
+        const stoneHtml = state.heights
+          .map((height, index) => {
+            const classes = ["stone-item"];
+            if (index === state.current) classes.push("current");
+            if (path.has(index)) classes.push("path");
+            if (index === 0) classes.push("start");
+            if (index === state.heights.length - 1) classes.push("goal");
+            const left = ((index + 0.5) * 100) / state.heights.length;
+            const barHeight = Math.max(8, height * blockHeight);
+            const cells = Array.from(
+              { length: height },
+              (_, cellIndex) =>
+                `<span class="height-cell" aria-hidden="true" data-level="${cellIndex + 1}"></span>`
+            ).join("");
+            const indexLabel =
+              index === 0
+                ? `<span class="stone-index endpoint-index">足場1<span class="endpoint-label">start</span></span>`
+                : index === state.heights.length - 1
+                  ? `<span class="stone-index endpoint-index">足場${index + 1}<span class="endpoint-label">goal</span></span>`
+                  : `<span class="stone-index">足場${index + 1}</span>`;
+            const endpoint = index === 0 || index === state.heights.length - 1;
+            const frameStyle =
+              `--frame-width:${endpoint ? 70 : 60}px;` +
+              `--frame-height:${endpoint ? 68 : 58}px;` +
+              `--frame-bottom:${endpoint ? -70 : -61}px;`;
+            return `
+              <div class="${classes.join(" ")}" data-index="${index}"
+                style="left:${left}%;--bar-height:${barHeight}px;--block-height:${blockHeight}px;${frameStyle}">
+                ${cells}
+                ${indexLabel}
+                <span class="stone-dp">${height}</span>
+              </div>
+            `;
+          })
+          .join("");
+        frogMark.insertAdjacentHTML("beforebegin", stoneHtml);
+
+        window.requestAnimationFrame(drawEdges);
+      }
+
+      function drawEdges() {
+        const step = state.steps[state.current];
+        const areaRect = stones.getBoundingClientRect();
+        const points = [...stones.querySelectorAll(".stone-item")].map((stone) => {
+          const rect = stone.getBoundingClientRect();
+          return {
+            x: rect.left - areaRect.left + rect.width / 2,
+            top: rect.top - areaRect.top,
+            bottom: rect.bottom - areaRect.top,
+          };
+        });
+        const current = points[state.current];
+        if (!current) return;
+
+        frogMark.style.left = `${current.x}px`;
+        frogMark.style.top = `${Math.max(current.top - 6, 58)}px`;
+
+        const paths = [
+          '<defs>',
+          '<marker id="arrow-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#0070c0"/></marker>',
+          '<marker id="arrow-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff0000"/></marker>',
+          '<marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#15803d"/></marker>',
+          "</defs>",
+        ];
+
+        const addCurve = (from, to, color, dashed) => {
+          const start = points[from];
+          const end = points[to];
+          const lift = Math.max(38, Math.abs(end.x - start.x) * 0.22);
+          paths.push(
+            `<path d="M ${start.x} ${start.top - 4} Q ${(start.x + end.x) / 2} ${Math.min(start.top, end.top) - lift} ${end.x} ${end.top - 4}" ` +
+              `fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"` +
+              `${dashed ? ' stroke-dasharray="7 6"' : ""}/>`
+          );
+        };
+
+        const addChoice = (candidate, color, markerId, clearance, startOffset, labelOffsetY) => {
+          const start = points[candidate.from];
+          const end = points[step.index];
+          const from = Math.min(candidate.from, step.index);
+          const to = Math.max(candidate.from, step.index);
+          const highestBlockTop = Math.min(
+            ...points.slice(from, to + 1).map((point) => point.top)
+          );
+          const highY = Math.max(18, Math.min(start.top - 30, highestBlockTop - clearance));
+          const startX = start.x + startOffset;
+          const labelX = (startX + end.x) / 2;
+          const labelY = Math.min(highY + 22 + labelOffsetY, end.top - 12);
+          paths.push(
+            `<path class="choice-path" d="M ${startX} ${start.top - 8} L ${startX} ${highY} L ${end.x} ${highY} L ${end.x} ${end.top - 8}" ` +
+              `fill="none" stroke="${color}" stroke-width="4" stroke-linecap="square" ` +
+              `stroke-linejoin="miter" marker-end="url(#${markerId})"/>` +
+              `<text class="choice-cost" x="${labelX}" y="${labelY}" fill="${color}" ` +
+              `text-anchor="middle">+${candidate.jumpCost}</text>`
+          );
+        };
+
+        const path = getPathTo(state.current);
+        for (let i = 1; i < path.length; i += 1) {
+          addCurve(path[i - 1], path[i], "#15803d", true);
+        }
+
+        const one = step.candidates.find((candidate) => candidate.kind === "one");
+        const two = step.candidates.find((candidate) => candidate.kind === "two");
+        if (one) addChoice(one, "#0070c0", "arrow-blue", 42, 8, one && two ? 10 : 0);
+        if (two) addChoice(two, "#ff0000", "arrow-red", 58, -8, one ? -10 : 0);
+        if (one && two) {
+          paths.push(
+            `<text x="${(points[one.from].x + points[two.from].x) / 2}" y="54" fill="#111" font-size="24" font-weight="800" text-anchor="middle">or</text>`
+          );
+        }
+
+        edgeLayer.setAttribute("viewBox", `0 0 ${areaRect.width} ${areaRect.height}`);
+        edgeLayer.innerHTML = paths.join("");
+      }
+
+      function renderTable() {
+        const path = new Set(getPathTo(state.current));
+        dpGrid.style.setProperty("--cols", state.heights.length);
+        const rowLabels = ["index", "h[i]", "dp[i]", "prev"]
+          .map(
+            (label, rowIndex) =>
+              `<div class="dp-row-label" style="top: calc(${rowIndex} * var(--row-h));">${label}</div>`
+          )
+          .join("");
+
+        const indexCells = state.heights
+          .map((_, index) => `<div class="dp-grid-cell dp-head-cell">${index}</div>`)
+          .join("");
+
+        const heightCells = state.heights
+          .map((height) => `<div class="dp-grid-cell">${height}</div>`)
+          .join("");
+
+        const dpCells = state.dp
+          .map((value, index) => {
+            const classes = ["dp-grid-cell"];
+            if (index > state.current) classes.push("pending");
+            if (index < state.current) classes.push("done");
+            if (index === state.current) classes.push("current");
+            if (path.has(index) && index <= state.current) classes.push("route");
+            return `<div class="${classes.join(" ")}">${index <= state.current ? value : "-"}</div>`;
+          })
+          .join("");
+
+        const prevCells = state.prev
+          .map((value, index) => {
+            const classes = ["dp-grid-cell"];
+            if (index > state.current) classes.push("pending");
+            if (index === state.current) classes.push("current");
+            return `<div class="${classes.join(" ")}">${index === 0 && index <= state.current ? "start" : index <= state.current ? value : "-"}</div>`;
+          })
+          .join("");
+
+        dpGrid.innerHTML = rowLabels + indexCells + heightCells + dpCells + prevCells;
+      }
+
+      function renderCandidates() {
+        const step = state.steps[state.current];
+        if (state.current === 0) {
+          candidateList.classList.remove("with-vs");
+          candidateList.innerHTML = `
+            <div class="candidate chosen">
+              <div class="candidate-label">スタート</div>
+              <div class="candidate-value">dp[0] = 0</div>
+              <div class="candidate-detail">移動していないのでコストは0</div>
+            </div>
+            <div class="candidate unavailable">
+              <div class="candidate-label">比較</div>
+              <div class="candidate-value">なし</div>
+              <div class="candidate-detail">ここが一番小さな部分問題</div>
+            </div>
+          `;
+          return;
+        }
+
+        const byKind = Object.fromEntries(step.candidates.map((candidate) => [candidate.kind, candidate]));
+        candidateList.classList.add("with-vs");
+        const cards = ["one", "two"].map((kind) => {
+          const candidate = byKind[kind];
+          if (!candidate) {
+            return `
+              <div class="candidate unavailable">
+                <div class="candidate-label">2つ前から</div>
+                <div class="candidate-value">不可</div>
+                <div class="candidate-detail">足場1では2つ前が存在しない</div>
+              </div>
+            `;
+          }
+
+          const chosen = candidate.from === step.prev;
+          const candidateClass = candidate.kind === "one" ? "candidate-one" : "candidate-two";
+          return `
+            <div class="candidate ${candidateClass} ${chosen ? "chosen" : ""}">
+              ${chosen ? '<span class="win-badge">WIN</span>' : ""}
+              <div class="candidate-label">${candidate.label}</div>
+              <div class="candidate-value">dp[${candidate.from}] + ${candidate.jumpCost} = ${candidate.total}</div>
+              <div class="candidate-detail">dp[${candidate.from}] = ${state.dp[candidate.from]}, |${state.heights[state.current]} - ${state.heights[candidate.from]}| = ${candidate.jumpCost}</div>
+            </div>
+          `;
+        });
+
+        candidateList.innerHTML = `${cards[0]}<div class="vs-mark" aria-label="比較">VS</div>${cards[1]}`;
+      }
+
+      function renderMessage() {
+        const step = state.steps[state.current];
+        message.innerHTML = `
+          <strong>dp[${step.index}] を計算中。</strong><br />
+          ${step.reason}
+        `;
+        recurrenceText.textContent = step.formula;
+      }
+
+      function renderScores() {
+        const path = getPathTo(state.current);
+        currentNode.textContent = `i=${state.current}`;
+        currentCost.textContent = state.dp[state.current];
+        jumpCount.textContent = Math.max(0, path.length - 1);
+        pathLine.textContent =
+          state.current === state.heights.length - 1
+            ? `答え: 最小コスト ${state.dp[state.current]}、選択したノード [${path.join(", ")}]`
+            : `現在の最短ルート: [${path.join(", ")}]`;
+      }
+
+      function renderCode() {
+        const step = state.steps[state.current];
+        document.querySelectorAll(".code-line").forEach((line) => {
+          line.classList.toggle("active", line.dataset.line === step.activeLine);
+        });
+      }
+
+      function renderControls() {
+        const n = state.heights.length;
+        stepCounter.textContent = `${state.current + 1} / ${n}`;
+        progressBar.style.width = `${((state.current + 1) / n) * 100}%`;
+        firstBtn.disabled = state.current === 0;
+        prevBtn.disabled = state.current === 0;
+        nextBtn.disabled = state.current === n - 1;
+        lastBtn.disabled = state.current === n - 1;
+      }
+
+      function render() {
+        renderStones();
+        renderTable();
+        renderCandidates();
+        renderMessage();
+        renderScores();
+        renderCode();
+        renderControls();
+      }
+
+      applyBtn.addEventListener("click", () => {
+        try {
+          const next = parseHeights(heightsInput.value);
+          clearError();
+          presetSelect.value = "";
+          applyHeights(next);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+      heightsInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          applyBtn.click();
+        }
+      });
+
+      presetSelect.addEventListener("change", () => {
+        const selected = presets[presetSelect.value];
+        if (!selected) return;
+        clearError();
+        applyHeights(selected);
+      });
+
+      firstBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(0);
+      });
+
+      prevBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.current - 1);
+      });
+
+      nextBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.current + 1);
+      });
+
+      lastBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.heights.length - 1);
+      });
+
+      playBtn.addEventListener("click", () => {
+        if (state.timer !== null) {
+          stopAuto();
+          return;
+        }
+
+        if (state.current === state.heights.length - 1) {
+          state.current = 0;
+          render();
+        }
+
+        playBtn.textContent = "停止";
+        state.timer = window.setInterval(() => {
+          if (state.current >= state.heights.length - 1) {
+            stopAuto();
+            return;
+          }
+          setCurrent(state.current + 1);
+        }, 900);
+      });
+
+      window.addEventListener("resize", drawEdges);
+
+      buildModel();
+      render();
+    </script>
+  </body>
+</html>
