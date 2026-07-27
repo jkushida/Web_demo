@@ -1,0 +1,1855 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NSP 焼きなまし法デモ</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #657086;
+      --line: #d8deea;
+      --line-strong: #aeb8ca;
+      --off: #eef1f5;
+      --day: #d9f0e5;
+      --day-ink: #0d6b3f;
+      --night: #dfe8ff;
+      --night-ink: #3157b7;
+      --weekend: #fff6dd;
+      --bad: #f7d9d8;
+      --bad-ink: #a72f2b;
+      --ok: #ffffff;
+      --ok-ink: #1b6d43;
+      --accent: #244a8f;
+      --accent-2: #b9852c;
+      --shadow: 0 10px 24px rgba(30, 42, 70, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      background: #16223a;
+      color: white;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #d8e1f5;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: 16px;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    aside, .workspace {
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 14px;
+    }
+
+    .panel-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #2a3448;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 14px;
+      margin: 0 0 10px;
+      white-space: nowrap;
+    }
+
+    .panel-heading .panel-title {
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .panel-title-block {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .panel-meta-line {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .panel-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    .inline-legend {
+      display: contents;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .inline-legend .legend-item {
+      font-weight: 650;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      overflow-x: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 6px 10px;
+    }
+
+    .tool-group {
+      min-width: max-content;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      border-right: 1px solid var(--line);
+    }
+
+    .tool-group:last-child {
+      padding-right: 0;
+      border-right: 0;
+    }
+
+    .tool-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 750;
+      color: #2a3448;
+    }
+
+    .metric-grid {
+      display: flex;
+      gap: 4px;
+      width: auto;
+    }
+
+    .metric {
+      min-height: 28px;
+      min-width: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcff;
+    }
+
+    .metric.good {
+      border-color: #a8d7ba;
+      background: var(--ok);
+    }
+
+    .metric.bad {
+      border-color: #e4abaa;
+      background: var(--bad);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .metric-value {
+      margin-top: 0;
+      font-size: 15px;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .metric-value.small {
+      font-size: 13px;
+      line-height: 1.1;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+      width: 490px;
+    }
+
+    .btn {
+      height: 28px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: #1d2a40;
+      background: white;
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 12px;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn.warn {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      color: white;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
+    .btn:hover:not(:disabled),
+    .mode-tab:hover:not(:disabled),
+    .shift:hover {
+      filter: brightness(0.98);
+      box-shadow: inset 0 0 0 2px rgba(36, 74, 143, 0.18);
+    }
+
+    .field {
+      display: grid;
+      gap: 2px;
+    }
+
+    .compact-fields {
+      display: grid;
+      grid-template-columns: 265px 170px 185px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .compact-fields .field {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .compact-fields .field-row {
+      justify-content: flex-start;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .compact-fields input[type="range"] {
+      min-width: 86px;
+    }
+
+    .mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 2px;
+      padding: 2px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #f2f5fa;
+      flex: 1 1 auto;
+    }
+
+    .mode-tab {
+      min-height: 24px;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: #43506a;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .mode-tab.active {
+      background: white;
+      color: var(--accent);
+      box-shadow: 0 1px 4px rgba(30, 42, 70, 0.12);
+    }
+
+    .mode-tab:disabled {
+      cursor: not-allowed;
+      opacity: 0.56;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 14px;
+      accent-color: var(--accent);
+    }
+
+    .constraint-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .constraint {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      font-size: 12px;
+    }
+
+    .pill {
+      min-width: 34px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-align: center;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+      background: var(--ok);
+      color: var(--ok-ink);
+    }
+
+    .pill.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .workspace {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .board-wrap {
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .nurse-panel .panel-inner {
+      padding: 12px;
+    }
+
+    .schedule-row {
+      display: grid;
+      grid-template-columns: max-content minmax(500px, 540px);
+      gap: 10px;
+      align-items: start;
+      justify-content: start;
+    }
+
+    .board {
+      min-width: 834px;
+      width: max-content;
+      display: grid;
+      grid-template-columns: 92px repeat(14, 52px);
+      grid-auto-rows: 42px;
+      border: 3px solid #0c0f16;
+      background: var(--line-strong);
+      gap: 1px;
+    }
+
+    .cell {
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      background: white;
+      font-size: 13px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .head {
+      background: #edf1f7;
+      color: #263247;
+    }
+
+    .head.weekend {
+      background: var(--weekend);
+      color: #6b4d16;
+    }
+
+    .nurse {
+      justify-content: start;
+      padding: 0 10px;
+      color: #263247;
+    }
+
+    .shift {
+      position: relative;
+      cursor: pointer;
+      border: 0;
+    }
+
+    .shift.weekend {
+      box-shadow: inset 0 0 0 999px rgba(255, 246, 221, 0.28);
+    }
+
+    .shift.off {
+      background: var(--off);
+      color: #5b6576;
+    }
+
+    .shift.day {
+      background: var(--day);
+      color: var(--day-ink);
+    }
+
+    .shift.night {
+      background: var(--night);
+      color: var(--night-ink);
+    }
+
+    .shift.gnn-candidate {
+      box-shadow: inset 0 0 0 3px #d9a300, 0 0 0 2px rgba(217, 163, 0, 0.25);
+    }
+
+    .shift.gnn-candidate::before {
+      content: attr(data-gnn-rank);
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 16px;
+      height: 16px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #d9a300;
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      z-index: 3;
+    }
+
+    .shift.hover-violation::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      pointer-events: none;
+      z-index: 2;
+      border-left: 2px dashed var(--bad-ink);
+      border-right: 2px dashed var(--bad-ink);
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+      animation: table-wave 620ms linear infinite;
+    }
+
+    .shift.hover-run-start::after {
+      inset: 3px 0 3px 3px;
+      border-right: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    .shift.hover-run-middle::after {
+      inset: 3px 0;
+      border-left: 0;
+      border-right: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    .shift.hover-run-end::after {
+      inset: 3px 3px 3px 0;
+      border-left: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    @keyframes table-wave {
+      to {
+        background-position: 10px 0, -10px 100%;
+      }
+    }
+
+    .major-right {
+      border-right: 3px solid #0c0f16;
+    }
+
+    .major-bottom {
+      border-bottom: 3px solid #0c0f16;
+    }
+
+    .day-result.ok {
+      background: var(--ok);
+      color: var(--ok-ink);
+    }
+
+    .day-result.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+      gap: 12px;
+    }
+
+    .detail-table {
+      width: 100%;
+      margin-top: 1px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      font-size: 12px;
+      border: 2px solid #0c0f16;
+    }
+
+    .detail-table th,
+    .detail-table td {
+      padding: 2px 4px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .detail-table th:first-child,
+    .detail-table td:first-child {
+      border-left: 1px solid var(--line);
+    }
+
+    .detail-table th {
+      border-top: 0;
+      border-bottom: 2px solid #0c0f16;
+    }
+
+    .detail-table th {
+      height: 43px;
+      background: #edf1f7;
+      color: #2c374b;
+      font-weight: 700;
+      line-height: 1.08;
+      white-space: nowrap;
+    }
+
+    .detail-table th span {
+      display: block;
+      margin-top: 1px;
+      font-size: 10px;
+      color: #59667d;
+    }
+
+    .detail-table td {
+      height: 43px;
+      font-size: 14px;
+    }
+
+    .detail-table td:first-child,
+    .detail-table th:first-child {
+      text-align: left;
+      width: 104px;
+      border-right: 2px solid #0c0f16;
+      white-space: nowrap;
+    }
+
+    .detail-table th:last-child,
+    .detail-table td:last-child {
+      border-left: 2px solid #0c0f16;
+      border-right: 0;
+    }
+
+    .detail-table td.ok {
+      background: var(--ok);
+      color: var(--ok-ink);
+    }
+
+    .detail-table td.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+      font-weight: 800;
+    }
+
+    .detail-table tfoot td {
+      height: 36px;
+      background: #f5f7fb;
+      font-weight: 800;
+      border-top: 2px solid #0c0f16;
+    }
+
+    .detail-table th[data-constraint],
+    .detail-table td[data-constraint] {
+      cursor: help;
+    }
+
+    .constraint-help {
+      margin-top: 8px;
+      min-height: 70px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #253044;
+    }
+
+    .constraint-help-title {
+      margin-bottom: 4px;
+      color: #182234;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .constraint-help-body {
+      color: #536077;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .sparkline {
+      width: 100%;
+      height: 168px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+    }
+
+    .log {
+      height: 110px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      color: #354054;
+      font-size: 12px;
+      line-height: 1.55;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+    }
+
+    .swatch.off { background: var(--off); }
+    .swatch.day { background: var(--day); }
+    .swatch.night { background: var(--night); }
+    .swatch.bad { background: var(--bad); }
+
+    @media (max-width: 1080px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .schedule-row {
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      main {
+        padding: 10px;
+      }
+
+      .metric-grid,
+      .controls,
+      .compact-fields,
+      .constraint-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>NSP 焼きなまし法デモ</h1>
+    </header>
+
+    <main>
+      <section class="topbar">
+        <div class="tool-group">
+          <h2 class="tool-title">状態</h2>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">違反量</div>
+              <div class="metric-value" id="scoreValue">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">探索回数</div>
+              <div class="metric-value" id="stepValue">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">温度</div>
+              <div class="metric-value small" id="temperatureValue">0.000</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">最良違反量</div>
+              <div class="metric-value small" id="bestScoreValue">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <h2 class="tool-title">操作</h2>
+          <div class="controls">
+            <button class="btn primary" id="runButton">最適化</button>
+            <button class="btn warn" id="stopButton" disabled>停止</button>
+            <button class="btn" id="stepButton">1000手</button>
+            <button class="btn" id="gnnButton">GNN候補</button>
+            <button class="btn" id="gnnApplyButton" disabled>GNN適用</button>
+            <button class="btn" id="bestButton">最良へ</button>
+            <button class="btn" id="resetButton">初期化</button>
+          </div>
+          <div class="compact-fields">
+            <div class="field">
+              <div class="field-row">
+                <span>初期状態</span>
+                <span id="modeLabel">人数充足</span>
+              </div>
+              <div class="mode-tabs" id="modeTabs" role="group" aria-label="初期状態">
+                <button class="mode-tab" type="button" data-mode="empty">全休日</button>
+                <button class="mode-tab" type="button" data-mode="random">ランダム</button>
+                <button class="mode-tab active" type="button" data-mode="balanced">人数充足</button>
+              </div>
+            </div>
+            <div class="field">
+              <div class="field-row">
+                <label for="speedRange">描画間隔</label>
+                <span id="speedValue">1000</span>
+              </div>
+              <input id="speedRange" type="range" min="100" max="5000" step="100" value="1000">
+            </div>
+            <div class="field">
+              <div class="field-row">
+                <label for="trialRange">最大探索</label>
+                <span id="trialValue">100000</span>
+              </div>
+              <input id="trialRange" type="range" min="10000" max="200000" step="10000" value="100000">
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <h2 class="tool-title">凡例</h2>
+          <div class="legend">
+            <span class="legend-item"><span class="swatch off"></span>休日</span>
+            <span class="legend-item"><span class="swatch day"></span>日勤</span>
+            <span class="legend-item"><span class="swatch night"></span>夜勤</span>
+            <span class="legend-item"><span class="swatch bad"></span>違反</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="schedule-row">
+          <div class="panel board-wrap">
+            <div class="panel-heading">
+              <div class="panel-title-block">
+                <h2 class="panel-title">勤務表</h2>
+                <span class="panel-meta">看護師(Staff) 1〜8</span>
+                <span class="panel-meta">期間 2週間（14日）</span>
+                <span class="legend-item"><span class="swatch day"></span>D (Day): 日勤</span>
+                <span class="legend-item"><span class="swatch night"></span>N (Night): 夜勤</span>
+                <span class="legend-item"><span class="swatch off"></span>空欄: 休日</span>
+              </div>
+            </div>
+            <div class="board" id="board"></div>
+          </div>
+          <div class="panel nurse-panel">
+            <div class="panel-inner">
+              <h2 class="panel-title">看護師制約（個人制約）</h2>
+              <table class="detail-table" id="nurseTable"></table>
+              <div class="constraint-help" id="nurseConstraintHelp">
+                <div class="constraint-help-title">制約の説明</div>
+                <div class="constraint-help-body">条件の列にマウスを置くと、この下に制約の意味と違反の数え方を表示します。日勤（D）不足・夜勤（N）不足・新人同士禁止は勤務表下段の共通制約です。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottom-grid">
+          <div class="panel">
+            <div class="panel-inner">
+              <h2 class="panel-title">制約違反</h2>
+              <ul class="constraint-list" id="constraintList"></ul>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-inner">
+              <h2 class="panel-title">探索履歴</h2>
+              <canvas class="sparkline" id="historyCanvas" width="720" height="260"></canvas>
+              <div class="log" id="log"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const OFF = 0
+    const DAY = 1
+    const NIGHT = 2
+    const NURSES = 8
+    const NEWCOMER_COUNT = 4
+    const NEWCOMER_INDICES = Array.from({ length: NEWCOMER_COUNT }, (_, index) => index)
+    const DAYS = 14
+    const SHIFT_LABELS = ['', 'D', 'N']
+    const SHIFT_NAMES = ['休日', '日勤', '夜勤']
+    const SHIFT_CLASSES = ['off', 'day', 'night']
+    const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日']
+    const INITIAL_MODES = {
+      empty: '全休日',
+      random: 'ランダム',
+      balanced: '人数充足',
+    }
+
+    const constraintMeta = [
+      ['s1', 'カバー：日勤が2人以上'],
+      ['s2', 'カバー：夜勤が2人以上'],
+      ['s3', '共通制約：新人同士のペア禁止'],
+      ['n1', '条件1：休日が7日以上'],
+      ['n2', '条件2：週末連休が1回以上'],
+      ['n3', '条件3：連続勤務は3日まで'],
+      ['n4', '条件4：夜勤翌日の日勤は不可'],
+      ['n5', '条件5：連続夜勤は2日まで'],
+      ['n6', '条件6：夜勤は4回まで'],
+    ]
+
+    const nurseConstraintHelp = {
+      n1: {
+        title: '条件1：休日が7日以上',
+        body: '各看護師は14日間のうち休日が7日以上必要です。休日が7日未満なら、不足した日数を違反として数えます。',
+      },
+      n2: {
+        title: '条件2：週末連休が1回以上',
+        body: '土曜と日曜の両方が休日になっている週末連休が、少なくとも1回必要です。1回もない場合に違反です。',
+      },
+      n3: {
+        title: '条件3：連続勤務は3日まで',
+        body: 'DまたはNが休みを挟まず連続する勤務です。連続勤務は3日までなので、4日以上続いた範囲を違反として扱います。',
+      },
+      n4: {
+        title: '条件4：夜勤翌日の日勤は不可',
+        body: '夜勤Nの翌日に日勤Dを入れると、十分な休息が取れないため違反です。Nの次の日がDになっている箇所を数えます。',
+      },
+      n5: {
+        title: '条件5：連続夜勤は2日まで',
+        body: '夜勤Nの連続は2日までです。3日以上連続しているNの範囲を違反として扱います。',
+      },
+      n6: {
+        title: '条件6：夜勤は4回まで',
+        body: '各看護師の14日間の夜勤Nは4回までです。5回目以降の夜勤回数を違反として数えます。',
+      },
+      s1: {
+        title: '日勤（D）不足',
+        body: '各日は日勤（D）が2人以上必要です。表示値は、その日の必要人数2人に対して不足している日勤人数です。',
+      },
+      s2: {
+        title: '夜勤（N）不足',
+        body: '各日は夜勤（N）が2人以上必要です。表示値は、その日の必要人数2人に対して不足している夜勤人数です。',
+      },
+      s3: {
+        title: '新人同士のペア禁止',
+        body: 'S1〜S4は新人です。同じ日に同じ勤務（D同士、またはN同士）へ2人以上配置すると、新人同士の組合せごとに違反です。',
+      },
+      total: {
+        title: '合計',
+        body: '条件1から条件6までの違反数の合計です。値が0なら、その看護師の個別制約はすべて満たしています。',
+      },
+    }
+
+    class Random {
+      constructor(seed = Date.now()) {
+        this.seed = seed >>> 0
+      }
+
+      next() {
+        this.seed = (1664525 * this.seed + 1013904223) >>> 0
+        return this.seed / 4294967296
+      }
+
+      int(max) {
+        return Math.floor(this.next() * max)
+      }
+
+      shuffle(items) {
+        const result = items.slice()
+        for (let i = result.length - 1; i > 0; i--) {
+          const j = this.int(i + 1)
+          const tmp = result[i]
+          result[i] = result[j]
+          result[j] = tmp
+        }
+        return result
+      }
+    }
+
+    class Annealer {
+      constructor(startTemp, endTemp, endTime, random) {
+        this.startTemp = startTemp
+        this.endTemp = endTemp
+        this.endTime = endTime
+        this.random = random
+        this.temperature = startTemp
+      }
+
+      update(step) {
+        const elapsed = Math.max(0, Math.min(step / this.endTime, 1))
+        this.temperature =
+          Math.pow(this.startTemp, 1 - elapsed) * Math.pow(this.endTemp, elapsed)
+      }
+
+      accept(currentScore, nextScore) {
+        if (nextScore <= currentScore) return true
+        const probability = Math.exp((currentScore - nextScore) / (this.temperature + 0.001))
+        return this.random.next() < probability
+      }
+    }
+
+    class ScheduleModel {
+      constructor() {
+        this.initialMode = 'balanced'
+        this.random = new Random()
+        this.matrix = this.createInitialMatrix()
+        this.step = 0
+        this.maxTrials = 100000
+        this.annealer = new Annealer(0.65, 0.001, this.maxTrials, this.random)
+        this.bestMatrix = this.clone(this.matrix)
+        this.bestScore = this.evaluate().score
+        this.history = [this.bestScore]
+      }
+
+      clone(matrix) {
+        return matrix.map(row => row.slice())
+      }
+
+      createInitialMatrix() {
+        if (this.initialMode === 'empty') return this.createEmptyMatrix()
+        if (this.initialMode === 'random') return this.createRandomMatrix()
+        return this.createBalancedMatrix()
+      }
+
+      createEmptyMatrix() {
+        return Array.from({ length: NURSES }, () => Array(DAYS).fill(OFF))
+      }
+
+      createRandomMatrix() {
+        return Array.from({ length: NURSES }, () =>
+          Array.from({ length: DAYS }, () => this.random.int(3))
+        )
+      }
+
+      createBalancedMatrix() {
+        const matrix = Array.from({ length: NURSES }, () => Array(DAYS).fill(OFF))
+        const workCount = Array(NURSES).fill(0)
+        for (let day = 0; day < DAYS; day++) {
+          const order = this.random
+            .shuffle([...Array(NURSES).keys()])
+            .sort((a, b) => workCount[a] - workCount[b])
+          const dayWorkers = order.slice(0, 4)
+          dayWorkers.slice(0, 2).forEach(nurse => {
+            matrix[nurse][day] = DAY
+            workCount[nurse] += 1
+          })
+          dayWorkers.slice(2, 4).forEach(nurse => {
+            matrix[nurse][day] = NIGHT
+            workCount[nurse] += 1
+          })
+        }
+        return matrix
+      }
+
+      setInitialMode(mode) {
+        if (!Object.prototype.hasOwnProperty.call(INITIAL_MODES, mode)) return
+        this.initialMode = mode
+      }
+
+      reset() {
+        this.random = new Random(Date.now())
+        this.matrix = this.createInitialMatrix()
+        this.step = 0
+        this.annealer = new Annealer(0.65, 0.001, this.maxTrials, this.random)
+        const score = this.evaluate().score
+        this.bestMatrix = this.clone(this.matrix)
+        this.bestScore = score
+        this.history = [score]
+      }
+
+      setMaxTrials(value) {
+        this.maxTrials = value
+        this.annealer.endTime = value
+      }
+
+      restoreBest() {
+        this.matrix = this.clone(this.bestMatrix)
+        this.history.push(this.bestScore)
+      }
+
+      cycleCell(nurse, day) {
+        this.matrix[nurse][day] = (this.matrix[nurse][day] + 1) % 3
+        const score = this.evaluate().score
+        if (score < this.bestScore) {
+          this.bestScore = score
+          this.bestMatrix = this.clone(this.matrix)
+        }
+        this.history.push(score)
+      }
+
+      run(steps) {
+        let accepted = 0
+        for (let i = 0; i < steps; i++) {
+          if (this.step >= this.maxTrials || this.bestScore === 0) break
+          this.step += 1
+          if (this.step % 100 === 0) this.annealer.update(this.step)
+
+          const currentScore = this.evaluate().score
+          const undo = this.mutate()
+          const nextScore = this.evaluate().score
+
+          if (this.annealer.accept(currentScore, nextScore)) {
+            accepted += 1
+            if (nextScore < this.bestScore) {
+              this.bestScore = nextScore
+              this.bestMatrix = this.clone(this.matrix)
+            }
+          } else {
+            undo()
+          }
+        }
+        const score = this.evaluate().score
+        this.history.push(score)
+        if (this.history.length > 240) this.history = this.history.slice(-240)
+        return accepted
+      }
+
+      mutate() {
+        const p = this.random.next()
+        if (p < 0.4) {
+          const nurse = this.random.int(NURSES)
+          const day = this.random.int(DAYS)
+          const oldValue = this.matrix[nurse][day]
+          let nextValue = this.random.int(3)
+          if (nextValue === oldValue) nextValue = (nextValue + 1) % 3
+          this.matrix[nurse][day] = nextValue
+          return () => {
+            this.matrix[nurse][day] = oldValue
+          }
+        }
+
+        if (p < 0.7) {
+          const day = this.random.int(DAYS)
+          const nurseA = this.random.int(NURSES)
+          let nurseB = this.random.int(NURSES)
+          if (nurseA === nurseB) nurseB = (nurseB + 1) % NURSES
+          const valueA = this.matrix[nurseA][day]
+          const valueB = this.matrix[nurseB][day]
+          this.matrix[nurseA][day] = valueB
+          this.matrix[nurseB][day] = valueA
+          return () => {
+            this.matrix[nurseA][day] = valueA
+            this.matrix[nurseB][day] = valueB
+          }
+        }
+
+        const nurse = this.random.int(NURSES)
+        const dayA = this.random.int(DAYS)
+        let dayB = this.random.int(DAYS)
+        if (dayA === dayB) dayB = (dayB + 1) % DAYS
+        const valueA = this.matrix[nurse][dayA]
+        const valueB = this.matrix[nurse][dayB]
+        this.matrix[nurse][dayA] = valueB
+        this.matrix[nurse][dayB] = valueA
+        return () => {
+          this.matrix[nurse][dayA] = valueA
+          this.matrix[nurse][dayB] = valueB
+        }
+      }
+
+      evaluate() {
+        const dayCount = Array.from({ length: DAYS }, () => ({ day: 0, night: 0 }))
+        for (let day = 0; day < DAYS; day++) {
+          for (let nurse = 0; nurse < NURSES; nurse++) {
+            if (this.matrix[nurse][day] === DAY) dayCount[day].day += 1
+            if (this.matrix[nurse][day] === NIGHT) dayCount[day].night += 1
+          }
+        }
+
+        const s1 = dayCount.map(count => Math.max(2 - count.day, 0))
+        const s2 = dayCount.map(count => Math.max(2 - count.night, 0))
+        const s3 = []
+        const n1 = []
+        const n2 = []
+        const n3 = []
+        const n4 = []
+        const n5 = []
+        const n6 = []
+        const problemCells = new Set()
+        const hoverCells = {
+          n1: Array.from({ length: NURSES }, () => []),
+          n2: Array.from({ length: NURSES }, () => []),
+          n3: Array.from({ length: NURSES }, () => []),
+          n4: Array.from({ length: NURSES }, () => []),
+          n5: Array.from({ length: NURSES }, () => []),
+          n6: Array.from({ length: NURSES }, () => []),
+          total: Array.from({ length: NURSES }, () => []),
+        }
+
+        for (let day = 0; day < DAYS; day++) {
+          const dayPairs = [DAY, NIGHT].map(shift =>
+            NEWCOMER_INDICES.filter(nurse => this.matrix[nurse][day] === shift)
+          )
+          const penalty = dayPairs.reduce((sum, nurses) => sum + (nurses.length * (nurses.length - 1)) / 2, 0)
+          s3.push(penalty)
+          dayPairs.forEach(nurses => {
+            if (nurses.length < 2) return
+            nurses.forEach(nurse => problemCells.add(`${nurse}-${day}`))
+          })
+        }
+
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          let holidays = 0
+          let hasWeekendPair = false
+          let serialWorkPenalty = 0
+          let dayAfterNightPenalty = 0
+          let serialNightPenalty = 0
+          const nightDays = []
+
+          for (let day = 0; day < DAYS; day++) {
+            const value = this.matrix[nurse][day]
+            if (value === OFF) {
+              holidays += 1
+            }
+            if (value === NIGHT) nightDays.push(day)
+
+            if (day < DAYS - 1 && value === NIGHT && this.matrix[nurse][day + 1] === DAY) {
+              dayAfterNightPenalty += 1
+              problemCells.add(`${nurse}-${day}`)
+              problemCells.add(`${nurse}-${day + 1}`)
+              hoverCells.n4[nurse].push(`${nurse}-${day}`, `${nurse}-${day + 1}`)
+            }
+          }
+
+          for (let day = 0; day < DAYS;) {
+            if (this.matrix[nurse][day] === OFF) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && this.matrix[nurse][day] !== OFF) day += 1
+            const length = day - start
+            if (length > 3) {
+              serialWorkPenalty += length - 3
+              for (let targetDay = start; targetDay < day; targetDay++) {
+                const cellKey = `${nurse}-${targetDay}`
+                problemCells.add(cellKey)
+                hoverCells.n3[nurse].push(cellKey)
+              }
+            }
+          }
+
+          for (let day = 0; day < DAYS;) {
+            if (this.matrix[nurse][day] !== NIGHT) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && this.matrix[nurse][day] === NIGHT) day += 1
+            const length = day - start
+            if (length > 2) {
+              serialNightPenalty += length - 2
+              for (let targetDay = start; targetDay < day; targetDay++) {
+                const cellKey = `${nurse}-${targetDay}`
+                problemCells.add(cellKey)
+                hoverCells.n5[nurse].push(cellKey)
+              }
+            }
+          }
+
+          for (let sunday = 6; sunday < DAYS; sunday += 7) {
+            const saturday = sunday - 1
+            if (this.matrix[nurse][saturday] === OFF && this.matrix[nurse][sunday] === OFF) {
+              hasWeekendPair = true
+            }
+          }
+
+          const holidayShortage = Math.max(7 - holidays, 0)
+          if (holidayShortage > 0) {
+            for (let day = 0; day < DAYS; day++) {
+              if (this.matrix[nurse][day] === OFF) hoverCells.n1[nurse].push(`${nurse}-${day}`)
+            }
+          }
+          if (!hasWeekendPair) {
+            for (let sunday = 6; sunday < DAYS; sunday += 7) {
+              hoverCells.n2[nurse].push(`${nurse}-${sunday - 1}`, `${nurse}-${sunday}`)
+            }
+          }
+
+          const nightLimitPenalty = Math.max(nightDays.length - 4, 0)
+          if (nightLimitPenalty > 0) {
+            nightDays.forEach(day => {
+              const cellKey = `${nurse}-${day}`
+              problemCells.add(cellKey)
+              hoverCells.n6[nurse].push(cellKey)
+            })
+          }
+
+          n1.push(holidayShortage)
+          n2.push(hasWeekendPair ? 0 : 1)
+          n3.push(serialWorkPenalty)
+          n4.push(dayAfterNightPenalty)
+          n5.push(serialNightPenalty)
+          n6.push(nightLimitPenalty)
+        }
+
+        const parts = { s1, s2, s3, n1, n2, n3, n4, n5, n6 }
+        const totals = Object.fromEntries(
+          Object.entries(parts).map(([key, values]) => [key, values.reduce((a, b) => a + b, 0)])
+        )
+        const score = Object.values(totals).reduce((a, b) => a + b, 0)
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          const merged = new Set()
+          ;['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].forEach(key => {
+            hoverCells[key][nurse].forEach(cell => merged.add(cell))
+          })
+          hoverCells.total[nurse] = [...merged]
+        }
+        return { score, parts, totals, dayCount, problemCells, hoverCells }
+      }
+    }
+
+    const model = new ScheduleModel()
+    let running = false
+
+    const board = document.getElementById('board')
+    const scoreValue = document.getElementById('scoreValue')
+    const stepValue = document.getElementById('stepValue')
+    const temperatureValue = document.getElementById('temperatureValue')
+    const bestScoreValue = document.getElementById('bestScoreValue')
+    const scoreMetric = scoreValue.closest('.metric')
+    const bestScoreMetric = bestScoreValue.closest('.metric')
+    const constraintList = document.getElementById('constraintList')
+    const nurseTable = document.getElementById('nurseTable')
+    const nurseConstraintHelpBox = document.getElementById('nurseConstraintHelp')
+    const log = document.getElementById('log')
+    const runButton = document.getElementById('runButton')
+    const stopButton = document.getElementById('stopButton')
+    const stepButton = document.getElementById('stepButton')
+    const gnnButton = document.getElementById('gnnButton')
+    const gnnApplyButton = document.getElementById('gnnApplyButton')
+    const bestButton = document.getElementById('bestButton')
+    const resetButton = document.getElementById('resetButton')
+    const modeLabel = document.getElementById('modeLabel')
+    const modeButtons = [...document.querySelectorAll('.mode-tab')]
+    const speedRange = document.getElementById('speedRange')
+    const speedValue = document.getElementById('speedValue')
+    const trialRange = document.getElementById('trialRange')
+    const trialValue = document.getElementById('trialValue')
+    const canvas = document.getElementById('historyCanvas')
+    const ctx = canvas.getContext('2d')
+    let gnnCandidates = []
+
+    function render() {
+      const result = model.evaluate()
+      renderBoard(result)
+      renderMetrics(result)
+      renderConstraints(result)
+      renderNurseTable(result)
+      renderHistory()
+      renderGnnCandidates()
+      updateButtons()
+    }
+
+    function renderBoard(result) {
+      board.innerHTML = ''
+      addCell('', 'cell head major-right major-bottom')
+      for (let day = 0; day < DAYS; day++) {
+        addCell(`${day + 1}<br>${WEEKDAYS[day % 7]}`, `cell head major-bottom ${isWeekend(day) ? 'weekend' : ''} ${day === 6 ? 'major-right' : ''}`)
+      }
+
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        const staff = staffLabel(nurse)
+        addCell(staff, `cell nurse head major-right ${nurse === NURSES - 1 ? 'major-bottom' : ''}`)
+        for (let day = 0; day < DAYS; day++) {
+          const value = model.matrix[nurse][day]
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = `cell shift ${SHIFT_CLASSES[value]} ${isWeekend(day) ? 'weekend' : ''} ${day === 6 ? 'major-right' : ''} ${nurse === NURSES - 1 ? 'major-bottom' : ''}`
+          button.dataset.cell = `${nurse}-${day}`
+          button.title = `${staff} ${day + 1}日目: ${SHIFT_NAMES[value]}`
+          button.setAttribute('aria-label', `${staff} ${day + 1}日目: ${SHIFT_NAMES[value]}`)
+          button.innerHTML = SHIFT_LABELS[value]
+          button.addEventListener('click', () => {
+            if (running) return
+            clearGnnCandidates()
+            model.cycleCell(nurse, day)
+            appendLog(`${staff} ${day + 1}日目を変更`)
+            render()
+          })
+          board.appendChild(button)
+        }
+      }
+
+      addCell('日勤（D）不足', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const cell = addCell(String(result.parts.s1[day]), `cell day-result ${result.parts.s1[day] === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's1'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = getDayShiftCells(day, DAY).join(' ')
+      }
+
+      addCell('夜勤（N）不足', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const cell = addCell(String(result.parts.s2[day]), `cell day-result ${result.parts.s2[day] === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's2'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = getDayShiftCells(day, NIGHT).join(' ')
+      }
+
+      addCell('新人同士禁止', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const value = result.parts.s3[day]
+        const cell = addCell(String(value), `cell day-result ${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's3'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = value > 0 ? getNewcomerPairCells(day).join(' ') : ''
+      }
+      board.querySelectorAll('.day-result[data-constraint]').forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+          setCoverConstraintHelp(cell.dataset.constraint, Number(cell.dataset.day), Number(cell.textContent))
+          if (cell.classList.contains('bad')) setViolationHover(cell.dataset.hoverCells)
+        })
+        cell.addEventListener('mouseleave', () => {
+          resetNurseConstraintHelp()
+          if (cell.classList.contains('bad')) clearViolationHover()
+        })
+      })
+    }
+
+    function isWeekend(day) {
+      const weekday = day % 7
+      return weekday === 5 || weekday === 6
+    }
+
+    function addCell(content, className) {
+      const cell = document.createElement('div')
+      cell.className = className
+      cell.innerHTML = content
+      board.appendChild(cell)
+      return cell
+    }
+
+    function staffLabel(index) {
+      return index < NEWCOMER_COUNT ? `S${index + 1}（新人）` : `S${index + 1}`
+    }
+
+    function getDayShiftCells(day, shift) {
+      const cells = []
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        if (model.matrix[nurse][day] === shift) cells.push(`${nurse}-${day}`)
+      }
+      return cells
+    }
+
+    function getNewcomerPairCells(day) {
+      return getNewcomerPairIndices(day).map(nurse => `${nurse}-${day}`)
+    }
+
+    function getNewcomerPairIndices(day) {
+      const paired = []
+      for (const shift of [DAY, NIGHT]) {
+        const nurses = NEWCOMER_INDICES.filter(nurse => model.matrix[nurse][day] === shift)
+        if (nurses.length > 1) paired.push(...nurses)
+      }
+      return paired
+    }
+
+    function renderMetrics(result) {
+      scoreValue.textContent = result.score
+      stepValue.textContent = model.step
+      temperatureValue.textContent = model.annealer.temperature.toFixed(3)
+      bestScoreValue.textContent = model.bestScore
+      scoreMetric.classList.toggle('good', result.score === 0)
+      scoreMetric.classList.toggle('bad', result.score > 0)
+      bestScoreMetric.classList.toggle('good', model.bestScore === 0)
+      bestScoreMetric.classList.toggle('bad', model.bestScore > 0)
+    }
+
+    function renderConstraints(result) {
+      constraintList.innerHTML = ''
+      constraintMeta.forEach(([key, label]) => {
+        const li = document.createElement('li')
+        const value = result.totals[key]
+        li.className = 'constraint'
+        li.innerHTML = `<span>${label}</span><span class="pill ${value === 0 ? '' : 'bad'}">${value}</span>`
+        constraintList.appendChild(li)
+      })
+    }
+
+    function renderNurseTable(result) {
+      nurseTable.innerHTML = ''
+      const head = document.createElement('thead')
+      head.innerHTML = '<tr><th>看護師</th><th data-constraint="n1">条件1<span>休不足</span></th><th data-constraint="n2">条件2<span>週末</span></th><th data-constraint="n3">条件3<span>連勤</span></th><th data-constraint="n4">条件4<span>夜→日</span></th><th data-constraint="n5">条件5<span>連夜</span></th><th data-constraint="n6">条件6<span>夜勤数</span></th><th data-constraint="total">合計</th></tr>'
+      nurseTable.appendChild(head)
+      const body = document.createElement('tbody')
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        const keys = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+        const values = keys.map(key => result.parts[key][nurse])
+        const total = values.reduce((a, b) => a + b, 0)
+        const tr = document.createElement('tr')
+        const valueCells = values.map((value, index) => {
+          const key = keys[index]
+          return `<td class="${value === 0 ? 'ok' : 'bad'}" data-constraint="${key}" data-hover-cells="${result.hoverCells[key][nurse].join(' ')}">${value}</td>`
+        }).join('')
+        tr.innerHTML = `<td>${staffLabel(nurse)}</td>${valueCells}<td class="${total === 0 ? 'ok' : 'bad'}" data-constraint="total" data-hover-cells="${result.hoverCells.total[nurse].join(' ')}">${total}</td>`
+        body.appendChild(tr)
+      }
+      nurseTable.appendChild(body)
+      const foot = document.createElement('tfoot')
+      const nurseKeys = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+      const nurseTotal = nurseKeys.reduce((sum, key) => sum + result.totals[key], 0)
+      const totalCells = nurseKeys.map(key => {
+        const value = result.totals[key]
+        return `<td class="${value === 0 ? 'ok' : 'bad'}" data-constraint="${key}">${value}</td>`
+      }).join('')
+      foot.innerHTML = `<tr><td>合計</td>${totalCells}<td class="${nurseTotal === 0 ? 'ok' : 'bad'}" data-constraint="total">${nurseTotal}</td></tr>`
+      nurseTable.appendChild(foot)
+      nurseTable.querySelectorAll('[data-constraint]').forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+          setNurseConstraintHelp(cell.dataset.constraint)
+          if (cell.dataset.constraint !== 'total' && cell.matches('td.bad[data-hover-cells]')) {
+            setViolationHover(cell.dataset.hoverCells)
+          }
+        })
+        cell.addEventListener('mouseleave', () => {
+          resetNurseConstraintHelp()
+          if (cell.dataset.constraint !== 'total' && cell.matches('td.bad[data-hover-cells]')) {
+            clearViolationHover()
+          }
+        })
+      })
+    }
+
+    function setNurseConstraintHelp(key) {
+      const help = nurseConstraintHelp[key]
+      if (!help || !nurseConstraintHelpBox) return
+      nurseConstraintHelpBox.innerHTML = `<div class="constraint-help-title">${help.title}</div><div class="constraint-help-body">${help.body}</div>`
+    }
+
+    function setCoverConstraintHelp(key, day, value) {
+      const help = nurseConstraintHelp[key]
+      if (!help || !nurseConstraintHelpBox) return
+      let status
+      if (key === 's3') {
+        status = value > 0
+          ? `${day + 1}日目は新人同士が同じ勤務です。`
+          : `${day + 1}日目は新人同士のペア制約を満たしています。`
+      } else {
+        const shiftName = key === 's1' ? '日勤（D）' : '夜勤（N）'
+        status = value > 0
+          ? `${day + 1}日目は${shiftName}が${value}人不足しています。`
+          : `${day + 1}日目は${shiftName}の必要人数を満たしています。`
+      }
+      nurseConstraintHelpBox.innerHTML = `<div class="constraint-help-title">${help.title}: ${day + 1}日目</div><div class="constraint-help-body">${help.body}<br>${status}</div>`
+    }
+
+    function resetNurseConstraintHelp() {
+      if (!nurseConstraintHelpBox) return
+      nurseConstraintHelpBox.innerHTML = '<div class="constraint-help-title">制約の説明</div><div class="constraint-help-body">条件の列にマウスを置くと、この下に制約の意味と違反の数え方を表示します。日勤（D）不足・夜勤（N）不足・新人同士禁止は勤務表下段の共通制約です。</div>'
+    }
+
+    function computeGnnCandidates() {
+      const currentResult = model.evaluate()
+      const currentScore = currentResult.score
+      if (currentScore === 0) return []
+      const candidateCells = new Set()
+
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        currentResult.hoverCells.total[nurse].forEach(cellKey => candidateCells.add(cellKey))
+      }
+
+      for (let day = 0; day < DAYS; day++) {
+        if (currentResult.parts.s1[day] > 0 || currentResult.parts.s2[day] > 0 || currentResult.parts.s3[day] > 0) {
+          for (let nurse = 0; nurse < NURSES; nurse++) candidateCells.add(`${nurse}-${day}`)
+        }
+      }
+
+      ;[...candidateCells].forEach(cellKey => {
+        const [nurseText, dayText] = cellKey.split('-')
+        const nurse = Number(nurseText)
+        const day = Number(dayText)
+        if (!Number.isInteger(nurse) || !Number.isInteger(day)) return
+        if (day > 0) candidateCells.add(`${nurse}-${day - 1}`)
+        if (day < DAYS - 1) candidateCells.add(`${nurse}-${day + 1}`)
+      })
+
+      const candidates = []
+      candidateCells.forEach(cellKey => {
+        const [nurseText, dayText] = cellKey.split('-')
+        const nurse = Number(nurseText)
+        const day = Number(dayText)
+        if (!Number.isInteger(nurse) || !Number.isInteger(day)) return
+        const oldValue = model.matrix[nurse][day]
+        for (let nextValue = 0; nextValue < SHIFT_LABELS.length; nextValue++) {
+          if (nextValue === oldValue) continue
+          model.matrix[nurse][day] = nextValue
+          const nextScore = model.evaluate().score
+          candidates.push({
+            nurse,
+            day,
+            oldValue,
+            nextValue,
+            delta: currentScore - nextScore,
+            nextScore,
+          })
+        }
+        model.matrix[nurse][day] = oldValue
+      })
+
+      return candidates
+        .filter(candidate => candidate.delta > 0)
+        .sort((a, b) => b.delta - a.delta || a.nextScore - b.nextScore)
+        .slice(0, 3)
+    }
+
+    function renderGnnCandidates() {
+      clearGnnHighlights()
+      gnnCandidates.forEach((candidate, index) => {
+        const target = board.querySelector(`[data-cell="${candidate.nurse}-${candidate.day}"]`)
+        if (!target) return
+        target.classList.add('gnn-candidate')
+        target.dataset.gnnRank = String(index + 1)
+        target.title = `GNN風候補${index + 1}: N${candidate.nurse + 1} ${candidate.day + 1}日目 ${SHIFT_LABELS[candidate.oldValue]}→${SHIFT_LABELS[candidate.nextValue]} / 改善予測 ${candidate.delta}`
+      })
+      gnnApplyButton.disabled = running || gnnCandidates.length === 0
+    }
+
+    function clearGnnHighlights() {
+      board.querySelectorAll('.gnn-candidate').forEach(cell => {
+        cell.classList.remove('gnn-candidate')
+        delete cell.dataset.gnnRank
+      })
+    }
+
+    function clearGnnCandidates() {
+      gnnCandidates = []
+      clearGnnHighlights()
+      gnnApplyButton.disabled = true
+    }
+
+    function setViolationHover(cellList) {
+      clearViolationHover()
+      if (!cellList) return
+      const byNurse = new Map()
+      cellList.split(/\s+/).filter(Boolean).forEach(cellKey => {
+        const [nurseText, dayText] = cellKey.split('-')
+        const nurse = Number(nurseText)
+        const day = Number(dayText)
+        if (!Number.isInteger(nurse) || !Number.isInteger(day)) return
+        if (!byNurse.has(nurse)) byNurse.set(nurse, new Set())
+        byNurse.get(nurse).add(day)
+      })
+
+      byNurse.forEach((days, nurse) => {
+        const sortedDays = [...days].sort((a, b) => a - b)
+        for (let index = 0; index < sortedDays.length;) {
+          const startIndex = index
+          while (index + 1 < sortedDays.length && sortedDays[index + 1] === sortedDays[index] + 1) index += 1
+          const endIndex = index
+          for (let cursor = startIndex; cursor <= endIndex; cursor++) {
+            const day = sortedDays[cursor]
+            const target = board.querySelector(`[data-cell="${nurse}-${day}"]`)
+            if (!target) continue
+            target.classList.add('hover-violation')
+            if (endIndex === startIndex) continue
+            if (cursor === startIndex) target.classList.add('hover-run-start')
+            else if (cursor === endIndex) target.classList.add('hover-run-end')
+            else target.classList.add('hover-run-middle')
+          }
+          index += 1
+        }
+      })
+    }
+
+    function clearViolationHover() {
+      board.querySelectorAll('.hover-violation').forEach(cell => {
+        cell.classList.remove('hover-violation', 'hover-run-start', 'hover-run-middle', 'hover-run-end')
+      })
+    }
+
+    function renderHistory() {
+      const values = model.history
+      const width = canvas.width
+      const height = canvas.height
+      ctx.clearRect(0, 0, width, height)
+      ctx.fillStyle = '#fbfcff'
+      ctx.fillRect(0, 0, width, height)
+      ctx.strokeStyle = '#d8deea'
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 4; i++) {
+        const y = 20 + i * ((height - 40) / 4)
+        ctx.beginPath()
+        ctx.moveTo(20, y)
+        ctx.lineTo(width - 16, y)
+        ctx.stroke()
+      }
+      if (values.length < 2) return
+      const max = Math.max(...values, 1)
+      const min = Math.min(...values)
+      const span = Math.max(max - min, 1)
+      ctx.strokeStyle = '#244a8f'
+      ctx.lineWidth = 3
+      ctx.beginPath()
+      values.forEach((value, index) => {
+        const x = 20 + (index / (values.length - 1)) * (width - 40)
+        const y = height - 20 - ((value - min) / span) * (height - 40)
+        if (index === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.stroke()
+      ctx.fillStyle = '#657086'
+      ctx.font = '24px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+      ctx.fillText(`max ${max}`, 24, 32)
+      ctx.fillText(`min ${min}`, 24, height - 24)
+    }
+
+    function appendLog(message) {
+      const line = document.createElement('div')
+      line.textContent = `${new Date().toLocaleTimeString('ja-JP')}  ${message}`
+      log.prepend(line)
+    }
+
+    function updateButtons() {
+      runButton.disabled = running
+      stopButton.disabled = !running
+      stepButton.disabled = running
+      gnnButton.disabled = running
+      gnnApplyButton.disabled = running || gnnCandidates.length === 0
+      bestButton.disabled = running
+      resetButton.disabled = running
+      trialRange.disabled = running
+      modeButtons.forEach(button => {
+        button.disabled = running
+        button.classList.toggle('active', button.dataset.mode === model.initialMode)
+      })
+      modeLabel.textContent = INITIAL_MODES[model.initialMode]
+    }
+
+    function runLoop() {
+      if (!running) return
+      const chunk = Number(speedRange.value)
+      const accepted = model.run(chunk)
+      const result = model.evaluate()
+      render()
+      appendLog(`${chunk}手 実行 / 受理 ${accepted} / 違反量 ${result.score}`)
+      if (result.score === 0 || model.step >= model.maxTrials) {
+        running = false
+        appendLog(result.score === 0 ? '制約違反 0 の勤務表に到達' : '最大探索回数に到達')
+        render()
+        return
+      }
+      requestAnimationFrame(runLoop)
+    }
+
+    function initializeScheduleFromMode() {
+      clearGnnCandidates()
+      model.reset()
+      const result = model.evaluate()
+      appendLog(`${INITIAL_MODES[model.initialMode]}で初期化 / 違反量 ${result.score}`)
+      render()
+    }
+
+    runButton.addEventListener('click', () => {
+      clearGnnCandidates()
+      running = true
+      appendLog('最適化を開始')
+      render()
+      requestAnimationFrame(runLoop)
+    })
+
+    stopButton.addEventListener('click', () => {
+      running = false
+      appendLog('停止')
+      render()
+    })
+
+    stepButton.addEventListener('click', () => {
+      clearGnnCandidates()
+      const accepted = model.run(1000)
+      appendLog(`1000手 実行 / 受理 ${accepted} / 違反量 ${model.evaluate().score}`)
+      render()
+    })
+
+    gnnButton.addEventListener('click', () => {
+      gnnCandidates = computeGnnCandidates()
+      if (gnnCandidates.length === 0) {
+        appendLog('GNN風候補なし')
+      } else {
+        const best = gnnCandidates[0]
+        appendLog(`GNN風候補: ${staffLabel(best.nurse)} ${best.day + 1}日目 ${SHIFT_LABELS[best.oldValue]}→${SHIFT_LABELS[best.nextValue]} / 改善予測 ${best.delta} / 予測違反量 ${best.nextScore}`)
+      }
+      render()
+    })
+
+    gnnApplyButton.addEventListener('click', () => {
+      if (gnnCandidates.length === 0) return
+      const best = gnnCandidates[0]
+      const before = model.evaluate().score
+      model.matrix[best.nurse][best.day] = best.nextValue
+      const after = model.evaluate().score
+      if (after < model.bestScore) {
+        model.bestScore = after
+        model.bestMatrix = model.clone(model.matrix)
+      }
+      model.history.push(after)
+      appendLog(`GNN風候補を適用: ${staffLabel(best.nurse)} ${best.day + 1}日目 ${SHIFT_LABELS[best.oldValue]}→${SHIFT_LABELS[best.nextValue]} / 違反量 ${before}→${after}`)
+      clearGnnCandidates()
+      render()
+    })
+
+    bestButton.addEventListener('click', () => {
+      clearGnnCandidates()
+      model.restoreBest()
+      appendLog(`最良勤務表へ復帰 / 違反量 ${model.bestScore}`)
+      render()
+    })
+
+    resetButton.addEventListener('click', () => {
+      initializeScheduleFromMode()
+    })
+
+    modeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (running) return
+        model.setInitialMode(button.dataset.mode)
+        initializeScheduleFromMode()
+      })
+    })
+
+    speedRange.addEventListener('input', () => {
+      speedValue.textContent = speedRange.value
+    })
+
+    trialRange.addEventListener('input', () => {
+      const value = Number(trialRange.value)
+      trialValue.textContent = value
+      model.setMaxTrials(value)
+      render()
+    })
+
+    appendLog(`${INITIAL_MODES[model.initialMode]}で初期勤務表を生成`)
+    render()
+  </script>
+</body>
+</html>
