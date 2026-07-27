@@ -1,0 +1,4857 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NSP 遺伝的アルゴリズム（GA）デモ</title>
+  <script src="https://cdn.plot.ly/plotly-3.6.0.min.js" charset="utf-8"></script>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #657086;
+      --line: #d8deea;
+      --line-strong: #aeb8ca;
+      --off: #eef1f5;
+      --day: #d9f0e5;
+      --day-ink: #0d6b3f;
+      --night: #dfe8ff;
+      --night-ink: #3157b7;
+      --weekend: #fff6dd;
+      --bad: #f7d9d8;
+      --bad-ink: #a72f2b;
+      --ok: #ffffff;
+      --ok-ink: #1b6d43;
+      --accent: #244a8f;
+      --accent-2: #b9852c;
+      --shadow: 0 10px 24px rgba(30, 42, 70, 0.08);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 20px;
+      background: #16223a;
+      color: white;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #d8e1f5;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: 16px;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    aside, .workspace {
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-inner {
+      padding: 14px;
+    }
+
+    .panel-title {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #2a3448;
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 14px;
+      margin: 0 0 10px;
+      white-space: nowrap;
+    }
+
+    .panel-heading .panel-title {
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .panel-title-block {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .panel-meta-line {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .panel-meta {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.35;
+      white-space: nowrap;
+    }
+
+    .board-legend {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+
+    .inline-legend {
+      display: contents;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .inline-legend .legend-item {
+      font-weight: 650;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      overflow-x: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 6px 10px;
+    }
+
+    .tool-group {
+      min-width: max-content;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-right: 10px;
+      border-right: 1px solid var(--line);
+    }
+
+    .tool-group:last-child {
+      padding-right: 0;
+      border-right: 0;
+    }
+
+    .tool-title {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 750;
+      color: #2a3448;
+    }
+
+    .metric-grid {
+      display: flex;
+      gap: 4px;
+      width: auto;
+    }
+
+    .state-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      height: 30px;
+      padding: 3px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcff;
+      color: #2a3448;
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .state-toggle input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: #244f9e;
+    }
+
+    .metric {
+      min-height: 28px;
+      min-width: 78px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 7px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcff;
+    }
+
+    .metric.good {
+      border-color: #a8d7ba;
+      background: var(--ok);
+    }
+
+    .metric.bad {
+      border-color: #e4abaa;
+      background: var(--bad);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .metric-value {
+      margin-top: 0;
+      font-size: 15px;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0;
+    }
+
+    .metric-value.small {
+      font-size: 13px;
+      line-height: 1.1;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 4px;
+      width: 430px;
+    }
+
+    .cutoff-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .cutoff-control input {
+      width: 64px;
+      height: 28px;
+      padding: 2px 5px;
+      border: 1px solid var(--line-strong);
+      border-radius: 6px;
+      color: #1d2a40;
+      background: #ffffff;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .ga-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 650;
+      line-height: 1.35;
+    }
+
+    .btn {
+      height: 28px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: #1d2a40;
+      background: white;
+      cursor: pointer;
+      font-weight: 650;
+      font-size: 12px;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .btn.warn {
+      background: var(--accent-2);
+      border-color: var(--accent-2);
+      color: white;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.58;
+    }
+
+    .btn:hover:not(:disabled),
+    .shift:hover {
+      filter: brightness(0.98);
+      box-shadow: inset 0 0 0 2px rgba(36, 74, 143, 0.18);
+    }
+
+    .constraint-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .constraint {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      font-size: 12px;
+    }
+
+    .pill {
+      min-width: 34px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      text-align: center;
+      font-weight: 750;
+      font-variant-numeric: tabular-nums;
+      background: var(--ok);
+      color: var(--ok-ink);
+    }
+
+    .pill.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .status-box {
+      margin-bottom: 8px;
+      padding: 9px 11px;
+      border: 1px solid #c4d1e5;
+      border-radius: 8px;
+      background: #f8fbff;
+      color: #263247;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .status-box strong {
+      display: block;
+      margin-bottom: 2px;
+      color: #172033;
+      font-size: 13px;
+    }
+
+    .ga-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+      margin: 10px 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .ga-flow li {
+      min-height: 34px;
+      display: grid;
+      place-items: center;
+      padding: 4px 5px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcff;
+      color: #263247;
+      font-size: 11px;
+      font-weight: 750;
+      text-align: center;
+    }
+
+    .population-table {
+      width: 100%;
+      margin-top: 8px;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    .population-table th,
+    .population-table td {
+      height: 28px;
+      border: 1px solid var(--line);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .population-table th {
+      background: #edf1f7;
+      color: #263247;
+      font-weight: 800;
+    }
+
+    .population-table td.good {
+      background: var(--ok);
+      color: var(--ok-ink);
+      font-weight: 800;
+    }
+
+    .population-table td.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+      font-weight: 800;
+    }
+
+    .population-mini-panel {
+      --mini-columns: 5;
+      --mini-scale: 0.56;
+      --mini-base-width: 421px;
+      --mini-base-height: 300px;
+      --mini-label-width: 50px;
+      --mini-day-width: 22px;
+      --mini-total-width: 38px;
+      --mini-row-height: 24px;
+      --mini-font-size: 11px;
+      --mini-title-font-size: 12px;
+      padding: 12px;
+    }
+
+    .population-mini-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .population-mini-note {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .population-mini-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 250px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .population-mini-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px 14px;
+    }
+
+    .population-mini-control.generation-control input[type="range"] {
+      width: 170px;
+    }
+
+    .population-mini-control input[type="range"] {
+      width: 130px;
+      accent-color: var(--accent);
+    }
+
+    .population-mini-control output {
+      min-width: 26px;
+      color: #263247;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .population-mini-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--mini-columns), calc(var(--mini-base-width) * var(--mini-scale)));
+      gap: 8px;
+      justify-content: start;
+      justify-items: start;
+    }
+
+    .mini-individual {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fbfcff;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+      width: fit-content;
+      max-width: 100%;
+    }
+
+    .mini-individual.best {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 2px rgba(36, 74, 143, 0.18);
+    }
+
+    .mini-individual.lineage-unavailable {
+      cursor: default;
+    }
+
+    .mini-individual.lineage-unavailable:hover {
+      border-color: var(--line);
+      box-shadow: none;
+    }
+
+    .mini-individual:hover {
+      border-color: var(--accent);
+      box-shadow: 0 8px 18px rgba(36, 74, 143, 0.16);
+    }
+
+    .mini-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px;
+      width: calc(var(--mini-base-width) * var(--mini-scale));
+      padding: calc(4px * var(--mini-scale)) calc(6px * var(--mini-scale));
+      border-bottom: 1px solid var(--line);
+      color: #263247;
+      font-size: calc(var(--mini-title-font-size) * var(--mini-scale));
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-title span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mini-title span:last-child {
+      text-align: right;
+    }
+
+    .mini-score {
+      color: var(--bad-ink);
+    }
+
+    .mini-roster-frame {
+      width: calc(var(--mini-base-width) * var(--mini-scale));
+      height: calc(var(--mini-base-height) * var(--mini-scale));
+      overflow: hidden;
+    }
+
+    .mini-roster {
+      display: grid;
+      width: var(--mini-base-width);
+      grid-template-columns: var(--mini-label-width) repeat(14, var(--mini-day-width)) var(--mini-total-width);
+      grid-auto-rows: var(--mini-row-height);
+      gap: 1px;
+      padding: 4px;
+      background: var(--line);
+      transform: scale(var(--mini-scale));
+      transform-origin: top left;
+    }
+
+    .mini-cell {
+      min-width: 0;
+      display: grid;
+      place-items: center;
+      border-radius: 1px;
+      background: var(--off);
+      color: #263247;
+      font-size: var(--mini-font-size);
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      overflow: hidden;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .mini-cell.day {
+      background: var(--day);
+      color: var(--day-ink);
+    }
+
+    .mini-cell.night {
+      background: var(--night);
+      color: var(--night-ink);
+    }
+
+    .mini-cell.head,
+    .mini-cell.label {
+      background: #edf1f7;
+      color: #263247;
+    }
+
+    .mini-cell.head.weekend {
+      background: var(--weekend);
+      color: #6b4d16;
+    }
+
+    .mini-cell.total {
+      background: #f5f7fb;
+      color: #263247;
+    }
+
+    .mini-cell.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .mini-cell.ok {
+      color: var(--ok-ink);
+    }
+
+    @media (max-width: 1180px) {
+      .population-mini-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .population-mini-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .population-mini-controls {
+        justify-content: flex-start;
+      }
+    }
+
+    .workspace {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .board-wrap {
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .nurse-panel .panel-inner {
+      padding: 12px;
+    }
+
+    .schedule-row {
+      display: grid;
+      grid-template-columns: max-content minmax(500px, 540px);
+      gap: 10px;
+      align-items: start;
+      justify-content: start;
+    }
+
+    .board {
+      min-width: 834px;
+      width: max-content;
+      display: grid;
+      grid-template-columns: 92px repeat(14, 52px);
+      grid-auto-rows: 42px;
+      border: 3px solid #0c0f16;
+      background: var(--line-strong);
+      gap: 1px;
+    }
+
+    .cell {
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      background: white;
+      font-size: 13px;
+      font-weight: 650;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .head {
+      background: #edf1f7;
+      color: #263247;
+    }
+
+    .head.weekend {
+      background: var(--weekend);
+      color: #6b4d16;
+    }
+
+    .nurse {
+      justify-content: start;
+      padding: 0 10px;
+      color: #263247;
+    }
+
+    .shift {
+      position: relative;
+      cursor: pointer;
+      border: 0;
+    }
+
+    .shift.weekend {
+      box-shadow: inset 0 0 0 999px rgba(255, 246, 221, 0.28);
+    }
+
+    .shift.off {
+      background: var(--off);
+      color: #5b6576;
+    }
+
+    .shift.day {
+      background: var(--day);
+      color: var(--day-ink);
+    }
+
+    .shift.night {
+      background: var(--night);
+      color: var(--night-ink);
+    }
+
+    .shift.hover-violation::after {
+      content: "";
+      position: absolute;
+      inset: 3px;
+      pointer-events: none;
+      z-index: 2;
+      border-left: 2px dashed var(--bad-ink);
+      border-right: 2px dashed var(--bad-ink);
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+      animation: table-wave 620ms linear infinite;
+    }
+
+    .shift.hover-run-start::after {
+      inset: 3px 0 3px 3px;
+      border-right: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    .shift.hover-run-middle::after {
+      inset: 3px 0;
+      border-left: 0;
+      border-right: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    .shift.hover-run-end::after {
+      inset: 3px 3px 3px 0;
+      border-left: 0;
+      background:
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x,
+        linear-gradient(90deg, var(--bad-ink) 50%, transparent 0) repeat-x;
+      background-size: 10px 2px, 10px 2px;
+      background-position: 0 0, 0 100%;
+    }
+
+    @keyframes table-wave {
+      to {
+        background-position: 10px 0, -10px 100%;
+      }
+    }
+
+    .major-right {
+      border-right: 3px solid #0c0f16;
+    }
+
+    .major-bottom {
+      border-bottom: 3px solid #0c0f16;
+    }
+
+    .day-result.ok {
+      background: var(--ok);
+      color: #1f2937;
+    }
+
+    .day-result.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .bottom-grid {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+      gap: 12px;
+    }
+
+    .ga-visual-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .ga-side-column {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+      max-width: 920px;
+    }
+
+    .ga-side-column .bottom-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .ga-side-column .constraint-list {
+      grid-template-columns: 1fr;
+    }
+
+    .ga-side-column .ga-flow {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ga-side-column .sparkline {
+      height: 270px;
+    }
+
+    .detail-table {
+      width: 100%;
+      margin-top: 1px;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      font-size: 12px;
+      border: 3px solid #0c0f16;
+    }
+
+    .detail-table th,
+    .detail-table td {
+      box-sizing: border-box;
+      padding: 2px 4px;
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .detail-table th:first-child,
+    .detail-table td:first-child {
+      border-left: 1px solid var(--line);
+    }
+
+    .detail-table th {
+      border-top: 0;
+      border-bottom: 3px solid #0c0f16;
+    }
+
+    .detail-table th {
+      height: 43px;
+      background: #edf1f7;
+      color: #2c374b;
+      font-weight: 700;
+      line-height: 1.08;
+      white-space: nowrap;
+    }
+
+    .detail-table th span {
+      display: block;
+      margin-top: 1px;
+      font-size: 10px;
+      color: #59667d;
+    }
+
+    .detail-table td {
+      height: 43px;
+      font-size: 14px;
+    }
+
+    .detail-table td:first-child,
+    .detail-table th:first-child {
+      text-align: left;
+      width: 104px;
+      border-right: 3px solid #0c0f16;
+      white-space: nowrap;
+    }
+
+    .detail-table th:last-child,
+    .detail-table td:last-child {
+      border-left: 3px solid #0c0f16;
+      border-right: 0;
+    }
+
+    .detail-table td.ok {
+      background: var(--ok);
+      color: var(--ok-ink);
+    }
+
+    .detail-table td.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+      font-weight: 800;
+    }
+
+    .detail-table tbody tr:last-child td {
+      border-bottom: 3px solid #0c0f16;
+    }
+
+    .detail-table tfoot td {
+      height: 36px;
+      background: #f5f7fb;
+      font-weight: 800;
+      border-top: 2px solid #0c0f16;
+    }
+
+    .detail-table tfoot .total-spacer {
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .detail-table th[data-constraint],
+    .detail-table td[data-constraint] {
+      cursor: help;
+    }
+
+    .constraint-help {
+      margin-top: 8px;
+      min-height: 70px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fafc;
+      color: #253044;
+    }
+
+    .constraint-help-title {
+      margin-bottom: 4px;
+      color: #182234;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .constraint-help-body {
+      color: #536077;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .sparkline {
+      width: 100%;
+      height: 230px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+    }
+
+    .log {
+      display: none;
+      border-radius: 8px;
+      background: #fbfcff;
+      color: #354054;
+      font-size: 12px;
+      line-height: 1.55;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border: 1px solid var(--line-strong);
+      border-radius: 5px;
+    }
+
+    .swatch.off { background: var(--off); }
+    .swatch.day { background: var(--day); }
+    .swatch.night { background: var(--night); }
+    .swatch.bad { background: var(--bad); }
+
+    .network-page {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .network-page header {
+      background: #ffffff;
+      color: var(--ink);
+      border-bottom-color: var(--line);
+    }
+
+    .network-page main {
+      gap: 12px;
+      padding: 14px;
+      overflow: visible;
+    }
+
+    .network-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .network-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .network-tab {
+      padding: 5px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fbfcff;
+      color: #253044;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .network-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .network-zoom-button {
+      padding: 5px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fbfcff;
+      color: #253044;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .network-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .network-control input[type="range"] {
+      width: 180px;
+    }
+
+    .edge-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .edge-toggle input {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .network-edge-help {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #536077;
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1.4;
+      box-shadow: var(--shadow);
+    }
+
+    .edge-sample {
+      width: 34px;
+      height: 0;
+      border-top: 3px solid #1b8da3;
+    }
+
+    .edge-sample.partner {
+      border-top-color: #b9852c;
+      border-top-style: dashed;
+    }
+
+    .edge-sample.rejected {
+      border-top-width: 2px;
+      border-top-color: #9aa7bc;
+      opacity: 0.55;
+    }
+
+    .edge-help-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .network-guide {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+      color: #2a3448;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .network-guide h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: #172033;
+    }
+
+    .network-guide-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 18px;
+    }
+
+    .network-guide h3 {
+      margin: 0 0 4px;
+      font-size: 13px;
+      color: #172033;
+    }
+
+    .network-guide p {
+      margin: 0;
+      color: #536077;
+    }
+
+    .network-stage {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .network-canvas-panel,
+    .network-detail {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .network-canvas-panel {
+      position: relative;
+      padding: 12px;
+    }
+
+    .network-detail {
+      min-height: 320px;
+      padding: 12px;
+      color: #2a3448;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .network-detail h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .network-detail .lineage-roster {
+      transform: scale(0.82);
+      transform-origin: top left;
+      margin: 6px 0 -44px;
+    }
+
+    .network-svg {
+      width: 100%;
+      height: 660px;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcff;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .network-svg.panning {
+      cursor: grabbing;
+    }
+
+    .network-hover-card {
+      position: absolute;
+      z-index: 8;
+      display: none;
+      width: 305px;
+      padding: 8px;
+      border: 1px solid #8ca1c2;
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 12px 28px rgba(30, 42, 70, 0.18);
+      pointer-events: none;
+      color: #253044;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .network-hover-card.visible {
+      display: block;
+    }
+
+    .network-hover-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 5px;
+      font-weight: 800;
+      color: #172033;
+      white-space: nowrap;
+    }
+
+    .network-hover-card .lineage-roster {
+      transform: scale(0.72);
+      transform-origin: top left;
+      margin: 5px 0 -58px;
+    }
+
+    .network-axis {
+      stroke: #9ca8ba;
+      stroke-width: 1.2;
+    }
+
+    .network-grid-line {
+      stroke: #e3e8f1;
+      stroke-width: 1;
+    }
+
+    .network-edge {
+      fill: none;
+      stroke: #9aa7bc;
+      stroke-width: 1.2;
+      opacity: 0.36;
+    }
+
+    .network-edge.accepted {
+      stroke: #1b8da3;
+      stroke-width: 2;
+      opacity: 0.75;
+    }
+
+    .network-edge.partner {
+      stroke: #b9852c;
+      stroke-dasharray: 4 3;
+      opacity: 0.55;
+    }
+
+    .network-edge.rejected {
+      stroke: #9aa7bc;
+      stroke-width: 1.2;
+      opacity: 0.36;
+    }
+
+    .network-svg.hide-accepted-edges .network-edge.accepted:not(.partner),
+    .network-svg.hide-partner-edges .network-edge.partner,
+    .network-svg.hide-rejected-edges .network-edge.rejected {
+      display: none;
+    }
+
+    .network-node {
+      cursor: pointer;
+      stroke: #fff;
+      stroke-width: 1.4;
+    }
+
+    .network-node.initial { fill: #94a3b8; }
+    .network-node.accepted { fill: #1b8da3; }
+    .network-node.rejected { fill: #b7c5dc; opacity: 0.46; }
+    .network-node.best { fill: #0d6b3f; stroke: #0c0f16; stroke-width: 2.2; }
+
+    .network-node.selected {
+      stroke: #0c0f16;
+      stroke-width: 3;
+    }
+
+    .network-label,
+    .network-axis-label {
+      fill: #253044;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .network-small-label {
+      fill: #657086;
+      font-size: 10px;
+      font-weight: 650;
+    }
+
+    @media (max-width: 980px) {
+      .network-stage {
+        grid-template-columns: 1fr;
+      }
+
+      .network-guide-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .lineage-page {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    .lineage-page header {
+      background: #ffffff;
+      color: var(--ink);
+      border-bottom-color: var(--line);
+    }
+
+    .lineage-page main {
+      gap: 12px;
+      padding: 14px;
+      overflow: visible;
+    }
+
+    .lineage-back {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .lineage-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .lineage-header-right {
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+    }
+
+    .lineage-zoom-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .lineage-zoom-control input {
+      width: 160px;
+      accent-color: var(--accent);
+    }
+
+    .lineage-zoom-control output {
+      width: 42px;
+      color: #263247;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lineage-legend {
+      padding: 4px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .lineage-legend span {
+      margin-right: 12px;
+      white-space: nowrap;
+    }
+
+    .lineage-help {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .lineage-help summary {
+      cursor: pointer;
+      padding: 9px 12px;
+      font-weight: 800;
+      color: #263247;
+      user-select: none;
+    }
+
+    .lineage-help[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .lineage-help-body {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px 12px 12px;
+      color: #536077;
+      line-height: 1.5;
+    }
+
+    .lineage-tree {
+      position: relative;
+      min-height: 520px;
+      overflow: auto;
+      padding: 28px 28px 60px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(rgba(82, 102, 135, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(82, 102, 135, 0.08) 1px, transparent 1px),
+        #ffffff;
+      background-size: 40px 40px;
+    }
+
+    .lineage-svg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .lineage-canvas {
+      position: relative;
+      transform-origin: top left;
+    }
+
+    .lineage-node {
+      position: absolute;
+      width: 330px;
+      padding: 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(30, 42, 70, 0.12);
+    }
+
+    .lineage-node.crossover {
+      border-color: rgba(47, 191, 113, 0.45);
+    }
+
+    .lineage-node.de-trial {
+      border-color: rgba(38, 198, 218, 0.72);
+    }
+
+    .lineage-node.partner {
+      border-color: rgba(89, 108, 145, 0.72);
+      background: #f8fafc;
+    }
+
+    .lineage-node.de-keep {
+      border-color: rgba(251, 191, 36, 0.62);
+    }
+
+    .lineage-node.elite {
+      border-color: rgba(143, 192, 255, 0.55);
+    }
+
+    .lineage-node.random {
+      border-color: rgba(148, 163, 184, 0.4);
+    }
+
+    .lineage-node.target {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3), 0 16px 28px rgba(0, 0, 0, 0.34);
+    }
+
+    .lineage-node-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: #263247;
+      font-size: 12px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lineage-node-score {
+      color: var(--bad-ink);
+    }
+
+    .lineage-roster {
+      display: grid;
+      position: relative;
+      width: max-content;
+      grid-template-columns: 40px repeat(14, 15px) 26px;
+      grid-auto-rows: 14px;
+      gap: 1px;
+      margin: 7px 0;
+      padding: 2px;
+      background: var(--line-strong);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .lineage-roster-cell {
+      display: grid;
+      min-width: 0;
+      position: relative;
+      place-items: center;
+      overflow: hidden;
+      background: var(--off);
+      color: #263247;
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .lineage-crossover-block {
+      position: absolute;
+      z-index: 3;
+      opacity: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(90deg, #087689 0 6px, transparent 6px 12px) 0 0 / 12px 2px repeat-x,
+        repeating-linear-gradient(90deg, #087689 0 6px, transparent 6px 12px) 0 100% / 12px 2px repeat-x,
+        repeating-linear-gradient(0deg, #087689 0 6px, transparent 6px 12px) 0 0 / 2px 12px repeat-y,
+        repeating-linear-gradient(0deg, #087689 0 6px, transparent 6px 12px) 100% 0 / 2px 12px repeat-y;
+    }
+
+    .lineage-node.show-crossover .lineage-crossover-block {
+      opacity: 1;
+      animation: crossover-dash 0.7s linear infinite;
+    }
+
+    @keyframes crossover-dash {
+      to {
+        background-position: 12px 0, -12px 100%, 0 -12px, 100% 12px;
+      }
+    }
+
+    .lineage-roster-cell.head,
+    .lineage-roster-cell.label {
+      background: #edf1f7;
+      color: #263247;
+    }
+
+    .lineage-roster-cell.weekend {
+      background: var(--weekend);
+      color: #6b4d16;
+    }
+
+    .lineage-roster-cell.day {
+      background: var(--day);
+      color: var(--day-ink);
+    }
+
+    .lineage-roster-cell.night {
+      background: var(--night);
+      color: var(--night-ink);
+    }
+
+    .lineage-roster-cell.total {
+      background: #f5f7fb;
+    }
+
+    .lineage-roster-cell.ok {
+      color: var(--ok-ink);
+    }
+
+    .lineage-roster-cell.coverage.ok {
+      color: #1f2937;
+    }
+
+    .lineage-roster-cell.bad {
+      background: var(--bad);
+      color: var(--bad-ink);
+    }
+
+    .lineage-node-detail {
+      color: #536077;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .lineage-op {
+      color: var(--ok-ink);
+      cursor: help;
+      font-weight: 800;
+    }
+
+    .lineage-parent-link {
+      margin-left: 6px;
+      padding: 1px 5px;
+      border: 1px solid #7ba7b5;
+      border-radius: 4px;
+      background: #f1fbfd;
+      color: #087689;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 750;
+    }
+
+    .lineage-node.lineage-focus {
+      box-shadow: 0 0 0 3px rgba(8, 118, 137, 0.28), 0 10px 22px rgba(30, 42, 70, 0.2);
+    }
+
+    .lineage-edge-label {
+      position: absolute;
+      transform: translateX(-50%);
+      max-width: 210px;
+      padding: 3px 10px;
+      border: 1px solid #1b8a55;
+      border-radius: 999px;
+      background: #effaf4;
+      color: #176b43;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+      text-align: center;
+      z-index: 2;
+    }
+
+    .lineage-edge-label.elite {
+      border-color: #4f76b5;
+      background: #eef5ff;
+      color: #315d9e;
+    }
+
+    .lineage-edge-label.de-trial {
+      border-color: #168da3;
+      background: #eaf9fb;
+      color: #087689;
+    }
+
+    .lineage-edge-label.de-keep {
+      border-color: #bf8b1e;
+      background: #fff8df;
+      color: #805b12;
+    }
+
+    .lineage-edge-label.random {
+      border-color: #8390a3;
+      background: #f4f6f9;
+      color: #526176;
+    }
+
+    .lineage-panel {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+    }
+
+    .lineage-panel h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .lineage-panel ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #536077;
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 1080px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .schedule-row {
+        grid-template-columns: 1fr;
+      }
+
+      .ga-visual-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .bottom-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      main {
+        padding: 10px;
+      }
+
+      .metric-grid,
+      .controls,
+      .constraint-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>NSP 遺伝的アルゴリズム（GA）デモ</h1>
+    </header>
+
+    <main>
+      <section class="topbar">
+        <div class="tool-group">
+          <h2 class="tool-title">状態</h2>
+          <div class="metric-grid">
+            <div class="metric">
+              <div class="metric-label">違反量</div>
+              <div class="metric-value" id="scoreValue">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">世代</div>
+              <div class="metric-value" id="generationValue">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">最良違反量</div>
+              <div class="metric-value small" id="bestScoreValue">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">平均違反量</div>
+              <div class="metric-value small" id="averageScoreValue">0.0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">個体数</div>
+              <div class="metric-value small" id="populationValue">40</div>
+            </div>
+          </div>
+          <label class="state-toggle" for="diversityToggle">
+            <input id="diversityToggle" type="checkbox">
+            多様性維持
+          </label>
+        </div>
+
+        <div class="tool-group">
+          <h2 class="tool-title">操作</h2>
+          <div class="controls">
+            <button class="btn primary" id="runButton">進化開始</button>
+            <button class="btn warn" id="stopButton" disabled>停止</button>
+            <button class="btn" id="stepButton">1世代</button>
+            <button class="btn" id="resetButton">初期化</button>
+          </div>
+          <label class="cutoff-control" for="maxGenerationInput">打切世代
+            <input id="maxGenerationInput" type="number" min="1" max="10000" step="1" value="100">
+          </label>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <section class="schedule-row">
+          <div class="panel board-wrap">
+            <div class="panel-heading">
+              <div class="panel-title-block">
+                <h2 class="panel-title">勤務表</h2>
+                <span class="panel-meta">看護師(Staff) 1〜8</span>
+                <span class="panel-meta">期間 2週間（14日）</span>
+                <div class="board-legend" aria-label="勤務記号の凡例">
+                  <span class="legend-item"><span class="swatch day"></span>D (Day): 日勤</span>
+                  <span class="legend-item"><span class="swatch night"></span>N (Night): 夜勤</span>
+                  <span class="legend-item"><span class="swatch off"></span>空欄: 休日</span>
+                </div>
+              </div>
+            </div>
+            <div class="board" id="board"></div>
+          </div>
+          <div class="panel nurse-panel">
+            <div class="panel-inner">
+              <h2 class="panel-title">看護師制約（個人制約）</h2>
+              <table class="detail-table" id="nurseTable"></table>
+              <div class="constraint-help" id="nurseConstraintHelp">
+                <div class="constraint-help-title">制約の説明</div>
+                <div class="constraint-help-body">条件の列にマウスを置くと、この下に制約の意味と違反の数え方を表示します。<br>日勤（D）不足・夜勤（N）不足・新人ペア禁止は勤務表下段の共通制約です。</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="ga-visual-layout">
+          <div class="ga-side-column">
+            <section class="bottom-grid">
+              <div class="panel">
+                <div class="panel-inner">
+                  <h2 class="panel-title">世代履歴</h2>
+                  <div class="status-box" id="messageBox">
+                    <strong>初期個体群を生成しました。</strong>
+                    完全ランダムな40個体を評価しました。制約不足が大きい状態から、第50世代までの改善を観察できます。
+                  </div>
+                  <div class="sparkline" id="historyPlot" aria-label="世代ごとの最良違反量と平均違反量の折れ線グラフ"></div>
+                  <div class="log" id="log"></div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel population-mini-panel">
+            <div class="population-mini-head">
+              <div>
+                <h2 class="panel-title" id="populationMiniTitle">第0世代の個体群（縮小勤務表）</h2>
+                <span class="population-mini-note" id="populationMiniNote">40個体 / 各個体は8人×14日の勤務表 / スライダーで世代を切り替え</span>
+              </div>
+              <div class="population-mini-controls">
+                <label class="population-mini-control generation-control" for="populationGenerationRange">
+                  表示世代
+                  <input id="populationGenerationRange" type="range" min="0" max="0" step="1" value="0">
+                  <output id="populationGenerationValue">第0世代</output>
+                </label>
+                <label class="population-mini-control" for="miniColumnsRange">
+                  表示列数
+                  <input id="miniColumnsRange" type="range" min="3" max="6" step="1" value="5">
+                  <output id="miniColumnsValue">5列</output>
+                </label>
+              </div>
+            </div>
+            <div class="population-mini-grid" id="populationMiniGrid"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const OFF = 0
+    const DAY = 1
+    const NIGHT = 2
+    const NURSES = 8
+    const NEWCOMER_COUNT = 4
+    const NEWCOMER_INDICES = Array.from({ length: NEWCOMER_COUNT }, (_, index) => index)
+    const DAYS = 14
+    const SHIFT_LABELS = ['', 'D', 'N']
+    const SHIFT_NAMES = ['休日', '日勤', '夜勤']
+    const SHIFT_CLASSES = ['off', 'day', 'night']
+    const WEEKDAYS = ['月', '火', '水', '木', '金', '土', '日']
+    const constraintMeta = [
+      ['s1', 'カバー：日勤が2人以上'],
+      ['s2', 'カバー：夜勤が2人以上'],
+      ['s3', '共通制約：新人同士のペア禁止'],
+      ['n1', '条件1：休日が7日以上'],
+      ['n2', '条件2：週末連休が1回以上'],
+      ['n3', '条件3：連続勤務は3日まで'],
+      ['n4', '条件4：夜勤翌日の日勤は不可'],
+      ['n5', '条件5：連続夜勤は2日まで'],
+      ['n6', '条件6：夜勤は4回まで'],
+    ]
+
+    const nurseConstraintHelp = {
+      n1: {
+        title: '条件1：休日が7日以上',
+        body: '各看護師は14日間のうち休日が7日以上必要です。休日が7日未満なら、不足した日数を違反として数えます。',
+      },
+      n2: {
+        title: '条件2：週末連休が1回以上',
+        body: '土曜と日曜の両方が休日になっている週末連休が、少なくとも1回必要です。1回もない場合に違反です。',
+      },
+      n3: {
+        title: '条件3：連続勤務は3日まで',
+        body: 'DまたはNが休みを挟まず連続する勤務です。連続勤務は3日までなので、4日以上続いた範囲を違反として扱います。',
+      },
+      n4: {
+        title: '条件4：夜勤翌日の日勤は不可',
+        body: '夜勤Nの翌日に日勤Dを入れると、十分な休息が取れないため違反です。Nの次の日がDになっている箇所を数えます。',
+      },
+      n5: {
+        title: '条件5：連続夜勤は2日まで',
+        body: '夜勤Nの連続は2日までです。3日以上連続しているNの範囲を違反として扱います。',
+      },
+      n6: {
+        title: '条件6：夜勤は4回まで',
+        body: '各看護師の14日間の夜勤Nは4回までです。5回目以降の夜勤回数を違反として数えます。夜勤の偏りを防ぐ公平性制約です。',
+      },
+      s1: {
+        title: '日勤（D）不足',
+        body: '各日は日勤（D）が2人以上必要です。表示値は、その日の必要人数2人に対して不足している日勤人数です。',
+      },
+      s2: {
+        title: '夜勤（N）不足',
+        body: '各日は夜勤（N）が2人以上必要です。表示値は、その日の必要人数2人に対して不足している夜勤人数です。',
+      },
+      s3: {
+        title: '新人同士のペア禁止',
+        body: 'S1〜S4は新人です。同じ日に同じ勤務（D同士、またはN同士）へ2人以上配置すると、新人同士の組合せごとに違反です。DとNに分かれる場合、または片方が休日なら違反ではありません。',
+      },
+      total: {
+        title: '合計',
+        body: '条件1から条件6までの違反数の合計です。値が0なら、その看護師の個別制約はすべて満たしています。',
+      },
+    }
+
+    class Random {
+      constructor(seed = Date.now()) {
+        this.seed = seed >>> 0
+      }
+
+      next() {
+        this.seed = (1664525 * this.seed + 1013904223) >>> 0
+        return this.seed / 4294967296
+      }
+
+      int(max) {
+        return Math.floor(this.next() * max)
+      }
+
+      shuffle(items) {
+        const result = items.slice()
+        for (let i = result.length - 1; i > 0; i--) {
+          const j = this.int(i + 1)
+          const tmp = result[i]
+          result[i] = result[j]
+          result[j] = tmp
+        }
+        return result
+      }
+    }
+
+    class GeneticModel {
+      constructor() {
+        this.random = new Random()
+        this.populationSize = 40
+        this.tournamentSize = 3
+        this.mutationCells = 2
+        this.localSearchRounds = 1
+        this.localSearchCandidates = 2
+        this.diversityStagnation = 14
+        this.diversityFraction = 0.10
+        this.useDiversityRestart = false
+        this.workloadRepairRate = 0.20
+        this.weekendRepairRate = 0.10
+        this.weekendRepairStartGeneration = 20
+        this.focusedSearchThreshold = 1
+        this.focusedSearchExtraRounds = 3
+        this.focusedSearchExtraCandidates = 3
+        this.intensifyGeneration = 40
+        this.lateWorkloadRepairRate = 1
+        this.lateWeekendRepairRate = 1
+        this.lateFocusedSearchThreshold = 3
+        this.stagnation = 0
+        this.generation = 0
+        this.population = []
+        this.populationHistory = []
+        this.history = []
+        this.nextIndividualId = 1
+        this.archive = new Map()
+        this.lineageStorageKey = `nspGaLineage:${Date.now()}`
+        this.lastAcceptedTrials = null
+        this.lastGeneratedTrials = null
+        this.lastCrossLog = '完全ランダムな初期個体群を生成'
+        this.reset()
+      }
+
+      clone(matrix) {
+        return matrix.map(row => row.slice())
+      }
+
+      createIndividual(matrix, event, slot = null) {
+        const individual = {
+          id: this.nextIndividualId++,
+          slot,
+          generation: event.generation ?? this.generation,
+          matrix,
+          event,
+        }
+        this.recordIndividual(individual)
+        return individual
+      }
+
+      createRandomIndividual(event = { kind: 'random', label: '初期ランダム' }, slot = null) {
+        return this.createIndividual(
+          Array.from({ length: NURSES }, () =>
+            Array.from({ length: DAYS }, () => this.random.int(3))
+          ),
+          event,
+          slot,
+        )
+      }
+
+      recordIndividual(individual) {
+        this.archive.set(individual.id, {
+          id: individual.id,
+          slot: individual.slot,
+          generation: individual.generation,
+          score: individual.score ?? null,
+          totals: individual.result ? individual.result.totals : null,
+          matrix: this.clone(individual.matrix),
+          event: individual.event,
+        })
+      }
+
+      exportLineageSnapshot(individualId) {
+        const archiveRecords = collectLineageArchiveRecords(this.archive, individualId)
+        return buildLineageSnapshotFromArchive(this.archive, individualId, this.generation, {
+          archiveRecords,
+        })
+      }
+
+      reset() {
+        this.random = new Random(Date.now())
+        this.generation = 0
+        this.stagnation = 0
+        this.nextIndividualId = 1
+        this.archive = new Map()
+        this.bestScore = Infinity
+        this.bestMatrix = null
+        this.generationBestScore = Infinity
+        this.lineageStorageKey = `nspGaLineage:${Date.now()}`
+        this.lastAcceptedTrials = null
+        this.lastGeneratedTrials = null
+        this.population = Array.from({ length: this.populationSize }, (_, slot) => this.createRandomIndividual(undefined, slot))
+        this.populationHistory = []
+        this.history = []
+        this.lastCrossLog = '完全ランダムな初期個体群を生成'
+        this.rankPopulation()
+      }
+
+      restoreBest() {
+        this.matrix = this.clone(this.bestMatrix)
+      }
+
+      cycleCell(nurse, day) {
+        const previousValue = this.matrix[nurse][day]
+        const nextValue = (previousValue + 1) % 3
+        this.matrix[nurse][day] = nextValue
+
+        const ranked = this.population.slice().sort((a, b) => this.compareIndividuals(a, b))
+        const target = ranked[0]
+        const edited = this.evaluateIndividual(this.createIndividual(this.clone(this.matrix), {
+          kind: 'manual-edit',
+          label: '手動セル編集',
+          generation: this.generation,
+          parents: target ? [target.id] : [],
+          targetSlot: target?.slot ?? 0,
+          note: `${staffLabel(nurse)} ${day + 1}日目を${SHIFT_NAMES[previousValue]}から${SHIFT_NAMES[nextValue]}へ変更`,
+        }, target?.slot ?? 0))
+        const replaceIndex = this.population.findIndex(individual => individual.slot === edited.slot)
+        if (replaceIndex >= 0) this.population[replaceIndex] = edited
+
+        const scores = this.population.map(individual => individual.score)
+        const populationRanked = this.population.slice().sort((a, b) => this.compareIndividuals(a, b))
+        this.generationBestScore = populationRanked[0].score
+        this.worstScore = populationRanked[populationRanked.length - 1].score
+        this.averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length
+        if (edited.score <= this.bestScore) {
+          this.bestScore = edited.score
+          this.bestMatrix = this.clone(edited.matrix)
+        }
+        this.currentResult = this.evaluateMatrix(this.matrix)
+        this.capturePopulationSnapshot()
+        return {
+          previousValue,
+          nextValue,
+          score: this.currentResult.score,
+        }
+      }
+
+      rankPopulation() {
+        this.population.forEach(individual => {
+          this.evaluateIndividual(individual)
+        })
+        const scores = this.population.map(individual => individual.score)
+        const ranked = this.population.slice().sort((a, b) => this.compareIndividuals(a, b))
+        this.generationBestScore = ranked[0].score
+        this.worstScore = ranked[ranked.length - 1].score
+        this.averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length
+        if (this.bestMatrix === null || this.generationBestScore < this.bestScore) {
+          this.bestScore = this.generationBestScore
+          this.bestMatrix = this.clone(ranked[0].matrix)
+        }
+        this.matrix = this.clone(this.bestMatrix)
+        this.currentResult = this.evaluateMatrix(this.matrix)
+        this.history.push({
+          generation: this.generation,
+          best: this.bestScore,
+          generationBest: this.generationBestScore,
+          average: this.averageScore,
+          worst: this.worstScore,
+          acceptedTrials: this.lastAcceptedTrials,
+          generatedTrials: this.lastGeneratedTrials,
+        })
+        if (this.history.length > 240) this.history = this.history.slice(-240)
+        this.capturePopulationSnapshot()
+      }
+
+      capturePopulationSnapshot() {
+        const snapshot = {
+          generation: this.generation,
+          population: this.population.map(individual => ({
+            id: individual.id,
+            slot: individual.slot,
+            generation: individual.generation,
+            matrix: this.clone(individual.matrix),
+            event: individual.event ? { ...individual.event } : null,
+            result: this.evaluateMatrix(individual.matrix),
+            score: individual.score,
+          })),
+        }
+        const previous = this.populationHistory[this.populationHistory.length - 1]
+        if (previous?.generation === snapshot.generation) {
+          this.populationHistory[this.populationHistory.length - 1] = snapshot
+        } else {
+          this.populationHistory.push(snapshot)
+        }
+        if (this.populationHistory.length > 240) this.populationHistory = this.populationHistory.slice(-240)
+      }
+
+      evaluateIndividual(individual) {
+        individual.result = this.evaluateMatrix(individual.matrix)
+        individual.score = individual.result.score
+        this.recordIndividual(individual)
+        return individual
+      }
+
+      compareIndividuals(left, right) {
+        if (left.score !== right.score) return left.score - right.score
+        const leftHard = left.result.totals.s1 + left.result.totals.s2 + left.result.totals.s3
+        const rightHard = right.result.totals.s1 + right.result.totals.s2 + right.result.totals.s3
+        if (leftHard !== rightHard) return leftHard - rightHard
+        const leftPersonal = left.score - leftHard
+        const rightPersonal = right.score - rightHard
+        return leftPersonal - rightPersonal
+      }
+
+      tournamentSelect(excludedIds = new Set()) {
+        let best = null
+        for (let i = 0; i < this.tournamentSize; i++) {
+          const available = this.population.filter(candidate => !excludedIds.has(candidate.id))
+          const candidate = available[this.random.int(available.length)]
+          if (!best || this.compareIndividuals(candidate, best) < 0) best = candidate
+        }
+        return best
+      }
+
+      crossover(parentA, parentB) {
+        const child = Array.from({ length: NURSES }, () => Array(DAYS).fill(OFF))
+        const origins = []
+        const useWeekBlock = this.random.next() < 0.3
+        if (useWeekBlock) {
+          const firstWeekFromA = this.random.next() < 0.5
+          for (let nurse = 0; nurse < NURSES; nurse++) {
+            for (let day = 0; day < DAYS; day++) {
+              const fromA = day < 7 ? firstWeekFromA : !firstWeekFromA
+              child[nurse][day] = (fromA ? parentA : parentB).matrix[nurse][day]
+            }
+          }
+          origins.push(`週1:${firstWeekFromA ? 'A' : 'B'}`, `週2:${firstWeekFromA ? 'B' : 'A'}`)
+          return { matrix: child, origins, type: '週ブロック交叉' }
+        }
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          const fromA = this.random.next() < 0.5
+          child[nurse] = (fromA ? parentA.matrix[nurse] : parentB.matrix[nurse]).slice()
+          origins.push(`${staffLabel(nurse)}:${fromA ? 'A' : 'B'}`)
+        }
+        return { matrix: child, origins, type: '看護師行ブロック交叉' }
+      }
+
+      currentMutationCells() {
+        if (this.stagnation >= 16) return this.mutationCells + 4
+        if (this.stagnation >= 8) return this.mutationCells + 2
+        return this.mutationCells
+      }
+
+      personalScore(matrix) {
+        const result = this.evaluateMatrix(matrix)
+        return result.score - result.totals.s1 - result.totals.s2
+      }
+
+      repairCoverage(matrix) {
+        let repairs = 0
+        for (const shift of [DAY, NIGHT]) {
+          for (let day = 0; day < DAYS; day++) {
+            let count = matrix.reduce((sum, row) => sum + (row[day] === shift ? 1 : 0), 0)
+            while (count < 2) {
+              const candidates = []
+              for (let nurse = 0; nurse < NURSES; nurse++) {
+                if (matrix[nurse][day] !== OFF) continue
+                const before = this.personalScore(matrix)
+                matrix[nurse][day] = shift
+                const after = this.personalScore(matrix)
+                matrix[nurse][day] = OFF
+                candidates.push({ nurse, delta: after - before, tie: this.random.next() })
+              }
+              if (candidates.length === 0) break
+              candidates.sort((a, b) => a.delta - b.delta || a.tie - b.tie)
+              matrix[candidates[0].nurse][day] = shift
+              count += 1
+              repairs += 1
+            }
+          }
+        }
+        return repairs
+      }
+
+      repairWorkloadBalance(matrix, maxMoves = 12) {
+        let current = this.evaluateMatrix(matrix)
+        let repairs = 0
+
+        // 必要人数を維持したまま、勤務過多の看護師のシフトを勤務不足の看護師へ移す。
+        // 14日・8人・各日D/N各2人では、制約充足時に各人の勤務数はちょうど7回になる。
+        for (let step = 0; step < maxMoves; step++) {
+          const workloads = matrix.map(row => row.reduce((sum, value) => sum + (value !== OFF ? 1 : 0), 0))
+          const overworked = workloads
+            .map((workload, nurse) => ({ nurse, workload }))
+            .filter(item => item.workload > 7)
+          const underworked = workloads
+            .map((workload, nurse) => ({ nurse, workload }))
+            .filter(item => item.workload < 7)
+          if (!overworked.length) break
+
+          const candidates = []
+          for (const { nurse } of overworked) {
+            for (let day = 0; day < DAYS; day++) {
+              const shift = matrix[nurse][day]
+              if (shift === OFF) continue
+              const provided = matrix.reduce((sum, row) => sum + (row[day] === shift ? 1 : 0), 0)
+              if (provided > 2) {
+                candidates.push({ changes: [[nurse, day, OFF]], label: `${staffLabel(nurse)}の余剰勤務を休日へ` })
+              } else {
+                for (const { nurse: receiver } of underworked) {
+                  if (matrix[receiver][day] !== OFF) continue
+                  candidates.push({
+                    changes: [[nurse, day, OFF], [receiver, day, shift]],
+                    label: `${staffLabel(nurse)}→${staffLabel(receiver)}へ勤務移動`,
+                  })
+                }
+              }
+            }
+          }
+          if (!candidates.length) break
+
+          let best = null
+          for (const candidate of this.random.shuffle(candidates).slice(0, 28)) {
+            const previous = candidate.changes.map(([nurse, day]) => matrix[nurse][day])
+            candidate.changes.forEach(([nurse, day, value]) => { matrix[nurse][day] = value })
+            const result = this.evaluateMatrix(matrix)
+            candidate.changes.forEach(([nurse, day], index) => { matrix[nurse][day] = previous[index] })
+            if (!best || this.compareResults(result, best.result) < 0) best = { candidate, result }
+          }
+          if (!best || this.compareResults(best.result, current) >= 0) break
+          best.candidate.changes.forEach(([nurse, day, value]) => { matrix[nurse][day] = value })
+          current = best.result
+          repairs += 1
+        }
+        return repairs
+      }
+
+      repairWeekendPairs(matrix, maxMoves = 4) {
+        let current = this.evaluateMatrix(matrix)
+        let repairs = 0
+
+        // 週末勤務を他の看護師の平日勤務と交換する。
+        // 交換なので、各日のD/N人数と各人の勤務回数を変えずに連休だけを作れる。
+        for (let step = 0; step < maxMoves; step++) {
+          const candidates = []
+          for (let nurse = 0; nurse < NURSES; nurse++) {
+            if (current.parts.n2[nurse] === 0) continue
+            for (const saturday of [5, 12]) {
+              const weekendDays = [saturday, saturday + 1]
+              const slots = weekendDays
+                .filter(day => matrix[nurse][day] !== OFF)
+                .map(day => ({
+                  day,
+                  shift: matrix[nurse][day],
+                  receivers: Array.from({ length: NURSES }, (_, receiver) => receiver)
+                    .filter(receiver => receiver !== nurse && matrix[receiver][day] === OFF),
+                }))
+              if (slots.some(slot => !slot.receivers.length)) continue
+
+              for (let attempt = 0; attempt < 14; attempt++) {
+                const assignments = slots.map(slot => ({ ...slot, receiver: slot.receivers[this.random.int(slot.receivers.length)] }))
+                const receiverSlots = new Map()
+                assignments.forEach(assignment => {
+                  receiverSlots.set(assignment.receiver, (receiverSlots.get(assignment.receiver) || 0) + 1)
+                })
+                const usedDays = new Set(weekendDays)
+                const changes = assignments.map(({ day, shift, receiver }) => [
+                  [nurse, day, OFF],
+                  [receiver, day, shift],
+                ]).flat()
+                let complete = true
+
+                for (const [receiver, count] of receiverSlots) {
+                  const transferDays = this.random.shuffle(Array.from({ length: DAYS }, (_, day) => day)
+                    .filter(day => !usedDays.has(day) && matrix[nurse][day] === OFF && matrix[receiver][day] !== OFF))
+                    .slice(0, count)
+                  if (transferDays.length < count) {
+                    complete = false
+                    break
+                  }
+                  transferDays.forEach(day => {
+                    usedDays.add(day)
+                    changes.push([receiver, day, OFF], [nurse, day, matrix[receiver][day]])
+                  })
+                }
+                if (complete) candidates.push({ changes, label: `${staffLabel(nurse)}の週末連休を交換で作成` })
+              }
+            }
+          }
+          if (!candidates.length) break
+
+          let best = null
+          for (const candidate of candidates) {
+            const previous = candidate.changes.map(([nurse, day]) => matrix[nurse][day])
+            candidate.changes.forEach(([nurse, day, value]) => { matrix[nurse][day] = value })
+            const result = this.evaluateMatrix(matrix)
+            candidate.changes.forEach(([nurse, day], index) => { matrix[nurse][day] = previous[index] })
+            if (!best || this.compareResults(result, best.result) < 0) best = { candidate, result }
+          }
+          if (!best || this.compareResults(best.result, current) >= 0) break
+          best.candidate.changes.forEach(([nurse, day, value]) => { matrix[nurse][day] = value })
+          current = best.result
+          repairs += 1
+        }
+        return repairs
+      }
+
+      compareResults(left, right) {
+        const leftHard = left.totals.s1 + left.totals.s2 + left.totals.s3
+        const rightHard = right.totals.s1 + right.totals.s2 + right.totals.s3
+        if (leftHard !== rightHard) return leftHard - rightHard
+        const leftPersonal = left.score - leftHard
+        const rightPersonal = right.score - rightHard
+        if (leftPersonal !== rightPersonal) return leftPersonal - rightPersonal
+        return left.score - right.score
+      }
+
+      applyCompoundViolationMove(matrix) {
+        const result = this.evaluateMatrix(matrix)
+        const moves = []
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          if (result.parts.n2[nurse] > 0) {
+            for (const saturday of [5, 12]) {
+              moves.push({
+                label: '週末連休',
+                apply: () => {
+                  matrix[nurse][saturday] = OFF
+                  matrix[nurse][saturday + 1] = OFF
+                },
+              })
+            }
+          }
+          for (let day = 0; day < DAYS - 1; day++) {
+            if (matrix[nurse][day] === NIGHT && matrix[nurse][day + 1] === DAY) {
+              moves.push({ label: '夜勤翌日', apply: () => { matrix[nurse][day + 1] = OFF } })
+            }
+          }
+          for (let day = 0; day < DAYS;) {
+            if (matrix[nurse][day] === OFF) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && matrix[nurse][day] !== OFF) day += 1
+            if (day - start > 3) {
+              const middle = start + Math.floor((day - start) / 2)
+              moves.push({ label: '連続勤務', apply: () => { matrix[nurse][middle] = OFF } })
+            }
+          }
+          for (let day = 0; day < DAYS;) {
+            if (matrix[nurse][day] !== NIGHT) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && matrix[nurse][day] === NIGHT) day += 1
+            if (day - start > 2) {
+              const middle = start + Math.floor((day - start) / 2)
+              moves.push({ label: '連続夜勤', apply: () => { matrix[nurse][middle] = OFF } })
+            }
+          }
+        }
+        for (let day = 0; day < DAYS; day++) {
+          if (result.parts.s3[day] > 0) {
+            const paired = getNewcomerPairIndices(matrix, day)
+            paired.forEach(nurse => moves.push({ label: '新人ペア', apply: () => { matrix[nurse][day] = OFF } }))
+          }
+        }
+        if (!moves.length) return null
+        const move = moves[this.random.int(moves.length)]
+        move.apply()
+        return move.label
+      }
+
+      improveTrial(matrix, rounds = this.localSearchRounds, candidatesPerRound = this.localSearchCandidates) {
+        let current = this.evaluateMatrix(matrix)
+        let acceptedMoves = 0
+        let repairCount = 0
+
+        for (let round = 0; round < rounds && current.score > 0; round++) {
+          let best = null
+          for (let candidateIndex = 0; candidateIndex < candidatesPerRound; candidateIndex++) {
+            const candidate = this.clone(matrix)
+            const compoundLabel = candidateIndex < 3 ? this.applyCompoundViolationMove(candidate) : null
+            if (!compoundLabel) {
+              const target = this.random.next() < 0.82 ? this.selectViolationTarget(candidate) : null
+              const nurse = target ? target[0] : this.random.int(NURSES)
+              const day = target ? target[1] : this.random.int(DAYS)
+              const oldValue = candidate[nurse][day]
+              let nextValue = target ? target[2] : this.random.int(3)
+              if (nextValue === oldValue) nextValue = (nextValue + 1) % 3
+              candidate[nurse][day] = nextValue
+            }
+            const candidateRepairs = this.repairCoverage(candidate)
+            const result = this.evaluateMatrix(candidate)
+            if (!best || this.compareResults(result, best.result) < 0) {
+              best = { matrix: candidate, result, repairs: candidateRepairs }
+            }
+          }
+          if (!best || this.compareResults(best.result, current) >= 0) break
+          for (let nurse = 0; nurse < NURSES; nurse++) matrix[nurse] = best.matrix[nurse]
+          current = best.result
+          acceptedMoves += 1
+          repairCount += best.repairs
+        }
+        return { moves: acceptedMoves, repairs: repairCount, result: current }
+      }
+
+      selectViolationTarget(matrix) {
+        const result = this.evaluateMatrix(matrix)
+        const targets = []
+        for (let day = 0; day < DAYS; day++) {
+          if (result.parts.s3[day] > 0) {
+            const candidates = getNewcomerPairIndices(matrix, day)
+            targets.push([candidates[this.random.int(candidates.length)], day, OFF, '新人ペア'])
+          }
+        }
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          if (result.parts.n1[nurse] > 0) {
+            for (let day = 0; day < DAYS; day++) if (matrix[nurse][day] !== OFF) targets.push([nurse, day, OFF, '休日不足'])
+          }
+          if (result.parts.n2[nurse] > 0) {
+            for (const saturday of [5, 12]) {
+              targets.push([nurse, saturday, OFF, '週末連休'])
+              targets.push([nurse, saturday + 1, OFF, '週末連休'])
+            }
+          }
+          if (result.parts.n4[nurse] > 0) {
+            for (let day = 0; day < DAYS - 1; day++) {
+              if (matrix[nurse][day] === NIGHT && matrix[nurse][day + 1] === DAY) targets.push([nurse, day + 1, OFF, '夜勤翌日'])
+            }
+          }
+          if (result.parts.n6[nurse] > 0) {
+            for (let day = 0; day < DAYS; day++) {
+              if (matrix[nurse][day] === NIGHT) targets.push([nurse, day, OFF, '夜勤回数'])
+            }
+          }
+          if (result.parts.n3[nurse] > 0 || result.parts.n5[nurse] > 0) {
+            for (let day = 1; day < DAYS - 1; day++) {
+              if (matrix[nurse][day] !== OFF) targets.push([nurse, day, OFF, '連続勤務'])
+            }
+          }
+        }
+        return targets.length > 0 ? targets[this.random.int(targets.length)] : null
+      }
+
+      mutateChild(matrix) {
+        const changes = []
+        const mutationCount = this.currentMutationCells()
+        for (let i = 0; i < mutationCount; i++) {
+          const target = this.random.next() < 0.75 ? this.selectViolationTarget(matrix) : null
+          const nurse = target ? target[0] : this.random.int(NURSES)
+          const day = target ? target[1] : this.random.int(DAYS)
+          const oldValue = matrix[nurse][day]
+          let nextValue = target ? target[2] : this.random.int(3)
+          if (nextValue === oldValue) nextValue = (nextValue + 1) % 3
+          matrix[nurse][day] = nextValue
+          changes.push(`${staffLabel(nurse)} ${day + 1}日目${target ? `(${target[3]})` : ''}`)
+        }
+        return changes
+      }
+
+      createTargetTrial(target, parentA) {
+        const matrix = this.clone(target.matrix)
+        const parentRows = new Set(this.random.shuffle(Array.from({ length: NURSES }, (_, nurse) => nurse))
+          .slice(0, 1 + this.random.int(NURSES - 1)))
+        const origins = Array.from({ length: NURSES }, (_, nurse) => {
+          const fromParent = parentRows.has(nurse)
+          if (fromParent) matrix[nurse] = parentA.matrix[nurse].slice()
+          return `${staffLabel(nurse)}:${fromParent ? 'A' : 'T'}`
+        })
+
+        // 交叉後に少数セルをターゲット由来へ戻し、勤務表のまとまりと探索の多様性を両立させる。
+        const returnedCells = 1 + this.random.int(3)
+        for (let i = 0; i < returnedCells; i++) {
+          const nurse = this.random.int(NURSES)
+          const day = this.random.int(DAYS)
+          matrix[nurse][day] = target.matrix[nurse][day]
+        }
+        return { matrix, origins, copiedRows: parentRows.size, returnedCells }
+      }
+
+      run(generations) {
+        let improved = 0
+        for (let count = 0; count < generations; count++) {
+          if (this.bestScore === 0) break
+          const previousBest = this.bestScore
+          const nextGeneration = this.generation + 1
+          const targets = this.population.slice()
+          const nextPopulation = []
+          let accepted = 0
+          let kept = 0
+          let firstTrialLog = ''
+          const isLatePhase = this.intensifyGeneration > 0 && nextGeneration >= this.intensifyGeneration
+          const workloadRepairRate = isLatePhase ? this.lateWorkloadRepairRate : this.workloadRepairRate
+          const weekendRepairRate = isLatePhase ? this.lateWeekendRepairRate : this.weekendRepairRate
+          const focusedSearchThreshold = isLatePhase ? this.lateFocusedSearchThreshold : this.focusedSearchThreshold
+
+          for (const target of targets) {
+            const excluded = new Set([target.id])
+            const parentA = this.tournamentSelect(excluded)
+            const trial = this.createTargetTrial(target, parentA)
+            const changes = this.mutateChild(trial.matrix)
+            const coverageRepairs = this.repairCoverage(trial.matrix)
+            const workloadRepairs = this.random.next() < workloadRepairRate
+              ? this.repairWorkloadBalance(trial.matrix)
+              : 0
+            const weekendRepairs = nextGeneration >= this.weekendRepairStartGeneration && this.random.next() < weekendRepairRate
+              ? this.repairWeekendPairs(trial.matrix)
+              : 0
+            // 初期は多様性を保ち、違反3以下の候補だけを深く探索して最後の数違反を詰める。
+            const focusedSearch = target.score <= focusedSearchThreshold
+            const localImprovement = this.improveTrial(
+              trial.matrix,
+              focusedSearch ? this.localSearchRounds + this.focusedSearchExtraRounds : this.localSearchRounds,
+              focusedSearch ? this.localSearchCandidates + this.focusedSearchExtraCandidates : this.localSearchCandidates,
+            )
+            const finalCoverageRepairs = this.repairCoverage(trial.matrix)
+            const finalWorkloadRepairs = this.random.next() < workloadRepairRate
+              ? this.repairWorkloadBalance(trial.matrix)
+              : 0
+            const finalWeekendRepairs = nextGeneration >= this.weekendRepairStartGeneration && this.random.next() < weekendRepairRate
+              ? this.repairWeekendPairs(trial.matrix)
+              : 0
+            const repairs = coverageRepairs + workloadRepairs + weekendRepairs + localImprovement.repairs + finalCoverageRepairs + finalWorkloadRepairs + finalWeekendRepairs
+            const trialIndividual = this.evaluateIndividual(this.createIndividual(trial.matrix, {
+              kind: 'de-trial',
+              label: 'T+親A trial（採用）',
+              generation: nextGeneration,
+              parents: [target.id, parentA.id],
+              targetSlot: target.slot,
+              parentSlot: parentA.slot,
+              targetScore: target.score,
+              parentScores: [target.score, parentA.score],
+              origins: trial.origins,
+              copiedRows: trial.copiedRows,
+              returnedCells: trial.returnedCells,
+              mutations: changes,
+              repairs,
+              localMoves: localImprovement.moves,
+              focusedSearch,
+            }, target.slot))
+            const isAccepted = this.compareIndividuals(trialIndividual, target) <= 0
+            trialIndividual.event.accepted = isAccepted
+            trialIndividual.event.label = isAccepted ? 'T+親A trial（採用）' : 'T+親A trial（棄却）'
+            this.recordIndividual(trialIndividual)
+
+            if (isAccepted) {
+              accepted += 1
+              nextPopulation.push(trialIndividual)
+            } else {
+              kept += 1
+              nextPopulation.push(this.createIndividual(this.clone(target.matrix), {
+                kind: 'de-keep',
+                label: '比較でターゲット保持',
+                generation: nextGeneration,
+                parents: [target.id],
+                targetSlot: target.slot,
+                targetScore: target.score,
+                trialScore: trialIndividual.score,
+                trialId: trialIndividual.id,
+                note: `trial #${trialIndividual.id}（違反 ${trialIndividual.score}）が改善しなかったため保持`,
+              }, target.slot))
+            }
+            if (!firstTrialLog) {
+              firstTrialLog =
+                `target(${target.score}) + 親A(${parentA.score}) → 看護師行交叉[${trial.origins.join(', ')}] → 変異 ${changes.join(' / ')} → カバー修復 ${coverageRepairs + finalCoverageRepairs}件・勤務量均衡 ${workloadRepairs + finalWorkloadRepairs}件・週末交換 ${weekendRepairs + finalWeekendRepairs}件・局所改善 ${localImprovement.moves}手${focusedSearch ? '（終盤重点）' : ''} → trial ${trialIndividual.score} ${isAccepted ? '採用' : '棄却・target保持'}`
+            }
+          }
+          let diversified = 0
+          if (this.useDiversityRestart && this.stagnation >= this.diversityStagnation) {
+            diversified = Math.max(3, Math.floor(this.populationSize * this.diversityFraction))
+            nextPopulation.forEach(individual => this.evaluateIndividual(individual))
+            const worstSlots = nextPopulation
+              .map((individual, index) => ({ individual, index }))
+              .sort((left, right) => this.compareIndividuals(right.individual, left.individual))
+              .slice(0, diversified)
+            worstSlots.forEach(({ individual, index }) => {
+              nextPopulation[index] = this.createRandomIndividual({
+                kind: 'random',
+                label: '多様性維持',
+                generation: nextGeneration,
+                note: '停滞したため下位個体をランダム再生成',
+              }, individual.slot)
+            })
+          }
+          this.population = nextPopulation
+          this.generation += 1
+          this.lastAcceptedTrials = accepted
+          this.lastGeneratedTrials = targets.length
+          this.rankPopulation()
+          this.lastCrossLog = `ターゲット比較型個体別置換${isLatePhase ? '（終盤強化）' : ''}: trial採用 ${accepted} / target保持 ${kept} / ${firstTrialLog || ''}`
+          if (diversified > 0) this.lastCrossLog += ` / 多様性維持: 下位${diversified}個体をランダム再生成`
+          if (this.bestScore < previousBest) {
+            improved += 1
+            this.stagnation = 0
+          } else {
+            this.stagnation += 1
+          }
+        }
+        return improved
+      }
+
+      evaluate() {
+        return this.evaluateMatrix(this.matrix)
+      }
+
+      evaluateMatrix(matrix) {
+        const dayCount = Array.from({ length: DAYS }, () => ({ day: 0, night: 0 }))
+        for (let day = 0; day < DAYS; day++) {
+          for (let nurse = 0; nurse < NURSES; nurse++) {
+            if (matrix[nurse][day] === DAY) dayCount[day].day += 1
+            if (matrix[nurse][day] === NIGHT) dayCount[day].night += 1
+          }
+        }
+
+        const s1 = dayCount.map(count => Math.max(2 - count.day, 0))
+        const s2 = dayCount.map(count => Math.max(2 - count.night, 0))
+        const s3 = []
+        const n1 = []
+        const n2 = []
+        const n3 = []
+        const n4 = []
+        const n5 = []
+        const n6 = []
+        const problemCells = new Set()
+        const hoverCells = {
+          n1: Array.from({ length: NURSES }, () => []),
+          n2: Array.from({ length: NURSES }, () => []),
+          n3: Array.from({ length: NURSES }, () => []),
+          n4: Array.from({ length: NURSES }, () => []),
+          n5: Array.from({ length: NURSES }, () => []),
+          n6: Array.from({ length: NURSES }, () => []),
+          total: Array.from({ length: NURSES }, () => []),
+        }
+
+        for (let day = 0; day < DAYS; day++) {
+          const dayPairs = [DAY, NIGHT].map(shift =>
+            NEWCOMER_INDICES.filter(nurse => matrix[nurse][day] === shift)
+          )
+          const penalty = dayPairs.reduce((sum, nurses) => sum + (nurses.length * (nurses.length - 1)) / 2, 0)
+          s3.push(penalty)
+          dayPairs.forEach(nurses => {
+            if (nurses.length < 2) return
+            nurses.forEach(nurse => problemCells.add(`${nurse}-${day}`))
+          })
+        }
+
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          let holidays = 0
+          let hasWeekendPair = false
+          let serialWorkPenalty = 0
+          let dayAfterNightPenalty = 0
+          let serialNightPenalty = 0
+          const nightDays = []
+
+          for (let day = 0; day < DAYS; day++) {
+            const value = matrix[nurse][day]
+            if (value === OFF) {
+              holidays += 1
+            }
+            if (value === NIGHT) nightDays.push(day)
+
+            if (day < DAYS - 1 && value === NIGHT && matrix[nurse][day + 1] === DAY) {
+              dayAfterNightPenalty += 1
+              problemCells.add(`${nurse}-${day}`)
+              problemCells.add(`${nurse}-${day + 1}`)
+              hoverCells.n4[nurse].push(`${nurse}-${day}`, `${nurse}-${day + 1}`)
+            }
+          }
+
+          for (let day = 0; day < DAYS;) {
+            if (matrix[nurse][day] === OFF) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && matrix[nurse][day] !== OFF) day += 1
+            const length = day - start
+            if (length > 3) {
+              serialWorkPenalty += length - 3
+              for (let targetDay = start; targetDay < day; targetDay++) {
+                const cellKey = `${nurse}-${targetDay}`
+                problemCells.add(cellKey)
+                hoverCells.n3[nurse].push(cellKey)
+              }
+            }
+          }
+
+          for (let day = 0; day < DAYS;) {
+            if (matrix[nurse][day] !== NIGHT) {
+              day += 1
+              continue
+            }
+            const start = day
+            while (day < DAYS && matrix[nurse][day] === NIGHT) day += 1
+            const length = day - start
+            if (length > 2) {
+              serialNightPenalty += length - 2
+              for (let targetDay = start; targetDay < day; targetDay++) {
+                const cellKey = `${nurse}-${targetDay}`
+                problemCells.add(cellKey)
+                hoverCells.n5[nurse].push(cellKey)
+              }
+            }
+          }
+
+          for (let sunday = 6; sunday < DAYS; sunday += 7) {
+            const saturday = sunday - 1
+            if (matrix[nurse][saturday] === OFF && matrix[nurse][sunday] === OFF) {
+              hasWeekendPair = true
+            }
+          }
+
+          const holidayShortage = Math.max(7 - holidays, 0)
+          if (holidayShortage > 0) {
+            for (let day = 0; day < DAYS; day++) {
+              if (matrix[nurse][day] === OFF) hoverCells.n1[nurse].push(`${nurse}-${day}`)
+            }
+          }
+          if (!hasWeekendPair) {
+            for (let sunday = 6; sunday < DAYS; sunday += 7) {
+              hoverCells.n2[nurse].push(`${nurse}-${sunday - 1}`, `${nurse}-${sunday}`)
+            }
+          }
+
+          const nightLimitPenalty = Math.max(nightDays.length - 4, 0)
+          if (nightLimitPenalty > 0) {
+            nightDays.forEach(day => {
+              const cellKey = `${nurse}-${day}`
+              problemCells.add(cellKey)
+              hoverCells.n6[nurse].push(cellKey)
+            })
+          }
+
+          n1.push(holidayShortage)
+          n2.push(hasWeekendPair ? 0 : 1)
+          n3.push(serialWorkPenalty)
+          n4.push(dayAfterNightPenalty)
+          n5.push(serialNightPenalty)
+          n6.push(nightLimitPenalty)
+        }
+
+        const parts = { s1, s2, s3, n1, n2, n3, n4, n5, n6 }
+        const totals = Object.fromEntries(
+          Object.entries(parts).map(([key, values]) => [key, values.reduce((a, b) => a + b, 0)])
+        )
+        const score = Object.values(totals).reduce((a, b) => a + b, 0)
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          const merged = new Set()
+          ;['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].forEach(key => {
+            hoverCells[key][nurse].forEach(cell => merged.add(cell))
+          })
+          hoverCells.total[nurse] = [...merged]
+        }
+        return { score, parts, totals, dayCount, problemCells, hoverCells }
+      }
+    }
+
+    const model = new GeneticModel()
+    let running = false
+
+    const board = document.getElementById('board')
+    const scoreValue = document.getElementById('scoreValue')
+    const generationValue = document.getElementById('generationValue')
+    const bestScoreValue = document.getElementById('bestScoreValue')
+    const averageScoreValue = document.getElementById('averageScoreValue')
+    const populationValue = document.getElementById('populationValue')
+    const scoreMetric = scoreValue.closest('.metric')
+    const bestScoreMetric = bestScoreValue.closest('.metric')
+    const constraintList = document.getElementById('constraintList')
+    const nurseTable = document.getElementById('nurseTable')
+    const nurseConstraintHelpBox = document.getElementById('nurseConstraintHelp')
+    const populationTable = document.getElementById('populationTable')
+    const populationMiniGrid = document.getElementById('populationMiniGrid')
+    const populationMiniTitle = document.getElementById('populationMiniTitle')
+    const populationMiniNote = document.getElementById('populationMiniNote')
+    const populationGenerationRange = document.getElementById('populationGenerationRange')
+    const populationGenerationValue = document.getElementById('populationGenerationValue')
+    const miniColumnsRange = document.getElementById('miniColumnsRange')
+    const miniColumnsValue = document.getElementById('miniColumnsValue')
+    const messageBox = document.getElementById('messageBox')
+    const log = document.getElementById('log')
+    const runButton = document.getElementById('runButton')
+    const stopButton = document.getElementById('stopButton')
+    const stepButton = document.getElementById('stepButton')
+    const resetButton = document.getElementById('resetButton')
+    const maxGenerationInput = document.getElementById('maxGenerationInput')
+    const diversityToggle = document.getElementById('diversityToggle')
+    const historyPlot = document.getElementById('historyPlot')
+    const paramsAtLoad = new URLSearchParams(window.location.search)
+    const isLineageView = paramsAtLoad.has('lineage')
+    const isNetworkView = paramsAtLoad.has('network')
+    let displayedPopulationGeneration = model.generation
+    let followLatestPopulation = true
+
+    function render() {
+      const result = model.evaluate()
+      renderBoard(result)
+      renderMetrics(result)
+      renderConstraints(result)
+      renderNurseTable(result)
+      renderPopulationTable()
+      renderPopulationMiniatures()
+      renderHistory()
+      updateButtons()
+    }
+
+    function renderBoard(result) {
+      board.innerHTML = ''
+      addCell('', 'cell head major-right major-bottom')
+      for (let day = 0; day < DAYS; day++) {
+        addCell(`${day + 1}<br>${WEEKDAYS[day % 7]}`, `cell head major-bottom ${isWeekend(day) ? 'weekend' : ''} ${day === 6 ? 'major-right' : ''}`)
+      }
+
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        const staff = staffLabel(nurse)
+        addCell(staff, `cell nurse head major-right ${nurse === NURSES - 1 ? 'major-bottom' : ''}`)
+        for (let day = 0; day < DAYS; day++) {
+          const value = model.matrix[nurse][day]
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = `cell shift ${SHIFT_CLASSES[value]} ${isWeekend(day) ? 'weekend' : ''} ${day === 6 ? 'major-right' : ''} ${nurse === NURSES - 1 ? 'major-bottom' : ''}`
+          button.dataset.cell = `${nurse}-${day}`
+          button.title = `${staff} ${day + 1}日目: ${SHIFT_NAMES[value]}`
+          button.setAttribute('aria-label', `${staff} ${day + 1}日目: ${SHIFT_NAMES[value]}`)
+          button.innerHTML = SHIFT_LABELS[value]
+          button.addEventListener('click', () => {
+            if (running) return
+            const edit = model.cycleCell(nurse, day)
+            appendLog(`${staff} ${day + 1}日目を${SHIFT_NAMES[edit.nextValue]}に変更 / 違反量 ${edit.score}`)
+            setMessage(
+              '勤務表を手動編集しました。',
+              `${staff} ${day + 1}日目を ${SHIFT_NAMES[edit.previousValue]} から ${SHIFT_NAMES[edit.nextValue]} に切り替えました。右側の制約表も再計算しています。`,
+            )
+            clearViolationHover()
+            render()
+          })
+          board.appendChild(button)
+        }
+      }
+
+      addCell('日勤（D）不足', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const cell = addCell(String(result.parts.s1[day]), `cell day-result ${result.parts.s1[day] === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's1'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = getDayShiftCells(day, DAY).join(' ')
+      }
+
+      addCell('夜勤（N）不足', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const cell = addCell(String(result.parts.s2[day]), `cell day-result ${result.parts.s2[day] === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's2'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = getDayShiftCells(day, NIGHT).join(' ')
+      }
+
+      addCell('新人同士禁止', 'cell head')
+      for (let day = 0; day < DAYS; day++) {
+        const value = result.parts.s3[day]
+        const cell = addCell(String(value), `cell day-result ${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        cell.dataset.constraint = 's3'
+        cell.dataset.day = String(day)
+        cell.dataset.hoverCells = value > 0 ? getNewcomerPairCells(day).join(' ') : ''
+      }
+      board.querySelectorAll('.day-result[data-constraint]').forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+          setCoverConstraintHelp(cell.dataset.constraint, Number(cell.dataset.day), Number(cell.textContent))
+          if (cell.classList.contains('bad')) setViolationHover(cell.dataset.hoverCells)
+        })
+        cell.addEventListener('mouseleave', () => {
+          resetNurseConstraintHelp()
+          if (cell.classList.contains('bad')) clearViolationHover()
+        })
+      })
+    }
+
+    function isWeekend(day) {
+      const weekday = day % 7
+      return weekday === 5 || weekday === 6
+    }
+
+    function addCell(content, className) {
+      const cell = document.createElement('div')
+      cell.className = className
+      cell.innerHTML = content
+      board.appendChild(cell)
+      return cell
+    }
+
+    function staffLabel(index) {
+      return index < NEWCOMER_COUNT ? `S${index + 1}（新人）` : `S${index + 1}`
+    }
+
+    function miniStaffLabel(index) {
+      return index < NEWCOMER_COUNT ? `S${index + 1}新` : `S${index + 1}`
+    }
+
+    function getDayShiftCells(day, shift) {
+      const cells = []
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        if (model.matrix[nurse][day] === shift) cells.push(`${nurse}-${day}`)
+      }
+      return cells
+    }
+
+    function getNewcomerPairCells(day) {
+      return getNewcomerPairIndices(model.matrix, day).map(nurse => `${nurse}-${day}`)
+    }
+
+    function getNewcomerPairIndices(matrix, day) {
+      const paired = []
+      for (const shift of [DAY, NIGHT]) {
+        const nurses = NEWCOMER_INDICES.filter(nurse => matrix[nurse][day] === shift)
+        if (nurses.length > 1) paired.push(...nurses)
+      }
+      return paired
+    }
+
+    function renderMetrics(result) {
+      scoreValue.textContent = result.score
+      generationValue.textContent = model.generation
+      bestScoreValue.textContent = model.bestScore
+      averageScoreValue.textContent = model.averageScore.toFixed(1)
+      populationValue.textContent = model.populationSize
+      scoreMetric.classList.toggle('good', result.score === 0)
+      scoreMetric.classList.toggle('bad', result.score > 0)
+      bestScoreMetric.classList.toggle('good', model.bestScore === 0)
+      bestScoreMetric.classList.toggle('bad', model.bestScore > 0)
+    }
+
+    function renderConstraints(result) {
+      if (!constraintList) return
+      constraintList.innerHTML = ''
+      constraintMeta.forEach(([key, label]) => {
+        const li = document.createElement('li')
+        const value = result.totals[key]
+        li.className = 'constraint'
+        li.innerHTML = `<span>${label}</span><span class="pill ${value === 0 ? '' : 'bad'}">${value}</span>`
+        constraintList.appendChild(li)
+      })
+    }
+
+    function renderPopulationTable() {
+      if (!populationTable) return
+      const population = getDisplayedPopulation().population
+        .slice()
+        .sort((left, right) => model.compareIndividuals(left, right))
+      populationTable.innerHTML = ''
+      const head = document.createElement('thead')
+      head.innerHTML = '<tr><th>順位</th><th>違反量</th><th>個別</th><th>共通</th></tr>'
+      populationTable.appendChild(head)
+      const body = document.createElement('tbody')
+      population.slice(0, 10).forEach((individual, index) => {
+        const nurseScore = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+          .reduce((sum, key) => sum + individual.result.totals[key], 0)
+        const coverScore = individual.result.totals.s1 + individual.result.totals.s2 + individual.result.totals.s3
+        const tr = document.createElement('tr')
+        tr.innerHTML =
+          `<td>${index + 1}</td>` +
+          `<td class="${individual.score === 0 ? 'good' : 'bad'}">${individual.score}</td>` +
+          `<td>${nurseScore}</td>` +
+          `<td>${coverScore}</td>`
+        body.appendChild(tr)
+      })
+      populationTable.appendChild(body)
+    }
+
+    function renderPopulationMiniatures() {
+      if (followLatestPopulation) {
+        displayedPopulationGeneration = model.populationHistory.at(-1)?.generation ?? model.generation
+      }
+      const snapshot = getDisplayedPopulation()
+      const population = snapshot.population.slice().sort((left, right) => left.slot - right.slot)
+      populationMiniGrid.innerHTML = ''
+      if (populationMiniTitle) populationMiniTitle.textContent = `第${snapshot.generation}世代の個体群（縮小勤務表）`
+      if (populationMiniNote) {
+        populationMiniNote.textContent = `${snapshot.population.length}個体 / 各個体は8人×14日の勤務表 / 第${snapshot.generation}世代を表示中`
+      }
+      updatePopulationGenerationControl(snapshot.generation)
+      population.forEach((individual, index) => {
+        const coverTotal = individual.result.totals.s1 + individual.result.totals.s2 + individual.result.totals.s3
+        const successCount = countLineageSuccesses(individual.id)
+        const card = document.createElement('button')
+        card.type = 'button'
+        card.className = `mini-individual ${index === 0 ? 'best' : ''} lineage-available`
+        card.dataset.operation = individual.event?.kind || 'random'
+        card.title = `個体 #${individual.slot + 1} の自分中心の進化系譜図を開く`
+        card.addEventListener('click', () => openLineagePage(individual.id))
+        const title = document.createElement('div')
+        title.className = 'mini-title'
+        title.innerHTML =
+          `<span>個体 #${individual.slot + 1}</span>` +
+          `<span><span class="mini-score">違反 ${individual.score}</span> / 成功 ${successCount}回 / 第${individual.generation}世代</span>`
+        const roster = document.createElement('div')
+        roster.className = 'mini-roster'
+        addMiniCell(roster, '', 'head')
+        for (let day = 0; day < DAYS; day++) {
+          addMiniCell(roster, String(day + 1), `head ${isWeekend(day) ? 'weekend' : ''}`)
+        }
+        addMiniCell(roster, '個人', 'head total')
+
+        for (let nurse = 0; nurse < NURSES; nurse++) {
+          addMiniCell(roster, miniStaffLabel(nurse), 'label')
+          for (let day = 0; day < DAYS; day++) {
+            const value = individual.matrix[nurse][day]
+            addMiniCell(roster, SHIFT_LABELS[value], `${SHIFT_CLASSES[value]} ${isWeekend(day) ? 'weekend' : ''}`)
+          }
+          const nurseScore = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+            .reduce((sum, key) => sum + individual.result.parts[key][nurse], 0)
+          addMiniCell(roster, String(nurseScore), `total ${nurseScore === 0 ? 'ok' : 'bad'}`)
+        }
+
+        addMiniCell(roster, 'D不足', 'label')
+        for (let day = 0; day < DAYS; day++) {
+          const value = individual.result.parts.s1[day]
+          addMiniCell(roster, String(value), `${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        }
+        addMiniCell(roster, String(coverTotal), `total ${coverTotal === 0 ? 'ok' : 'bad'}`)
+
+        addMiniCell(roster, 'N不足', 'label')
+        for (let day = 0; day < DAYS; day++) {
+          const value = individual.result.parts.s2[day]
+          addMiniCell(roster, String(value), `${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        }
+        addMiniCell(roster, '', 'total')
+
+        addMiniCell(roster, '新人', 'label')
+        for (let day = 0; day < DAYS; day++) {
+          const value = individual.result.parts.s3[day]
+          addMiniCell(roster, String(value), `${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`)
+        }
+        addMiniCell(roster, String(individual.result.totals.s3), `total ${individual.result.totals.s3 === 0 ? 'ok' : 'bad'}`)
+        card.appendChild(title)
+        const rosterFrame = document.createElement('div')
+        rosterFrame.className = 'mini-roster-frame'
+        rosterFrame.appendChild(roster)
+        card.appendChild(rosterFrame)
+        populationMiniGrid.appendChild(card)
+      })
+    }
+
+    function getDisplayedPopulation() {
+      const snapshots = model.populationHistory
+      const fallback = { generation: model.generation, population: model.population }
+      if (!snapshots.length) return fallback
+      const selected = snapshots.find(snapshot => snapshot.generation === displayedPopulationGeneration)
+      return selected || snapshots[snapshots.length - 1]
+    }
+
+    function updatePopulationGenerationControl(activeGeneration) {
+      if (!populationGenerationRange || !populationGenerationValue) return
+      const snapshots = model.populationHistory
+      if (!snapshots.length) return
+      const firstGeneration = snapshots[0].generation
+      const lastGeneration = snapshots[snapshots.length - 1].generation
+      if (followLatestPopulation) displayedPopulationGeneration = lastGeneration
+      if (displayedPopulationGeneration < firstGeneration || displayedPopulationGeneration > lastGeneration) {
+        displayedPopulationGeneration = lastGeneration
+        followLatestPopulation = true
+      }
+      populationGenerationRange.min = String(firstGeneration)
+      populationGenerationRange.max = String(lastGeneration)
+      populationGenerationRange.value = String(activeGeneration)
+      populationGenerationValue.textContent = `第${activeGeneration}世代`
+    }
+
+    function openLineagePage(individualId) {
+      const snapshot = model.exportLineageSnapshot(individualId)
+      const url = new URL(window.location.href)
+      url.searchParams.set('lineage', String(individualId))
+      url.searchParams.set('key', model.lineageStorageKey)
+      try {
+        localStorage.setItem(model.lineageStorageKey, JSON.stringify(snapshot))
+        window.open(url.toString(), '_blank')
+      } catch (error) {
+        url.searchParams.delete('key')
+        history.pushState(null, '', url.toString())
+        renderLineageView(snapshot)
+      }
+    }
+
+    function compactNetworkRecord(record) {
+      const event = record.event || {}
+      return {
+        id: record.id,
+        slot: record.slot,
+        generation: record.generation,
+        score: record.score,
+        matrix: record.matrix,
+        event: {
+          kind: event.kind,
+          label: event.label,
+          generation: event.generation,
+          parents: event.parents || [],
+          targetSlot: event.targetSlot,
+          parentSlot: event.parentSlot,
+          targetScore: event.targetScore,
+          trialScore: event.trialScore,
+          trialId: event.trialId,
+          parentScores: event.parentScores || [],
+          origins: event.origins || [],
+          copiedRows: event.copiedRows,
+          returnedCells: event.returnedCells,
+          mutations: event.mutations || [],
+          repairs: event.repairs,
+          localMoves: Array.isArray(event.localMoves) ? event.localMoves.length : event.localMoves,
+          accepted: event.accepted,
+          note: event.note,
+          sourceId: event.sourceId,
+          childId: event.childId,
+        },
+      }
+    }
+
+    function buildNetworkSnapshot(records, generation, limit = 900) {
+      const compactRecords = records.map(compactNetworkRecord)
+      const byId = new Map(compactRecords.map(record => [record.id, record]))
+      const selected = new Map()
+      const addRecord = record => {
+        if (record && selected.size < limit) selected.set(record.id, record)
+      }
+      const addWithParents = record => {
+        addRecord(record)
+        ;(record?.event?.parents || []).forEach(parentId => addRecord(byId.get(parentId)))
+      }
+      compactRecords
+        .filter(record => record.event?.kind === 'random')
+        .sort((left, right) => left.id - right.id)
+        .forEach(addRecord)
+      compactRecords
+        .filter(record => isNetworkAccepted(record))
+        .sort((left, right) => (left.score ?? Infinity) - (right.score ?? Infinity) || (right.generation ?? 0) - (left.generation ?? 0))
+        .slice(0, Math.floor(limit * 0.35))
+        .forEach(addWithParents)
+      compactRecords
+        .filter(record => isNetworkAccepted(record))
+        .sort((left, right) => (right.generation ?? 0) - (left.generation ?? 0) || left.id - right.id)
+        .forEach(addWithParents)
+      compactRecords
+        .filter(record => record.event?.kind !== 'random' && !isNetworkAccepted(record))
+        .sort((left, right) => (right.generation ?? 0) - (left.generation ?? 0) || left.id - right.id)
+        .forEach(addWithParents)
+      const archiveRecords = [...selected.values()].sort((left, right) => left.id - right.id)
+      return {
+        generatedAt: new Date().toISOString(),
+        generation,
+        populationSize: model.populationSize,
+        archiveRecords,
+      }
+    }
+
+    function pruneGaStorage(keepKey = null) {
+      const keys = []
+      for (let index = 0; index < localStorage.length; index++) {
+        const key = localStorage.key(index)
+        if (key && key !== keepKey && (key.startsWith('nspGaLineage:') || key.startsWith('nspGaNetwork:'))) keys.push(key)
+      }
+      keys.forEach(key => localStorage.removeItem(key))
+    }
+
+    function saveSnapshotAndNavigate(snapshot, url, key) {
+      const originalRecords = snapshot.archiveRecords || []
+      const limits = [
+        originalRecords.length,
+        900,
+        600,
+        360,
+        200,
+      ].filter((value, index, values) => value > 0 && values.indexOf(value) === index)
+      let lastError = null
+      pruneGaStorage(null)
+      for (const limit of limits) {
+        const attempt = limit >= originalRecords.length
+          ? snapshot
+          : { ...snapshot, archiveRecords: originalRecords.slice(-limit) }
+        try {
+          localStorage.setItem(key, JSON.stringify(attempt))
+          window.location.href = url.toString()
+          return
+        } catch (error) {
+          lastError = error
+          localStorage.removeItem(key)
+        }
+      }
+      const message = 'ブラウザ保存領域の上限に達しました。古いGA表示データを削除しても保存できませんでした。ページを再読み込みして、少し世代数を減らしてから開いてください。'
+      if (messageBox) setMessage('進化ネットワークを開けません。', message)
+      else window.alert(message)
+      console.error(lastError)
+    }
+
+    function openNetworkPage() {
+      const snapshot = buildNetworkSnapshot(Array.from(model.archive.values()), model.generation)
+      const url = new URL(window.location.href)
+      url.searchParams.delete('lineage')
+      url.searchParams.set('network', '1')
+      url.searchParams.delete('key')
+      history.pushState(null, '', url.toString())
+      renderNetworkView(snapshot)
+    }
+
+    function isSuccessfulEvent(event, score) {
+      return event?.kind === 'de-trial' && event.accepted === true &&
+        Number.isFinite(event.targetScore) && score < event.targetScore
+    }
+
+    function collectLineageArchiveRecords(archiveSource, individualId) {
+      const archive = archiveSource instanceof Map
+        ? archiveSource
+        : new Map((archiveSource || []).map(record => [record.id, record]))
+      const collected = new Map()
+      const partnerSeeds = new Set()
+
+      const addChain = startId => {
+        let currentId = startId
+        const visited = new Set()
+        while (currentId && !visited.has(currentId)) {
+          visited.add(currentId)
+          const record = archive.get(currentId)
+          if (!record) break
+          collected.set(record.id, compactLineageArchiveRecord(record))
+          const partnerId = record.event?.parents?.[1]
+          if (partnerId) {
+            const partnerRecord = archive.get(partnerId)
+            if (partnerRecord) {
+              partnerSeeds.add(partnerId)
+              collected.set(partnerId, compactLineageArchiveRecord(partnerRecord))
+            }
+          }
+          currentId = record.event?.parents?.[0] || null
+        }
+      }
+
+      addChain(individualId)
+      for (let cursor = 0; cursor < partnerSeeds.size; cursor++) {
+        const seed = Array.from(partnerSeeds)[cursor]
+        addChain(seed)
+      }
+      return Array.from(collected.values())
+    }
+
+    function compactLineageArchiveRecord(record) {
+      const event = record.event || {}
+      return {
+        id: record.id,
+        slot: record.slot,
+        generation: record.generation,
+        score: record.score,
+        matrix: record.matrix,
+        event: {
+          kind: event.kind,
+          label: event.label,
+          generation: event.generation,
+          parents: event.parents || [],
+          targetSlot: event.targetSlot,
+          parentSlot: event.parentSlot,
+          targetScore: event.targetScore,
+          parentScores: event.parentScores || [],
+          accepted: event.accepted,
+          origins: event.origins || [],
+          copiedRows: event.copiedRows,
+          returnedCells: event.returnedCells,
+          mutations: event.mutations || [],
+          repairs: event.repairs,
+          localMoves: event.localMoves,
+          focusedSearch: event.focusedSearch,
+          trialId: event.trialId,
+          trialScore: event.trialScore,
+          note: event.note,
+        },
+      }
+    }
+
+    function buildLineageSnapshotFromArchive(archiveSource, individualId, generation, extras = {}) {
+      const archive = archiveSource instanceof Map
+        ? archiveSource
+        : new Map((archiveSource || []).map(record => [record.id, record]))
+      const expandPartnerHistory = extras.expandPartnerHistory === true
+      const chain = collectVisibleLineageChain(archive, individualId, true)
+
+      const partners = []
+      const clonePartnerTree = (rootRecord, childRecord) => {
+        const cloned = new Map()
+        const visiting = new Set()
+        const cloneIdFor = id => `partner-${childRecord.id}-${id}`
+        const visit = sourceId => {
+          const sourceRecord = archive.get(sourceId)
+          if (!sourceRecord) return null
+          const cloneId = cloneIdFor(sourceRecord.id)
+          if (cloned.has(cloneId)) return cloneId
+          if (visiting.has(sourceRecord.id)) return null
+          visiting.add(sourceRecord.id)
+          const sourceEvent = sourceRecord.event || {}
+          const originalParents = sourceEvent.parents || []
+          const shouldShowParents = sourceEvent.kind !== 'random' && isSuccessfulEvent(sourceEvent, sourceRecord.score)
+          const parentCloneIds = shouldShowParents
+            ? originalParents
+                .slice(0, 2)
+                .map(parentId => visit(parentId))
+                .filter(Boolean)
+            : []
+          visiting.delete(sourceRecord.id)
+          const isRoot = sourceRecord.id === rootRecord.id
+          cloned.set(cloneId, {
+            ...sourceRecord,
+            id: cloneId,
+            sourceId: sourceRecord.id,
+            displayRole: 'partner-history',
+            event: {
+              ...sourceEvent,
+              sourceId: sourceRecord.id,
+              originalParents,
+              parents: parentCloneIds,
+              partnerNodeId: parentCloneIds[1] || null,
+              childId: isRoot ? childRecord.id : null,
+              partnerGroupChildId: childRecord.id,
+              origins: isRoot
+                ? ((childRecord.event?.origins || []).filter(origin => origin.endsWith(':A')))
+                : (sourceEvent.origins || []),
+              lineageMode: 'partner-history',
+            },
+          })
+          return cloneId
+        }
+        const rootCloneId = visit(rootRecord.id)
+        partners.push(...cloned.values())
+        return rootCloneId
+      }
+      const visibleRecords = chain.reverse().map((record, index, ordered) => {
+        const event = record.event || {}
+        const originalParents = event.parents || []
+        const targetRecord = archive.get(originalParents[0])
+        const partnerRecord = archive.get(originalParents[1])
+        let partnerNodeId = null
+        if (partnerRecord && index > 0) {
+          if (expandPartnerHistory) {
+            partnerNodeId = clonePartnerTree(partnerRecord, record)
+          } else {
+            partnerNodeId = `partner-${record.id}`
+            // 親Aはこの交叉に限って表示する葉ノード。ボタンから親A自身の系譜へ切替可能。
+            partners.push({
+              ...partnerRecord,
+              id: partnerNodeId,
+              sourceId: partnerRecord.id,
+              displayRole: 'partner',
+              event: {
+                kind: 'partner',
+                parents: [],
+                childId: record.id,
+                sourceId: partnerRecord.id,
+                origins: (event.origins || []).filter(origin => origin.endsWith(':A')),
+              },
+            })
+          }
+        }
+        return {
+          ...record,
+          event: {
+            ...event,
+            originalParents,
+            // 描画する線は対象個体の成功履歴だけへ接続する。
+            parents: index > 0 ? [ordered[index - 1].id] : [],
+            targetSlot: event.targetSlot ?? targetRecord?.slot ?? record.slot,
+            parentSlot: event.parentSlot ?? partnerRecord?.slot,
+            partnerNodeId,
+            partner: partnerRecord
+              ? { id: partnerRecord.id, slot: partnerRecord.slot, generation: partnerRecord.generation, score: partnerRecord.score }
+              : null,
+          },
+        }
+      })
+      const selected = visibleRecords.at(-1) || archive.get(individualId)
+      return {
+        selectedId: individualId,
+        generatedAt: new Date().toISOString(),
+        generation,
+        records: visibleRecords,
+        partners,
+        selected,
+        truncated: false,
+        expandPartnerHistory,
+        ...extras,
+      }
+    }
+
+    function collectVisibleLineageChain(archive, individualId, forceStart = false) {
+      const chain = []
+      const visited = new Set()
+      let currentId = individualId
+      let startRecord = null
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId)
+        const record = archive.get(currentId)
+        if (!record) break
+        if (!startRecord) startRecord = record
+        const event = record.event || {}
+        if (event.kind === 'random' || isSuccessfulEvent(event, record.score)) chain.push(record)
+        currentId = event.parents?.[0] || null
+      }
+      if (forceStart && startRecord && !chain.some(record => record.id === startRecord.id)) {
+        chain.unshift(startRecord)
+      }
+      return chain
+    }
+
+    function isSuccessfulEvolution(individual) {
+      const event = individual.event
+      return isSuccessfulEvent(event, individual.score)
+    }
+
+    function countLineageSuccesses(individualId) {
+      let count = 0
+      let currentId = individualId
+      const visited = new Set()
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId)
+        const record = model.archive.get(currentId)
+        if (!record) break
+        if (isSuccessfulEvent(record.event, record.score)) count += 1
+        currentId = record.event?.parents?.[0] || null
+      }
+      return count
+    }
+
+    function addMiniCell(container, content, className) {
+      const cell = document.createElement('span')
+      cell.className = `mini-cell ${className}`
+      cell.textContent = content
+      container.appendChild(cell)
+      return cell
+    }
+
+    function renderNurseTable(result) {
+      nurseTable.innerHTML = ''
+      const head = document.createElement('thead')
+      head.innerHTML = '<tr><th>看護師</th><th data-constraint="n1">条件1<span>休不足</span></th><th data-constraint="n2">条件2<span>週末</span></th><th data-constraint="n3">条件3<span>連勤</span></th><th data-constraint="n4">条件4<span>夜→日</span></th><th data-constraint="n5">条件5<span>連夜</span></th><th data-constraint="n6">条件6<span>夜勤数</span></th><th data-constraint="total">合計</th></tr>'
+      nurseTable.appendChild(head)
+      const body = document.createElement('tbody')
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        const keys = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+        const values = keys.map(key => result.parts[key][nurse])
+        const total = values.reduce((a, b) => a + b, 0)
+        const tr = document.createElement('tr')
+        const valueCells = values.map((value, index) => {
+          const key = keys[index]
+          return `<td class="${value === 0 ? 'ok' : 'bad'}" data-constraint="${key}" data-hover-cells="${result.hoverCells[key][nurse].join(' ')}">${value}</td>`
+        }).join('')
+        tr.innerHTML = `<td>${staffLabel(nurse)}</td>${valueCells}<td class="${total === 0 ? 'ok' : 'bad'}" data-constraint="total" data-hover-cells="${result.hoverCells.total[nurse].join(' ')}">${total}</td>`
+        body.appendChild(tr)
+      }
+      nurseTable.appendChild(body)
+      const allNurseTotal = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+        .reduce((sum, key) => sum + result.totals[key], 0)
+      const foot = document.createElement('tfoot')
+      foot.innerHTML = `<tr><td class="total-spacer" colspan="7"></td><td class="${allNurseTotal === 0 ? 'ok' : 'bad'}">${allNurseTotal}</td></tr>`
+      nurseTable.appendChild(foot)
+      nurseTable.querySelectorAll('[data-constraint]').forEach(cell => {
+        cell.addEventListener('mouseenter', () => {
+          setNurseConstraintHelp(cell.dataset.constraint)
+          if (cell.dataset.constraint !== 'total' && cell.matches('td.bad[data-hover-cells]')) {
+            setViolationHover(cell.dataset.hoverCells)
+          }
+        })
+        cell.addEventListener('mouseleave', () => {
+          resetNurseConstraintHelp()
+          if (cell.dataset.constraint !== 'total' && cell.matches('td.bad[data-hover-cells]')) {
+            clearViolationHover()
+          }
+        })
+      })
+    }
+
+    function setNurseConstraintHelp(key) {
+      const help = nurseConstraintHelp[key]
+      if (!help || !nurseConstraintHelpBox) return
+      nurseConstraintHelpBox.innerHTML = `<div class="constraint-help-title">${help.title}</div><div class="constraint-help-body">${help.body}</div>`
+    }
+
+    function setCoverConstraintHelp(key, day, value) {
+      const help = nurseConstraintHelp[key]
+      if (!help || !nurseConstraintHelpBox) return
+      let status
+      if (key === 's3') {
+        status = value > 0
+          ? `${day + 1}日目は新人同士が同じ勤務です。`
+          : `${day + 1}日目は新人同士のペア制約を満たしています。`
+      } else {
+        const shiftName = key === 's1' ? '日勤（D）' : '夜勤（N）'
+        status = value > 0
+          ? `${day + 1}日目は${shiftName}が${value}人不足しています。`
+          : `${day + 1}日目は${shiftName}の必要人数を満たしています。`
+      }
+      const coverTitle = key === 's1' || key === 's2'
+        ? `${help.title}: ${day + 1}日目 / 各日は${key === 's1' ? '日勤（D）' : '夜勤（N）'}が2人以上`
+        : `${help.title}: ${day + 1}日目`
+      nurseConstraintHelpBox.innerHTML = `<div class="constraint-help-title">${coverTitle}</div><div class="constraint-help-body">${help.body}<br>${status}</div>`
+    }
+
+    function resetNurseConstraintHelp() {
+      if (!nurseConstraintHelpBox) return
+      nurseConstraintHelpBox.innerHTML = '<div class="constraint-help-title">制約の説明</div><div class="constraint-help-body">条件の列にマウスを置くと、この下に制約の意味と違反の数え方を表示します。<br>日勤（D）不足・夜勤（N）不足・新人ペア禁止は勤務表下段の共通制約です。</div>'
+    }
+
+    function setViolationHover(cellList) {
+      clearViolationHover()
+      if (!cellList) return
+      const byNurse = new Map()
+      cellList.split(/\s+/).filter(Boolean).forEach(cellKey => {
+        const [nurseText, dayText] = cellKey.split('-')
+        const nurse = Number(nurseText)
+        const day = Number(dayText)
+        if (!Number.isInteger(nurse) || !Number.isInteger(day)) return
+        if (!byNurse.has(nurse)) byNurse.set(nurse, new Set())
+        byNurse.get(nurse).add(day)
+      })
+
+      byNurse.forEach((days, nurse) => {
+        const sortedDays = [...days].sort((a, b) => a - b)
+        for (let index = 0; index < sortedDays.length;) {
+          const startIndex = index
+          while (index + 1 < sortedDays.length && sortedDays[index + 1] === sortedDays[index] + 1) index += 1
+          const endIndex = index
+          for (let cursor = startIndex; cursor <= endIndex; cursor++) {
+            const day = sortedDays[cursor]
+            const target = board.querySelector(`[data-cell="${nurse}-${day}"]`)
+            if (!target) continue
+            target.classList.add('hover-violation')
+            if (endIndex === startIndex) continue
+            if (cursor === startIndex) target.classList.add('hover-run-start')
+            else if (cursor === endIndex) target.classList.add('hover-run-end')
+            else target.classList.add('hover-run-middle')
+          }
+          index += 1
+        }
+      })
+    }
+
+    function clearViolationHover() {
+      board.querySelectorAll('.hover-violation').forEach(cell => {
+        cell.classList.remove('hover-violation', 'hover-run-start', 'hover-run-middle', 'hover-run-end')
+      })
+    }
+
+    function renderHistory() {
+      const values = model.history
+      if (!window.Plotly) return
+      const generations = values.map(item => item.generation)
+      const latest = values.at(-1) || {}
+      const latestGenerated = Number(latest.generatedTrials)
+      const latestAccepted = Number(latest.acceptedTrials)
+      const replacementText = latestGenerated > 0
+        ? `置換成功: ${latestAccepted} / ${latestGenerated}（${((latestAccepted / latestGenerated) * 100).toFixed(1)}%）`
+        : '置換成功: - / -'
+      const traces = [
+        {
+          x: generations,
+          y: values.map(item => item.best),
+          type: 'scatter',
+          mode: 'lines+markers',
+          name: '最良',
+          line: { color: '#244a8f', width: 3 },
+          marker: { color: '#244a8f', size: 5 },
+          hovertemplate: '世代 %{x}<br>最良違反量 %{y}<extra></extra>',
+        },
+        {
+          x: generations,
+          y: values.map(item => item.average),
+          type: 'scatter',
+          mode: 'lines+markers',
+          name: '平均',
+          line: { color: '#b9852c', width: 2.5 },
+          marker: { color: '#b9852c', size: 4 },
+          hovertemplate: '世代 %{x}<br>平均違反量 %{y:.1f}<extra></extra>',
+        },
+      ]
+      const layout = {
+        margin: { l: 72, r: 18, t: 34, b: 56 },
+        paper_bgcolor: '#fbfcff',
+        plot_bgcolor: '#fbfcff',
+        font: { family: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#263247', size: 12 },
+        legend: { orientation: 'h', x: 1, xanchor: 'right', y: 1.15, yanchor: 'top' },
+        xaxis: {
+          title: { text: '横軸：世代', standoff: 12, font: { size: 13, color: '#263247' } },
+          dtick: 5,
+          automargin: true,
+          gridcolor: '#e3e8f1',
+          linecolor: '#b9c5d6',
+          zeroline: false,
+        },
+        yaxis: {
+          title: { text: '縦軸：違反量', standoff: 10, font: { size: 13, color: '#263247' } },
+          rangemode: 'tozero',
+          automargin: true,
+          gridcolor: '#e3e8f1',
+          linecolor: '#b9c5d6',
+          zeroline: true,
+          zerolinecolor: '#b9c5d6',
+        },
+        annotations: [
+          {
+            xref: 'paper',
+            yref: 'paper',
+            x: 0,
+            y: 1.16,
+            xanchor: 'left',
+            yanchor: 'top',
+            text: replacementText,
+            showarrow: false,
+            font: { size: 13, color: '#263247' },
+            bgcolor: '#ffffff',
+            bordercolor: '#c9d4e5',
+            borderwidth: 1,
+            borderpad: 5,
+          },
+        ],
+        hovermode: 'x unified',
+      }
+      Plotly.react(historyPlot, traces, layout, { displayModeBar: false, responsive: true })
+    }
+
+    function appendLog(message) {
+      const line = document.createElement('div')
+      line.textContent = `${new Date().toLocaleTimeString('ja-JP')}  ${message}`
+      log.prepend(line)
+    }
+
+    function setMessage(title, body) {
+      messageBox.innerHTML = `<strong>${title}</strong>${body}`
+    }
+
+    function renderNetworkView(snapshotOverride = null) {
+      const params = new URLSearchParams(window.location.search)
+      const key = params.get('key')
+      const raw = key ? localStorage.getItem(key) : null
+      const snapshot = snapshotOverride || (raw ? JSON.parse(raw) : null)
+      const archiveRecords = snapshot?.archiveRecords || []
+      const fallbackRecords = [...(snapshot?.records || []), ...(snapshot?.partners || [])]
+      const sourceRecords = archiveRecords.length ? archiveRecords : fallbackRecords
+      const maxGeneration = Math.max(0, ...sourceRecords.map(record => record.generation || 0))
+      if (!sourceRecords.length) {
+        document.body.className = 'network-page'
+        document.body.innerHTML = `
+          <header><h1>進化ネットワーク</h1></header>
+          <main>
+            <a class="lineage-back" href="${escapeHtml(location.pathname)}">← メインビューへ戻る</a>
+            <section class="lineage-panel"><h2>ネットワークデータがありません</h2><ul><li>メインビューで進化を進めてから「進化ネットワーク」を開いてください。</li></ul></section>
+          </main>`
+        return
+      }
+
+      let currentView = params.get('view') || 'map'
+      let currentGeneration = maxGeneration
+      let selectedRecord = sourceRecords
+        .filter(record => (record.event?.kind === 'random' || isNetworkAccepted(record)) && record.generation <= currentGeneration)
+        .sort((left, right) => (left.score ?? Infinity) - (right.score ?? Infinity) || (right.generation ?? 0) - (left.generation ?? 0))[0] || sourceRecords[0]
+
+      document.body.className = 'network-page'
+      document.body.innerHTML = `
+        <header>
+          <div>
+            <a class="lineage-back" href="${escapeHtml(location.pathname)}">← メインビューへ戻る</a>
+            <h1>進化ネットワーク試作</h1>
+          </div>
+          <div class="lineage-summary">
+            <span>記録個体 ${sourceRecords.length}</span>
+            <span>最終世代 ${maxGeneration}</span>
+            <span>類似度: 勤務表セル差分</span>
+          </div>
+        </header>
+        <main>
+          <section class="network-toolbar">
+            <div class="network-tabs" aria-label="表示切替">
+              <button type="button" class="network-tab" data-view="map">近傍マップ</button>
+              <button type="button" class="network-tab" data-view="timeline">世代タイムライン</button>
+              <button type="button" class="network-tab" data-view="graph">生成ネットワーク</button>
+            </div>
+            <label class="network-control" for="networkGenerationRange">表示世代
+              <input id="networkGenerationRange" type="range" min="0" max="${maxGeneration}" value="${currentGeneration}">
+              <span id="networkGenerationLabel">第${currentGeneration}世代まで</span>
+            </label>
+            <label class="network-control">
+              <input id="networkRejectedToggle" type="checkbox">
+              棄却trialも表示
+            </label>
+            <button type="button" class="network-zoom-button" id="networkZoomReset">表示リセット</button>
+            <span class="network-control" id="networkCountLabel"></span>
+          </section>
+          <section class="network-edge-help" aria-label="エッジの説明">
+            <label class="edge-toggle" for="edgeAcceptedToggle"><input id="edgeAcceptedToggle" type="checkbox" checked><span class="edge-sample"></span>青実線: 採用されたtrialへの親子関係</label>
+            <label class="edge-toggle" for="edgePartnerToggle"><input id="edgePartnerToggle" type="checkbox" checked><span class="edge-sample partner"></span>茶破線: 相手親Aからtrialへ遺伝子を提供</label>
+            <label class="edge-toggle" for="edgeRejectedToggle"><input id="edgeRejectedToggle" type="checkbox" checked><span class="edge-sample rejected"></span>灰細線: 棄却trialの生成関係</label>
+            <span>target側の線は「置換対象Tからtrial」、親A側の線は「ドナー個体からtrial」を表します。</span>
+          </section>
+          <section class="network-stage">
+            <section class="network-canvas-panel">
+              <svg class="network-svg" id="networkSvg" viewBox="0 0 1100 660" role="img" aria-label="進化ネットワーク図"></svg>
+              <div class="network-hover-card" id="networkHoverCard" aria-hidden="true"></div>
+            </section>
+            <aside class="network-detail" id="networkDetail"></aside>
+          </section>
+          <section class="network-guide" aria-label="この画面の見方">
+            <h2>この画面の見方</h2>
+            <div class="network-guide-grid">
+              <div>
+                <h3>1. ノードは勤務表個体</h3>
+                <p>1つの点が1つの勤務表です。色は、その固定個体番号がその時点までに進化成功した回数を表します。右のカラーバーで、薄い色ほど成功回数が少なく、濃い色ほど成功回数が多いことを示します。太枠の点は、その時点までの最良違反量を更新した個体です。</p>
+              </div>
+              <div>
+                <h3>2. エッジは生成関係</h3>
+                <p>DE型の個体別置換では、対象個体Tと相手親Aからtrialを作ります。target側の線はTからtrialへの関係、親A側の破線はドナー個体からtrialへ遺伝子を渡した関係です。</p>
+              </div>
+              <div>
+                <h3>3. 近傍マップ</h3>
+                <p>勤務表のセル差分が小さい個体ほど近くに見えるように配置した試作です。近くに集まる点は、勤務割当の構造が似ている個体群と考えます。</p>
+              </div>
+              <div>
+                <h3>4. 世代タイムライン</h3>
+                <p>横軸が世代、縦軸が固定個体番号です。個体番号は探索中ずっと固定で、採用されたtrialだけがその番号の中身を置き換えます。</p>
+              </div>
+              <div>
+                <h3>5. 生成ネットワーク</h3>
+                <p>trialがどのtargetと親Aから作られたかを重視した表示です。棄却trialも表示すると、探索で試したが採用されなかった候補も確認できます。</p>
+              </div>
+              <div>
+                <h3>6. 操作</h3>
+                <p>ホイールで拡大縮小、ドラッグで移動、表示リセットで初期表示へ戻ります。点にマウスを置くと勤務表の縮小プレビュー、クリックすると右側に詳細が表示されます。</p>
+              </div>
+            </div>
+          </section>
+        </main>`
+
+      const svg = document.getElementById('networkSvg')
+      const detail = document.getElementById('networkDetail')
+      const hoverCard = document.getElementById('networkHoverCard')
+      const generationRange = document.getElementById('networkGenerationRange')
+      const generationLabel = document.getElementById('networkGenerationLabel')
+      const rejectedToggle = document.getElementById('networkRejectedToggle')
+      const edgeAcceptedToggle = document.getElementById('edgeAcceptedToggle')
+      const edgePartnerToggle = document.getElementById('edgePartnerToggle')
+      const edgeRejectedToggle = document.getElementById('edgeRejectedToggle')
+      const zoomReset = document.getElementById('networkZoomReset')
+      const countLabel = document.getElementById('networkCountLabel')
+      const tabs = [...document.querySelectorAll('.network-tab')]
+      const viewBox = { x: 0, y: 0, width: 1100, height: 660 }
+      let dragStart = null
+
+      const applyNetworkViewBox = () => {
+        svg.setAttribute('viewBox', `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`)
+      }
+
+      const svgPoint = event => {
+        const rect = svg.getBoundingClientRect()
+        return {
+          x: viewBox.x + ((event.clientX - rect.left) / rect.width) * viewBox.width,
+          y: viewBox.y + ((event.clientY - rect.top) / rect.height) * viewBox.height,
+        }
+      }
+
+      const redraw = () => {
+        currentGeneration = Number(generationRange.value)
+        generationLabel.textContent = `第${currentGeneration}世代まで`
+        tabs.forEach(tab => tab.classList.toggle('active', tab.dataset.view === currentView))
+        const prepared = prepareNetworkRecords(sourceRecords, currentGeneration, rejectedToggle.checked)
+        countLabel.textContent = `表示 ${prepared.length} / 元データ ${sourceRecords.length}`
+        if (!prepared.some(record => record.id === selectedRecord?.id)) selectedRecord = prepared[0] || sourceRecords[0]
+        if (currentView === 'timeline') drawNetworkTimeline(svg, prepared, selectedRecord?.id)
+        else if (currentView === 'graph') drawGeneratedNetwork(svg, prepared, selectedRecord?.id)
+        else drawSimilarityMap(svg, prepared, selectedRecord?.id)
+        svg.classList.toggle('hide-accepted-edges', !edgeAcceptedToggle.checked)
+        svg.classList.toggle('hide-partner-edges', !edgePartnerToggle.checked)
+        svg.classList.toggle('hide-rejected-edges', !edgeRejectedToggle.checked)
+        applyNetworkViewBox()
+        renderNetworkDetail(detail, selectedRecord)
+      }
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          currentView = tab.dataset.view
+          const url = new URL(window.location.href)
+          url.searchParams.set('view', currentView)
+          history.replaceState(null, '', url.toString())
+          redraw()
+        })
+      })
+      generationRange.addEventListener('input', redraw)
+      rejectedToggle.addEventListener('change', redraw)
+      ;[edgeAcceptedToggle, edgePartnerToggle, edgeRejectedToggle].forEach(toggle => {
+        toggle.addEventListener('change', redraw)
+      })
+      zoomReset.addEventListener('click', () => {
+        Object.assign(viewBox, { x: 0, y: 0, width: 1100, height: 660 })
+        applyNetworkViewBox()
+      })
+      svg.addEventListener('click', event => {
+        const target = event.target.closest?.('.network-node')
+        if (!target) return
+        const record = sourceRecords.find(item => String(item.id) === target.dataset.id)
+        if (!record) return
+        selectedRecord = record
+        redraw()
+      })
+      svg.addEventListener('wheel', event => {
+        event.preventDefault()
+        const point = svgPoint(event)
+        const factor = event.deltaY < 0 ? 0.86 : 1.16
+        const nextWidth = Math.max(170, Math.min(2200, viewBox.width * factor))
+        const nextHeight = Math.max(102, Math.min(1320, viewBox.height * factor))
+        const rx = (point.x - viewBox.x) / viewBox.width
+        const ry = (point.y - viewBox.y) / viewBox.height
+        viewBox.x = point.x - rx * nextWidth
+        viewBox.y = point.y - ry * nextHeight
+        viewBox.width = nextWidth
+        viewBox.height = nextHeight
+        applyNetworkViewBox()
+      }, { passive: false })
+      svg.addEventListener('mousedown', event => {
+        if (event.button !== 0) return
+        dragStart = { clientX: event.clientX, clientY: event.clientY, x: viewBox.x, y: viewBox.y }
+        svg.classList.add('panning')
+      })
+      window.addEventListener('mousemove', event => {
+        if (!dragStart) return
+        const rect = svg.getBoundingClientRect()
+        viewBox.x = dragStart.x - ((event.clientX - dragStart.clientX) / rect.width) * viewBox.width
+        viewBox.y = dragStart.y - ((event.clientY - dragStart.clientY) / rect.height) * viewBox.height
+        applyNetworkViewBox()
+      })
+      window.addEventListener('mouseup', () => {
+        dragStart = null
+        svg.classList.remove('panning')
+      })
+      svg.addEventListener('mousemove', event => {
+        if (dragStart) return
+        const target = event.target.closest?.('.network-node')
+        if (!target) {
+          hideNetworkHover(hoverCard)
+          return
+        }
+        const record = sourceRecords.find(item => String(item.id) === target.dataset.id)
+        if (!record) {
+          hideNetworkHover(hoverCard)
+          return
+        }
+        showNetworkHover(hoverCard, svg.parentElement, record, event)
+      })
+      svg.addEventListener('mouseleave', () => hideNetworkHover(hoverCard))
+      redraw()
+    }
+
+    function isNetworkAccepted(record) {
+      const event = record?.event || {}
+      return event.kind === 'de-trial' && event.accepted === true &&
+        (!Number.isFinite(event.targetScore) || (record.score ?? Infinity) <= event.targetScore)
+    }
+
+    function networkKind(record) {
+      if (record?.event?.kind === 'random') return 'initial'
+      if (isNetworkAccepted(record)) return 'accepted'
+      return 'rejected'
+    }
+
+    function prepareNetworkRecords(records, maxGeneration, includeRejected) {
+      const candidates = records
+        .filter(record => (record.generation ?? 0) <= maxGeneration)
+        .filter(record => includeRejected || record.event?.kind === 'random' || isNetworkAccepted(record))
+      if (candidates.length <= 900) return candidates
+      const must = new Map()
+      candidates
+        .filter(record => record.event?.kind === 'random' || isNetworkAccepted(record))
+        .forEach(record => must.set(record.id, record))
+      const rest = candidates.filter(record => !must.has(record.id))
+      rest
+        .slice()
+        .sort((left, right) => (left.score ?? Infinity) - (right.score ?? Infinity))
+        .slice(0, 260)
+        .forEach(record => must.set(record.id, record))
+      rest
+        .slice()
+        .sort((left, right) => (right.generation ?? 0) - (left.generation ?? 0))
+        .slice(0, 260)
+        .forEach(record => must.set(record.id, record))
+      return [...must.values()].slice(0, 900)
+    }
+
+    function networkBestIds(records) {
+      const ids = new Set()
+      let best = Infinity
+      records
+        .slice()
+        .sort((left, right) => (left.generation ?? 0) - (right.generation ?? 0) || left.id - right.id)
+        .forEach(record => {
+          if ((record.event?.kind === 'random' || isNetworkAccepted(record)) && (record.score ?? Infinity) < best) {
+            best = record.score
+            ids.add(record.id)
+          }
+        })
+      return ids
+    }
+
+    function networkProjection(record) {
+      let x = 0
+      let y = 0
+      record.matrix.forEach((row, nurse) => {
+        row.forEach((value, day) => {
+          const index = nurse * DAYS + day
+          x += deterministicWeight(index, value, 0)
+          y += deterministicWeight(index, value, 1)
+        })
+      })
+      return { x, y }
+    }
+
+    function deterministicWeight(index, value, axis) {
+      const raw = Math.sin((index + 1) * 12.9898 + (value + 1) * 78.233 + axis * 37.719) * 43758.5453
+      return (raw - Math.floor(raw)) * 2 - 1
+    }
+
+    function scaleValue(value, min, max, start, end) {
+      if (max <= min) return (start + end) / 2
+      return start + ((value - min) / (max - min)) * (end - start)
+    }
+
+    function drawSimilarityMap(svg, records, selectedId) {
+      const bestIds = networkBestIds(records)
+      const projections = records.map(record => ({ record, ...networkProjection(record) }))
+      const minX = Math.min(...projections.map(item => item.x))
+      const maxX = Math.max(...projections.map(item => item.x))
+      const minY = Math.min(...projections.map(item => item.y))
+      const maxY = Math.max(...projections.map(item => item.y))
+      const coords = new Map(projections.map(item => [
+        item.record.id,
+        {
+          x: scaleValue(item.x, minX, maxX, 90, 1030),
+          y: scaleValue(item.y, minY, maxY, 580, 80),
+        },
+      ]))
+      const edges = records
+        .filter(record => isNetworkAccepted(record))
+        .flatMap(record => (record.event?.parents || []).slice(0, 2).map((parentId, index) => ({ record, parentId, index })))
+        .filter(edge => coords.has(edge.record.id) && coords.has(edge.parentId))
+      renderNetworkSvg(svg, records, coords, edges, bestIds, selectedId, {
+        title: '近傍マップ: 似ている勤務表ほど近く',
+        xLabel: '横軸：勤務表類似度の射影1',
+        yLabel: '縦軸：勤務表類似度の射影2',
+      })
+    }
+
+    function drawNetworkTimeline(svg, records, selectedId) {
+      const bestIds = networkBestIds(records)
+      const maxGeneration = Math.max(1, ...records.map(record => record.generation || 0))
+      const coords = new Map(records.map(record => [
+        record.id,
+        {
+          x: scaleValue(record.generation || 0, 0, maxGeneration, 90, 1030),
+          y: scaleValue((record.slot ?? 0) + 1, 1, model.populationSize, 80, 580),
+        },
+      ]))
+      const edges = records
+        .filter(record => isNetworkAccepted(record))
+        .map(record => ({ record, parentId: record.event?.parents?.[0], index: 0 }))
+        .filter(edge => coords.has(edge.record.id) && coords.has(edge.parentId))
+      renderNetworkSvg(svg, records, coords, edges, bestIds, selectedId, {
+        title: '世代タイムライン: 固定個体番号の置換履歴',
+        xLabel: '横軸：世代',
+        yLabel: '縦軸：固定個体番号 #1-#40',
+        timeline: true,
+      })
+    }
+
+    function drawGeneratedNetwork(svg, records, selectedId) {
+      const bestIds = networkBestIds(records)
+      const maxGeneration = Math.max(1, ...records.map(record => record.generation || 0))
+      const coords = new Map(records.map(record => {
+        const lane = record.event?.kind === 'random' ? 8 : (isNetworkAccepted(record) ? 4 + ((record.slot || 0) % 8) : 24 + ((record.slot || 0) % 12))
+        return [
+          record.id,
+          {
+            x: scaleValue(record.generation || 0, 0, maxGeneration, 90, 1030),
+            y: scaleValue(lane, 0, 40, 80, 580),
+          },
+        ]
+      }))
+      const edges = records
+        .filter(record => record.event?.kind === 'de-trial')
+        .flatMap(record => (record.event?.parents || []).slice(0, 2).map((parentId, index) => ({ record, parentId, index })))
+        .filter(edge => coords.has(edge.record.id) && coords.has(edge.parentId))
+      renderNetworkSvg(svg, records, coords, edges, bestIds, selectedId, {
+        title: '生成ネットワーク: target / 親A / trial の関係',
+        xLabel: '横軸：生成世代',
+        yLabel: '縦軸：生成タイプのレーン',
+      })
+    }
+
+    function renderNetworkSvg(svg, records, coords, edges, bestIds, selectedId, labels) {
+      const successCounts = networkSuccessCountsByRecord(records)
+      const maxSuccess = Math.max(1, ...[...successCounts.values()])
+      const edgeMarkup = edges.map(edge => {
+        const from = coords.get(edge.parentId)
+        const to = coords.get(edge.record.id)
+        const accepted = isNetworkAccepted(edge.record)
+        const cls = `${accepted ? 'accepted' : 'rejected'} ${accepted && edge.index === 1 ? 'partner' : ''}`
+        return `<line class="network-edge ${cls}" x1="${from.x.toFixed(1)}" y1="${from.y.toFixed(1)}" x2="${to.x.toFixed(1)}" y2="${to.y.toFixed(1)}"></line>`
+      }).join('')
+      const nodeMarkup = records.map(record => {
+        const pos = coords.get(record.id)
+        const kind = networkKind(record)
+        const baseRadius = record.score === 0 ? 8 : Math.max(3.5, 7 - Math.min(5, (record.score || 0) / 8))
+        const radius = labels.timeline ? Math.max(7.2, baseRadius * 1.45) : baseRadius
+        const successCount = successCounts.get(record.id) || 0
+        const nodeColor = networkSuccessColor(successCount, maxSuccess)
+        const opacity = kind === 'rejected' ? 0.38 : 0.92
+        const classes = ['network-node', kind]
+        if (bestIds.has(record.id)) classes.push('best')
+        if (record.id === selectedId) classes.push('selected')
+        return `
+          <circle class="${classes.join(' ')}" data-id="${record.id}" cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="${radius.toFixed(1)}" style="fill:${nodeColor};opacity:${opacity}">
+            <title>個体 #${(record.slot ?? -1) + 1} / 第${record.generation}世代 / 違反 ${record.score} / 成功 ${successCount}回</title>
+          </circle>`
+      }).join('')
+      const colorStops = Array.from({ length: 7 }, (_, index) => {
+        const ratio = index / 6
+        return `<stop offset="${(ratio * 100).toFixed(0)}%" stop-color="${networkSuccessColor(ratio * maxSuccess, maxSuccess)}"></stop>`
+      }).join('')
+      const grid = labels.timeline
+        ? Array.from({ length: 5 }, (_, index) => {
+          const y = scaleValue(index * 10 + 1, 1, model.populationSize, 80, 580)
+          return `<line class="network-grid-line" x1="90" y1="${y}" x2="1030" y2="${y}"></line><text class="network-small-label" x="48" y="${y + 4}">#${index * 10 + 1}</text>`
+        }).join('')
+        : ''
+      svg.innerHTML = `
+        <defs>
+          <linearGradient id="successColorBar" x1="0" x2="0" y1="1" y2="0">${colorStops}</linearGradient>
+        </defs>
+        <text class="network-label" x="24" y="30">${escapeHtml(labels.title)}</text>
+        <line class="network-axis" x1="70" y1="610" x2="1040" y2="610"></line>
+        <line class="network-axis" x1="70" y1="610" x2="70" y2="60"></line>
+        ${grid}
+        ${edgeMarkup}
+        ${nodeMarkup}
+        <rect x="1060" y="90" width="18" height="430" rx="5" fill="url(#successColorBar)" stroke="#9ca8ba" stroke-width="1"></rect>
+        <text class="network-small-label" x="1086" y="97">多</text>
+        <text class="network-small-label" x="1086" y="523">少</text>
+        <text class="network-axis-label" transform="translate(1094 382) rotate(-90)">進化成功回数</text>
+        <text class="network-small-label" x="1054" y="78">成功 ${maxSuccess}回</text>
+        <text class="network-small-label" x="1064" y="540">0回</text>
+        <text class="network-axis-label" x="470" y="642">${escapeHtml(labels.xLabel)}</text>
+        <text class="network-axis-label" transform="translate(22 390) rotate(-90)">${escapeHtml(labels.yLabel)}</text>
+        <text class="network-small-label" x="720" y="30">色: 固定個体番号ごとの進化成功回数 / 薄い点: 棄却trial / 太枠: 最良更新</text>`
+    }
+
+    function networkSuccessCountsByRecord(records) {
+      const ordered = records
+        .slice()
+        .sort((left, right) => (left.generation ?? 0) - (right.generation ?? 0) || left.id - right.id)
+      const bySlot = new Map()
+      const result = new Map()
+      ordered.forEach(record => {
+        const slot = record.slot ?? -1
+        const current = bySlot.get(slot) || 0
+        const next = isNetworkAccepted(record) ? current + 1 : current
+        bySlot.set(slot, next)
+        result.set(record.id, next)
+      })
+      return result
+    }
+
+    function networkSuccessColor(count, maxSuccess) {
+      const ratio = maxSuccess <= 0 ? 0 : Math.max(0, Math.min(1, count / maxSuccess))
+      const hue = 205 - ratio * 60
+      const saturation = 72 + ratio * 6
+      const lightness = 82 - ratio * 40
+      return `hsl(${hue.toFixed(1)} ${saturation.toFixed(1)}% ${lightness.toFixed(1)}%)`
+    }
+
+    function showNetworkHover(card, container, record, event) {
+      const result = model.evaluateMatrix(record.matrix)
+      const kind = record.event?.kind === 'random' ? '初期' : (isNetworkAccepted(record) ? '採用' : '棄却')
+      card.innerHTML = `
+        <div class="network-hover-title">
+          <span>個体 #${(record.slot ?? -1) + 1} / 第${record.generation}世代</span>
+          <span>違反 ${record.score}</span>
+        </div>
+        <div>${kind} / ID ${record.id}</div>
+        ${renderLineageRoster(record.matrix, result, record.event || {})}`
+      card.classList.add('visible')
+      const rect = container.getBoundingClientRect()
+      const cardRect = card.getBoundingClientRect()
+      let left = event.clientX - rect.left + 14
+      let top = event.clientY - rect.top + 14
+      left = Math.max(8, Math.min(left, rect.width - cardRect.width - 8))
+      top = Math.max(8, Math.min(top, rect.height - cardRect.height - 8))
+      card.style.left = `${left}px`
+      card.style.top = `${top}px`
+    }
+
+    function hideNetworkHover(card) {
+      card.classList.remove('visible')
+    }
+
+    function renderNetworkDetail(container, record) {
+      if (!record) {
+        container.innerHTML = '<h2>個体詳細</h2><p>ノードを選択してください。</p>'
+        return
+      }
+      const event = record.event || {}
+      const result = model.evaluateMatrix(record.matrix)
+      const personal = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'].reduce((sum, key) => sum + result.totals[key], 0)
+      const cover = result.totals.s1 + result.totals.s2 + result.totals.s3
+      const kind = event.kind === 'random' ? '初期個体' : (isNetworkAccepted(record) ? '採用trial' : '棄却trial')
+      const parents = event.parents?.length
+        ? event.parents.map((id, index) => `${index === 0 ? 'T' : '親A'}: #${id}`).join(' / ')
+        : 'なし'
+      container.innerHTML = `
+        <h2>個体 #${(record.slot ?? -1) + 1}</h2>
+        <div>記録ID: ${record.id}</div>
+        <div>世代: ${record.generation}</div>
+        <div>種類: ${kind}</div>
+        <div>違反量: <strong>${record.score}</strong></div>
+        <div>個人制約: ${personal} / 共通制約: ${cover}</div>
+        <div>親: ${escapeHtml(parents)}</div>
+        <div>交叉: ${escapeHtml(event.type || '-')}</div>
+        <div>変異: ${escapeHtml(event.mutations?.slice(0, 3).join(' / ') || 'なし')}</div>
+        <div>修復: ${event.repairs ?? 0}件 / 局所改善: ${event.localMoves ?? 0}手</div>
+        <hr>
+        <div>${renderLineageRoster(record.matrix, result, event)}</div>`
+    }
+
+    function updateButtons() {
+      const cutoffReached = model.generation >= getMaxGeneration()
+      runButton.disabled = running || cutoffReached
+      stopButton.disabled = !running
+      stepButton.disabled = running || cutoffReached
+      resetButton.disabled = running
+      if (diversityToggle) diversityToggle.disabled = running
+    }
+
+    function getMaxGeneration() {
+      const parsed = Number(maxGenerationInput.value)
+      const maxGeneration = Number.isFinite(parsed) ? Math.floor(parsed) : 100
+      return Math.max(1, Math.min(10000, maxGeneration))
+    }
+
+    function showCutoffMessage() {
+      const maxGeneration = getMaxGeneration()
+      appendLog(`打切世代 ${maxGeneration} に到達`)
+      setMessage('打切りで探索を停止しました。', `第${maxGeneration}世代を上限として設定しています。最良違反量は${model.bestScore}です。`)
+    }
+
+    if (diversityToggle) {
+      diversityToggle.checked = model.useDiversityRestart
+      diversityToggle.addEventListener('change', () => {
+        model.useDiversityRestart = diversityToggle.checked
+        appendLog(`多様性維持 ${model.useDiversityRestart ? 'ON' : 'OFF'}`)
+        setMessage(
+          '多様性維持を切り替えました。',
+          model.useDiversityRestart
+            ? '停滞時に下位個体をランダム再生成します。平均違反量が一時的に悪化することがあります。'
+            : '停滞時のランダム再生成は行いません。平均違反量の推移は読みやすくなりますが、局所解で止まりやすくなります。',
+        )
+      })
+    }
+
+    function runLoop() {
+      if (!running) return
+      if (model.generation >= getMaxGeneration()) {
+        running = false
+        showCutoffMessage()
+        render()
+        return
+      }
+      const improved = model.run(1)
+      const result = model.evaluate()
+      render()
+      appendLog(`第${model.generation}世代 / 改善 ${improved ? 'あり' : 'なし'} / 最良 ${result.score} / 平均 ${model.averageScore.toFixed(1)}`)
+      appendLog(model.lastCrossLog)
+      setMessage(
+        `第${model.generation}世代を評価しました。`,
+        `各ターゲット個体Tと親Aを看護師行単位で交叉し、trialが同等以上なら置換しました。カバー修復と違反起点突然変異も適用しています。最良違反量は${result.score}です。停滞世代=${model.stagnation}。`,
+      )
+      if (result.score === 0) {
+        running = false
+        appendLog('制約違反 0 の勤務表に到達')
+        setMessage('探索終了。', '制約違反0の勤務表に到達しました。')
+        render()
+        return
+      }
+      if (model.generation >= getMaxGeneration()) {
+        running = false
+        showCutoffMessage()
+        render()
+        return
+      }
+      setTimeout(runLoop, 160)
+    }
+
+    function initializePopulation() {
+      model.reset()
+      displayedPopulationGeneration = model.generation
+      followLatestPopulation = true
+      const result = model.evaluate()
+      log.innerHTML = ''
+      appendLog(`初期個体群を生成 / 個体数 ${model.populationSize} / 最良 ${result.score} / 平均 ${model.averageScore.toFixed(1)}`)
+      setMessage(
+        '初期個体群を生成しました。',
+        `完全ランダムな${model.populationSize}個体を生成しました。カバー不足・新人同士・個人制約の違反から、世代ごとの改善を観察できます。`,
+      )
+      render()
+    }
+
+    runButton.addEventListener('click', () => {
+      if (model.generation >= getMaxGeneration()) {
+        showCutoffMessage()
+        render()
+        return
+      }
+      running = true
+      appendLog('GA進化を開始')
+      const diversityText = model.useDiversityRestart
+        ? '停滞時は下位個体を再生成して多様性を戻します。'
+        : '多様性維持はOFFなので、停滞時のランダム再生成は行いません。'
+      setMessage('GA進化を開始しました。', `各個体をターゲットTとして、選択した親Aと看護師行単位で交叉します。trialが改善または同点なら採用し、悪化ならターゲットを保持します。${diversityText}`)
+      render()
+      runLoop()
+    })
+
+    stopButton.addEventListener('click', () => {
+      running = false
+      appendLog('停止')
+      setMessage('停止しました。', `現在は第${model.generation}世代です。1世代ずつ進めるか、進化開始で再開できます。`)
+      render()
+    })
+
+    stepButton.addEventListener('click', () => {
+      if (model.generation >= getMaxGeneration()) {
+        showCutoffMessage()
+        render()
+        return
+      }
+      const improved = model.run(1)
+      const result = model.evaluate()
+      appendLog(`第${model.generation}世代 / 改善 ${improved ? 'あり' : 'なし'} / 最良 ${result.score} / 平均 ${model.averageScore.toFixed(1)}`)
+      appendLog(model.lastCrossLog)
+      setMessage(
+        `第${model.generation}世代を評価しました。`,
+        `各ターゲットTと親Aの看護師行交叉でtrialを作り、trial対targetの比較で次世代を作りました。平均違反量は${model.averageScore.toFixed(1)}、停滞世代は${model.stagnation}です。`,
+      )
+      if (result.score !== 0 && model.generation >= getMaxGeneration()) showCutoffMessage()
+      render()
+    })
+
+    maxGenerationInput.addEventListener('change', () => {
+      maxGenerationInput.value = String(getMaxGeneration())
+      updateButtons()
+    })
+
+    resetButton.addEventListener('click', () => {
+      initializePopulation()
+    })
+
+    function setMiniColumns(columns) {
+      const panel = document.querySelector('.population-mini-panel')
+      const scaleMap = {
+        3: 0.74,
+        4: 0.63,
+        5: 0.50,
+        6: 0.41,
+      }
+      const scale = scaleMap[Number(columns)] || scaleMap[5]
+      panel.style.setProperty('--mini-columns', columns)
+      panel.style.setProperty('--mini-scale', scale)
+      miniColumnsValue.textContent = `${columns}列`
+    }
+
+    function renderLineageView(snapshotOverride = null) {
+      const params = new URLSearchParams(window.location.search)
+      const key = params.get('key')
+      const selectedId = Number(params.get('lineage'))
+      const expandPartnerHistory = params.get('partners') === 'full'
+      const raw = key ? localStorage.getItem(key) : null
+      let snapshot = snapshotOverride || (raw ? JSON.parse(raw) : null)
+      if (snapshot?.archiveRecords?.length && Number.isFinite(selectedId)) {
+        snapshot = buildLineageSnapshotFromArchive(snapshot.archiveRecords, selectedId, snapshot.generation, {
+          archiveRecords: snapshot.archiveRecords,
+          expandPartnerHistory,
+        })
+      }
+      if (!snapshot || !Array.isArray(snapshot.records)) {
+        document.body.className = 'lineage-page'
+        document.body.innerHTML = `
+          <header><h1>自分中心の進化系譜図</h1></header>
+          <main>
+            <a class="lineage-back" href="${escapeHtml(location.pathname)}">← メインビューへ戻る</a>
+            <section class="lineage-panel">
+              <h2>系譜データがありません</h2>
+              <ul><li>メインビューの個体カードをクリックして、現在世代の個体から開いてください。</li></ul>
+            </section>
+          </main>`
+        return
+      }
+
+      const targetRecords = snapshot.records
+      const partnerRecords = snapshot.partners || []
+      const allLineageRecords = [...targetRecords, ...partnerRecords]
+      const records = new Map(allLineageRecords.map(record => [record.id, record]))
+      const selected = records.get(selectedId) || snapshot.selected
+      const nodeWidth = 330
+      const nodeHeight = 382
+      const rowGap = 86
+      const colGap = 38
+      const padding = 28
+      const recordByKey = new Map(allLineageRecords.map(record => [String(record.id), record]))
+      const inputIdsFor = record => {
+        const seen = new Set()
+        return [
+          ...(record.event?.parents || []),
+          ...(record.event?.partnerNodeId ? [record.event.partnerNodeId] : []),
+        ].filter(id => {
+          const keyId = String(id)
+          if (!recordByKey.has(keyId) || seen.has(keyId)) return false
+          seen.add(keyId)
+          return true
+        })
+      }
+      const orderedInputIdsFor = record => {
+        const inputs = inputIdsFor(record)
+        return inputs.slice().sort((left, right) => {
+          const leftIsPartner = String(left) === String(record.event?.partnerNodeId)
+          const rightIsPartner = String(right) === String(record.event?.partnerNodeId)
+          if (leftIsPartner !== rightIsPartner) return leftIsPartner ? 1 : -1
+          return String(left).localeCompare(String(right))
+        })
+      }
+      const heightMemo = new Map()
+      const widthMemo = new Map()
+      const visiting = new Set()
+      const lineageHeight = id => {
+        const keyId = String(id)
+        if (heightMemo.has(keyId)) return heightMemo.get(keyId)
+        if (visiting.has(keyId)) return 0
+        visiting.add(keyId)
+        const record = recordByKey.get(keyId)
+        const inputs = record ? orderedInputIdsFor(record) : []
+        const height = inputs.length === 0
+          ? 0
+          : 1 + Math.max(...inputs.map(parentId => lineageHeight(parentId)))
+        visiting.delete(keyId)
+        heightMemo.set(keyId, height)
+        return height
+      }
+      const lineageWidth = id => {
+        const keyId = String(id)
+        if (widthMemo.has(keyId)) return widthMemo.get(keyId)
+        const record = recordByKey.get(keyId)
+        const inputs = record ? orderedInputIdsFor(record) : []
+        const width = inputs.length === 0
+          ? nodeWidth
+          : Math.max(
+              nodeWidth,
+              inputs.reduce((sum, parentId) => sum + lineageWidth(parentId), 0) + colGap * Math.max(0, inputs.length - 1),
+            )
+        widthMemo.set(keyId, width)
+        return width
+      }
+      const rootId = selected?.id ?? targetRecords.at(-1)?.id
+      const contentWidth = Math.max(nodeWidth, lineageWidth(rootId))
+      const treeWidth = padding * 2 + contentWidth
+      const positions = new Map()
+      const placeSubtree = (id, xStart, baseDepth) => {
+        const record = recordByKey.get(String(id))
+        if (!record || positions.has(id)) return
+        const inputs = orderedInputIdsFor(record)
+        const ownHeight = lineageHeight(id)
+        const ownDepth = baseDepth + ownHeight
+        const ownWidth = lineageWidth(id)
+        if (inputs.length > 0) {
+          let cursor = xStart
+          inputs.forEach(parentId => {
+            const parentWidth = lineageWidth(parentId)
+            const parentBaseDepth = ownDepth - 1 - lineageHeight(parentId)
+            placeSubtree(parentId, cursor, parentBaseDepth)
+            cursor += parentWidth + colGap
+          })
+        }
+        const parentCenters = inputs
+          .map(parentId => positions.get(parentId))
+          .filter(Boolean)
+          .map(pos => pos.x + nodeWidth / 2)
+        const x = parentCenters.length > 0
+          ? (Math.min(...parentCenters) + Math.max(...parentCenters)) / 2 - nodeWidth / 2
+          : xStart + (ownWidth - nodeWidth) / 2
+        positions.set(id, { x, y: padding + ownDepth * (nodeHeight + rowGap), depth: ownDepth })
+      }
+      if (rootId !== undefined && rootId !== null) placeSubtree(rootId, padding, 0)
+      // 何らかの欠損データで主系譜に接続されないレコードがあれば、右端に退避表示する。
+      allLineageRecords.forEach(record => {
+        if (positions.has(record.id)) return
+        const depth = lineageHeight(record.id)
+        const rowCountAtDepth = [...positions.values()].filter(pos => pos.depth === depth).length
+        positions.set(record.id, {
+          x: padding + contentWidth + colGap + rowCountAtDepth * (nodeWidth + colGap),
+          y: padding + depth * (nodeHeight + rowGap),
+          depth,
+        })
+      })
+      const rowsByDepth = new Map()
+      allLineageRecords.forEach(record => {
+        const pos = positions.get(record.id)
+        if (!pos) return
+        const row = rowsByDepth.get(pos.depth) || []
+        row.push(record)
+        rowsByDepth.set(pos.depth, row)
+      })
+      const lineageRows = [...rowsByDepth.entries()]
+        .sort(([leftDepth], [rightDepth]) => leftDepth - rightDepth)
+        .map(([depth, rowRecords]) => ({
+          depth,
+          records: rowRecords.slice().sort((a, b) => (positions.get(a.id)?.x || 0) - (positions.get(b.id)?.x || 0)),
+        }))
+      const maxPositionX = Math.max(...Array.from(positions.values()).map(pos => pos.x + nodeWidth), padding + nodeWidth)
+      const renderedTreeWidth = Math.max(treeWidth, maxPositionX + padding)
+      const treeHeight = padding * 2 + lineageRows.length * nodeHeight + Math.max(0, lineageRows.length - 1) * rowGap + 40
+
+      document.body.className = 'lineage-page'
+      document.body.innerHTML = `
+        <header>
+          <div>
+            <a class="lineage-back" href="${escapeHtml(location.pathname)}">← メインビューへ戻る</a>
+            <button type="button" class="lineage-back lineage-switch-button" id="lineagePartnerModeButton">${expandPartnerHistory ? '自分中心に戻す' : '相手親の履歴も表示'}</button>
+            <h1>自分中心の進化系譜図</h1>
+          </div>
+          <div class="lineage-header-right">
+            <label class="lineage-zoom-control" for="lineageZoomRange">
+              表示倍率
+              <input id="lineageZoomRange" type="range" min="50" max="140" step="5" value="100">
+              <output id="lineageZoomValue">100%</output>
+            </label>
+            <div class="lineage-summary">
+              <span>個体 #${(selected?.slot ?? -1) + 1}</span>
+              <span>第${selected?.generation ?? '-'}世代</span>
+              <span>違反量 ${selected?.score ?? '-'}</span>
+              <span>進化成功 ${Math.max(0, targetRecords.length - 1)}回</span>
+            </div>
+          </div>
+        </header>
+        <main>
+          <details class="lineage-help">
+            <summary>ⓘ 勤務表遺伝子と操作（クリックで展開）</summary>
+            <div class="lineage-help-body">
+              <div><strong>遺伝子表現</strong><br>1個体は8人×14日の勤務表です。1セルが1遺伝子で、休日・D・Nのいずれかを持ちます。</div>
+              <div><strong>対象個体の成功履歴</strong><br>固定スロットの対象個体だけを、初期個体から順に表示します。改善が採用された世代だけを残すため、第5世代・第16世代のように成功した時点を追えます。</div>
+              <div><strong>突然変異・修復</strong><br>trialに違反箇所中心のセル変異を加え、日勤・夜勤不足や新人ペアを減らす方向へ局所修正してから比較します。</div>
+            </div>
+          </details>
+          <section class="lineage-tree" id="lineageTree" style="width:${renderedTreeWidth}px; height:${treeHeight}px;">
+            <div class="lineage-canvas" id="lineageCanvas" style="width:${renderedTreeWidth}px; height:${treeHeight}px;">
+              <svg class="lineage-svg" width="${renderedTreeWidth}" height="${treeHeight}" aria-hidden="true"></svg>
+            </div>
+          </section>
+        </main>`
+
+      const tree = document.getElementById('lineageTree')
+      const lineageCanvas = document.getElementById('lineageCanvas')
+      const svg = lineageCanvas.querySelector('svg')
+      const lineageZoomRange = document.getElementById('lineageZoomRange')
+      const lineageZoomValue = document.getElementById('lineageZoomValue')
+      const lineagePartnerModeButton = document.getElementById('lineagePartnerModeButton')
+      let currentTreeHeight = treeHeight
+      const applyLineageZoom = () => {
+        const zoom = Number(lineageZoomRange?.value || 100) / 100
+        if (!Number.isFinite(zoom) || !lineageCanvas) return
+        lineageCanvas.style.transform = `scale(${zoom})`
+        tree.style.width = `${renderedTreeWidth * zoom}px`
+        tree.style.height = `${currentTreeHeight * zoom}px`
+        if (lineageZoomValue) lineageZoomValue.textContent = `${Math.round(zoom * 100)}%`
+      }
+      lineageZoomRange?.addEventListener('input', applyLineageZoom)
+      lineagePartnerModeButton?.addEventListener('click', () => {
+        const url = new URL(window.location.href)
+        if (expandPartnerHistory) url.searchParams.delete('partners')
+        else url.searchParams.set('partners', 'full')
+        history.replaceState(null, '', url.toString())
+        renderLineageView(snapshot)
+      })
+      allLineageRecords.forEach(record => {
+        const pos = positions.get(record.id)
+        if (!pos) return
+        const node = document.createElement('div')
+        const partnerClass = record.displayRole === 'partner' || record.displayRole === 'partner-history' ? 'partner' : ''
+        node.className = `lineage-node ${record.event?.kind || 'unknown'} ${partnerClass} ${record.id === selectedId ? 'target' : ''}`
+        node.dataset.lineageId = String(record.id)
+        node.style.left = `${pos.x}px`
+        node.style.top = `${pos.y}px`
+        node.innerHTML = renderLineageNode(record)
+        const crossoverLabel = node.querySelector('.lineage-op[data-crossover]')
+        if (crossoverLabel) {
+          const relatedIds = [record.id]
+          if (record.event?.partnerNodeId) relatedIds.push(record.event.partnerNodeId)
+          if (record.event?.childId) relatedIds.push(record.event.childId)
+          const toggleCrossover = active => {
+            relatedIds.forEach(id => {
+              tree.querySelector(`[data-lineage-id="${id}"]`)?.classList.toggle('show-crossover', active)
+            })
+          }
+          crossoverLabel.addEventListener('mouseenter', () => toggleCrossover(true))
+          crossoverLabel.addEventListener('mouseleave', () => toggleCrossover(false))
+        }
+        node.querySelectorAll('.lineage-parent-link').forEach(button => {
+          button.addEventListener('click', () => {
+            const parent = tree.querySelector(`[data-lineage-id="${button.dataset.parentId}"]`)
+            if (!parent) return
+            parent.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+            parent.classList.add('lineage-focus')
+            window.setTimeout(() => parent.classList.remove('lineage-focus'), 1300)
+          })
+        })
+        node.querySelectorAll('.lineage-switch-button').forEach(button => {
+          button.addEventListener('click', () => {
+            const sourceId = Number(button.dataset.sourceId)
+            if (!Number.isFinite(sourceId)) return
+            const url = new URL(window.location.href)
+            url.searchParams.set('lineage', String(sourceId))
+            if (key) url.searchParams.set('key', key)
+            window.location.href = url.toString()
+          })
+        })
+        lineageCanvas.appendChild(node)
+      })
+
+      // 木の深さごとに上端を揃え、親を上・子を下へ流す。
+      let compactY = padding
+      lineageRows.forEach(row => {
+          const levelHeight = Math.max(...row.records.map(record =>
+            tree.querySelector(`[data-lineage-id="${record.id}"]`)?.offsetHeight || 0
+          ))
+          row.records.forEach(record => {
+            const pos = positions.get(record.id)
+            positions.set(record.id, { ...pos, y: compactY })
+            tree.querySelector(`[data-lineage-id="${record.id}"]`).style.top = `${compactY}px`
+          })
+          compactY += levelHeight + rowGap
+        })
+      const compactTreeHeight = compactY - rowGap + padding + 40
+      currentTreeHeight = compactTreeHeight
+      tree.style.height = `${compactTreeHeight}px`
+      lineageCanvas.style.height = `${compactTreeHeight}px`
+      svg.setAttribute('height', String(compactTreeHeight))
+
+      allLineageRecords.forEach(record => {
+        const childPos = positions.get(record.id)
+        const childNode = tree.querySelector(`[data-lineage-id="${record.id}"]`)
+        if (!childPos || !childNode) return
+        const parentLinks = inputIdsFor(record).map(parentId => {
+          const parentPos = positions.get(parentId)
+          const parentNode = tree.querySelector(`[data-lineage-id="${parentId}"]`)
+          return parentPos && parentNode ? { parentId, parentPos, parentNode } : null
+        }).filter(Boolean)
+        if (parentLinks.length === 0) return
+        const childTop = childPos.y
+        const maxParentBottom = Math.max(...parentLinks.map(link => link.parentPos.y + link.parentNode.offsetHeight))
+        const mergeY = maxParentBottom + Math.max(28, (childTop - maxParentBottom) * 0.5)
+        parentLinks.forEach(({ parentPos, parentNode }) => {
+          const x1 = parentPos.x + nodeWidth / 2
+          const y1 = parentPos.y + parentNode.offsetHeight
+          const x2 = childPos.x + nodeWidth / 2
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+          path.setAttribute('d', `M ${x1} ${y1} V ${mergeY} H ${x2} V ${childTop}`)
+          path.setAttribute('fill', 'none')
+          path.setAttribute('stroke', lineageEventColor(record.event?.kind))
+          path.setAttribute('stroke-width', '2.5')
+          path.setAttribute('opacity', '0.9')
+          svg.appendChild(path)
+        })
+      })
+
+      targetRecords.forEach(record => {
+        const childPos = positions.get(record.id)
+        if (record.event?.parents?.length) {
+          const label = document.createElement('div')
+          label.className = `lineage-edge-label ${record.event.kind || ''}`
+          label.dataset.childId = String(record.id)
+          label.style.left = `${childPos.x + nodeWidth / 2}px`
+          label.style.top = `${childPos.y - 36}px`
+          label.textContent = lineageEventLabel(record.event)
+          if (record.event.kind === 'de-trial') {
+            label.addEventListener('mouseenter', () => {
+              tree.querySelector(`[data-lineage-id="${record.id}"]`)?.classList.add('show-crossover')
+              tree.querySelector(`[data-lineage-id="${record.event.partnerNodeId}"]`)?.classList.add('show-crossover')
+            })
+            label.addEventListener('mouseleave', () => {
+              tree.querySelector(`[data-lineage-id="${record.id}"]`)?.classList.remove('show-crossover')
+              tree.querySelector(`[data-lineage-id="${record.event.partnerNodeId}"]`)?.classList.remove('show-crossover')
+            })
+          }
+          lineageCanvas.appendChild(label)
+        }
+      })
+      applyLineageZoom()
+    }
+
+    function renderLineageNode(record) {
+      const event = record.event || {}
+      const result = model.evaluateMatrix(record.matrix)
+      const title = record.displayRole === 'partner'
+        ? `相手親A：個体 #${(record.slot ?? -1) + 1} / 第${record.generation}世代`
+        : record.displayRole === 'partner-history'
+          ? `${record.event?.childId ? '相手親A' : '相手親Aの祖先'}：個体 #${(record.slot ?? -1) + 1} / 第${record.generation}世代`
+          : `対象個体 #${(record.slot ?? -1) + 1} / 第${record.generation}世代`
+      return `
+        <div class="lineage-node-title">
+          <span>${title}</span>
+          <span class="lineage-node-score">違反 ${record.score ?? '-'}</span>
+        </div>
+        ${renderLineageRoster(record.matrix, result, event)}
+        <div class="lineage-node-detail">
+          <div><span class="lineage-op" ${['de-trial', 'partner'].includes(event.kind) ? 'data-crossover title="親Aから受け継いだ行を表示"' : ''}>${escapeHtml(lineageEventLabel(event))}</span></div>
+          ${renderEventDetail(event)}
+        </div>`
+    }
+
+    function renderLineageRoster(matrix, result, event = {}) {
+      const cell = (content, className = '') => `<span class="lineage-roster-cell ${className}">${content}</span>`
+      const parentRows = new Set((event.origins || [])
+        .filter(origin => origin.endsWith(':A'))
+        .map(origin => Number(origin.match(/^S(\d+)/)?.[1]) - 1)
+        .filter(Number.isInteger))
+      const rows = [cell('', 'head')]
+      for (let day = 0; day < DAYS; day++) rows.push(cell(String(day + 1), `head ${isWeekend(day) ? 'weekend' : ''}`))
+      rows.push(cell('個人', 'head total'))
+
+      for (let nurse = 0; nurse < NURSES; nurse++) {
+        const personal = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6']
+          .reduce((sum, key) => sum + result.parts[key][nurse], 0)
+        rows.push(cell(miniStaffLabel(nurse), 'label'))
+        for (let day = 0; day < DAYS; day++) {
+          const value = matrix[nurse][day]
+          rows.push(cell(SHIFT_LABELS[value], `${SHIFT_CLASSES[value]} ${isWeekend(day) ? 'weekend' : ''}`))
+        }
+        rows.push(cell(String(personal), `total ${personal === 0 ? 'ok' : 'bad'}`))
+      }
+
+      const coverageRows = [
+        ['D不足', 's1', result.totals.s1],
+        ['N不足', 's2', result.totals.s2],
+        ['新人', 's3', result.totals.s3],
+      ]
+      coverageRows.forEach(([label, key, total]) => {
+        rows.push(cell(label, 'label'))
+        for (let day = 0; day < DAYS; day++) {
+          const value = result.parts[key][day]
+          rows.push(cell(String(value), `coverage ${value === 0 ? 'ok' : 'bad'} ${isWeekend(day) ? 'weekend' : ''}`))
+        }
+        rows.push(cell(String(total), `total coverage ${total === 0 ? 'ok' : 'bad'}`))
+      })
+      const crossoverBlocks = []
+      for (let nurse = 0; nurse < NURSES;) {
+        if (!parentRows.has(nurse)) {
+          nurse += 1
+          continue
+        }
+        const start = nurse
+        while (nurse < NURSES && parentRows.has(nurse)) nurse += 1
+        const top = 2 + (start + 1) * 15
+        const height = (nurse - start) * 15 - 1
+        crossoverBlocks.push(
+          `<span class="lineage-crossover-block" style="top:${top}px;left:2px;right:2px;height:${height}px"></span>`
+        )
+      }
+      return `<div class="lineage-roster" aria-label="縮小勤務表">${rows.join('')}${crossoverBlocks.join('')}</div>`
+    }
+
+    function lineageEventLabel(event) {
+      if (!event) return '不明'
+      const icons = {
+        crossover: '🔀',
+        'de-trial': '🧪',
+        'de-keep': '↩',
+        elite: '🛡',
+        random: '🎲',
+      }
+      if (event.kind === 'crossover') return `${icons.crossover} ${event.label || '交叉'}`
+      if (event.kind === 'de-trial') {
+        return `🔀 交叉（対象個体 #${(event.targetSlot ?? -1) + 1} × 個体 #${(event.parentSlot ?? -1) + 1}）`
+      }
+      if (event.kind === 'de-keep') return `${icons['de-keep']} ${event.label || 'ターゲット保持'}`
+      if (event.kind === 'elite') return `${icons.elite} エリート保存`
+      if (event.kind === 'random') return `${icons.random} ${event.label || 'ランダム'}`
+      return event.label || event.kind || '不明'
+    }
+
+    function lineageEventColor(kind) {
+      const colors = {
+        crossover: '#2fbf71',
+        'de-trial': '#22d3ee',
+        'de-keep': '#fbbf24',
+        elite: '#8fc0ff',
+        random: '#94a3b8',
+      }
+      return colors[kind] || '#2fbf71'
+    }
+
+    function renderEventDetail(event) {
+      if (!event) return ''
+      if (event.kind === 'crossover') {
+        const origins = event.origins ? event.origins.slice(0, 3).join(' / ') : ''
+        const mutationText = event.mutations?.length ? event.mutations.slice(0, 2).join(' / ') : 'なし'
+        return `
+          <div>親: #${event.parents?.[0] ?? '-'}(${event.parentScores?.[0] ?? '-'}) + #${event.parents?.[1] ?? '-'}(${event.parentScores?.[1] ?? '-'})</div>
+          <div>由来: ${escapeHtml(origins)}${event.origins?.length > 3 ? ' ...' : ''}</div>
+          <div>変異: ${escapeHtml(mutationText)}</div>
+          <div>修復: ${event.repairs ?? 0}件</div>`
+      }
+      if (event.kind === 'de-trial') {
+        const parentRows = (event.origins || [])
+          .filter(origin => origin.endsWith(':A'))
+          .map(origin => origin.slice(0, -2))
+        const targetRows = (event.origins || [])
+          .filter(origin => origin.endsWith(':T'))
+          .map(origin => origin.slice(0, -2))
+        const mutationText = event.mutations?.length ? event.mutations.slice(0, 2).join(' / ') : 'なし'
+        const partner = event.partner
+        const partnerText = partner
+          ? `個体 #${partner.slot + 1}（第${partner.generation}世代・違反 ${partner.score}）`
+          : `個体 #${(event.parentSlot ?? -1) + 1}（違反 ${event.parentScores?.[1] ?? '-'}）`
+        return `
+          <div>T（置換対象）: 個体 #${(event.targetSlot ?? -1) + 1}（違反 ${event.targetScore ?? '-'}）</div>
+          <div>親A（遺伝子提供）: ${partnerText}</div>
+          <div>親Aから受継: ${escapeHtml(parentRows.join('、') || 'なし')}</div>
+          <div>Tから維持: ${escapeHtml(targetRows.join('、') || 'なし')}</div>
+          <div>親A行: ${event.copiedRows ?? '-'}行 / 変異: ${escapeHtml(mutationText)} / 局所改善: ${event.localMoves ?? 0}手 / 修復: ${event.repairs ?? 0}件</div>`
+      }
+      if (event.kind === 'de-keep') {
+        return `<div>target: #${event.parents?.[0] ?? '-'}（違反 ${event.targetScore ?? '-'}）</div><div>trial #${event.trialId ?? '-'}（違反 ${event.trialScore ?? '-'}）を棄却</div>`
+      }
+      if (event.kind === 'partner') {
+        const sourceId = Number.isFinite(event.sourceId) ? event.sourceId : null
+        return `
+          <div>この交叉でだけ参照する相手親です。破線は子へ渡した看護師行を示します。</div>
+          ${sourceId === null ? '' : `<button type="button" class="lineage-parent-link lineage-switch-button" data-source-id="${sourceId}">相手の系譜も表示</button>`}`
+      }
+      if (event.kind === 'elite') {
+        return `<div>コピー元: #${event.parents?.[0] ?? '-'}</div><div>${escapeHtml(event.note || '')}</div>`
+      }
+      if (event.kind === 'random') {
+        return `<div>${escapeHtml(event.note || '初期個体として生成')}</div>`
+      }
+      return `<div>${escapeHtml(event.note || '')}</div>`
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;')
+    }
+
+    if (isNetworkView) {
+      renderNetworkView()
+    } else if (isLineageView) {
+      renderLineageView()
+    } else {
+      populationGenerationRange.addEventListener('input', () => {
+        displayedPopulationGeneration = Number(populationGenerationRange.value)
+        const latestGeneration = model.populationHistory.at(-1)?.generation ?? model.generation
+        followLatestPopulation = displayedPopulationGeneration === latestGeneration
+        renderPopulationTable()
+        renderPopulationMiniatures()
+      })
+
+      miniColumnsRange.addEventListener('input', () => {
+        setMiniColumns(miniColumnsRange.value)
+      })
+
+      appendLog(`初期個体群を生成 / 個体数 ${model.populationSize} / 最良 ${model.bestScore} / 平均 ${model.averageScore.toFixed(1)}`)
+      setMiniColumns(miniColumnsRange.value)
+      render()
+    }
+  </script>
+</body>
+</html>
