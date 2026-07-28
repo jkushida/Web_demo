@@ -1,0 +1,1860 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>ナップサック問題 DPテーブル - 動的計画法</title>
+    <style>
+      :root {
+        --bg: #f6f7fb;
+        --panel: #ffffff;
+        --ink: #172033;
+        --muted: #64748b;
+        --line: #d8dee9;
+        --soft-line: #e8edf5;
+        --blue: #0070c0;
+        --blue-soft: #dbeafe;
+        --red: #ff0000;
+        --red-soft: #fee2e2;
+        --green: #15803d;
+        --green-soft: #dcfce7;
+        --amber: #b45309;
+        --amber-soft: #fef3c7;
+        --purple: #7e22ce;
+        --purple-soft: #f3e8ff;
+        --pink: #ff33cc;
+        --pink-soft: #fff0fb;
+        --yellow: #fff200;
+        --yellow-soft: #fff8c5;
+        --shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-width: 320px;
+        min-height: 100%;
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      button {
+        min-height: 28px;
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      button:hover:not(:disabled) {
+        background: #f8fafc;
+      }
+
+      button.primary:hover:not(:disabled) {
+        border-color: #1d4ed8;
+        background: #1d4ed8;
+        color: #fff;
+      }
+
+      button.primary {
+        border-color: #2563eb;
+        background: #2563eb;
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.56;
+        cursor: not-allowed;
+      }
+
+      input,
+      select {
+        min-height: 28px;
+        padding: 4px 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .page {
+        width: min(1680px, 100%);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 4px;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+        gap: 4px;
+      }
+
+      .panel {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .intro {
+        padding: 5px 10px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .intro h1 {
+        margin: 0;
+        font-size: clamp(17px, 1.7vw, 23px);
+        line-height: 1.12;
+      }
+
+      .intro p {
+        margin: 1px 0 0;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+      }
+
+      .rule {
+        max-width: 640px;
+        padding: 4px 8px;
+        border: 1px solid #e9d5ff;
+        border-radius: 8px;
+        background: var(--purple-soft);
+        color: #6b21a8;
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1.45;
+      }
+
+      .axis-i {
+        color: var(--blue);
+      }
+
+      .axis-j {
+        color: var(--red);
+      }
+
+      .controls {
+        padding: 3px 8px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 3px;
+      }
+
+      .setting-row,
+      .button-row {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      #valuesInput,
+      #weightsInput {
+        width: min(250px, 40vw);
+      }
+
+      #capacityInput {
+        width: 76px;
+      }
+
+      .progress-track {
+        height: 3px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #e5e7eb;
+      }
+
+      #progressBar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, var(--blue), var(--red), var(--pink), var(--green));
+        transition: width 0.2s ease;
+      }
+
+      .workspace {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1040px) minmax(360px, 420px);
+        justify-content: start;
+        gap: 6px;
+      }
+
+      .main-panel,
+      .side-panel {
+        min-height: 0;
+        padding: 6px;
+        display: grid;
+        gap: 5px;
+        align-content: start;
+      }
+
+      .main-panel {
+        width: 100%;
+        max-width: 1040px;
+        justify-self: start;
+      }
+
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .panel-heading h2,
+      .section h2 {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .legend {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 750;
+      }
+
+      .table-definition {
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .stage-heading {
+        align-items: center;
+      }
+
+      .stage-tools {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .stage-actions {
+        gap: 5px;
+        flex-wrap: nowrap;
+      }
+
+      .stage-actions button {
+        min-height: 26px;
+        padding: 3px 8px;
+      }
+
+      .step-counter {
+        min-width: 64px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+        text-align: right;
+      }
+
+      .stage-wrap,
+      .table-wrap {
+        min-width: 0;
+        overflow: auto;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .stage {
+        min-width: 760px;
+        padding: 6px 10px;
+        display: grid;
+        gap: 6px;
+      }
+
+      .item-row {
+        display: grid;
+        grid-template-columns: repeat(var(--item-count), minmax(150px, max-content));
+        justify-content: start;
+        gap: 7px;
+      }
+
+      .item-card {
+        min-height: 38px;
+        padding: 3px 6px;
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        text-align: center;
+      }
+
+      .item-card.current {
+        border-color: var(--amber);
+        background: var(--yellow-soft);
+      }
+
+      .item-card.selected {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .item-name {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 850;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .item-value {
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        gap: 3px;
+        line-height: 1;
+      }
+
+      .item-value span {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 850;
+        line-height: 1;
+      }
+
+      .item-value strong {
+        color: var(--purple);
+        font-size: 22px;
+        font-weight: 950;
+        line-height: 1;
+      }
+
+      .item-meta {
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+      }
+
+      .item-meta strong {
+        color: #334155;
+        font-size: 22px;
+        font-weight: 950;
+        line-height: 1;
+      }
+
+      .item-card.current .item-meta strong {
+        padding: 0 3px;
+        background: var(--yellow);
+        color: #111827;
+      }
+
+      .capacity-area {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr) minmax(0, 0.9fr);
+        gap: 6px;
+        align-items: stretch;
+      }
+
+      .index-card,
+      .capacity-card,
+      .answer-card {
+        min-width: 0;
+        padding: 6px 7px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f8fafc;
+      }
+
+      .index-card,
+      .capacity-card {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        align-items: center;
+        column-gap: 8px;
+      }
+
+      .capacity-title {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+      }
+
+      .capacity-value {
+        margin-top: 0;
+        font-size: 20px;
+        font-weight: 950;
+        line-height: 1;
+      }
+
+      .index-card .idx-list,
+      .capacity-card .capacity-slots {
+        grid-column: 1 / -1;
+      }
+
+      .index-card .capacity-value {
+        color: var(--blue);
+      }
+
+      .idx-list {
+        margin-top: 4px;
+        min-height: 22px;
+        padding: 2px 3px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      .idx-chip {
+        min-width: 25px;
+        min-height: 17px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: var(--blue-soft);
+        color: var(--blue);
+        display: inline-grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 950;
+      }
+
+      .idx-label {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .idx-empty {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 850;
+      }
+
+      .capacity-slots {
+        margin-top: 4px;
+        display: grid;
+        grid-template-columns: repeat(var(--capacity-cols), minmax(30px, 1fr));
+        gap: 5px;
+      }
+
+      .slot {
+        min-height: 22px;
+        border: 1px solid #cbd5e1;
+        border-radius: 7px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .slot.active {
+        border-color: var(--red);
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .answer-card {
+        padding: 5px 7px;
+        background: var(--green-soft);
+        color: #166534;
+        display: grid;
+        align-content: center;
+        gap: 2px;
+      }
+
+      .answer-card span {
+        font-size: 10px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .answer-card strong {
+        color: #14532d;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .table-wrap {
+        padding: 5px;
+      }
+
+      .dp-table-layer {
+        position: relative;
+        min-width: 760px;
+      }
+
+      .dp-table {
+        width: 100%;
+        min-width: 760px;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      .dp-table th,
+      .dp-table td {
+        height: 44px;
+        padding: 3px 5px;
+        border: 1px solid var(--line);
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      .dp-table th {
+        background: #f8fafc;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .dp-table td {
+        background: #fff;
+        font-size: 14px;
+        font-weight: 750;
+      }
+
+      .dp-table .row-index {
+        color: var(--blue);
+        background: #f8fafc;
+      }
+
+      .dp-table .i-head {
+        color: var(--blue);
+      }
+
+      .dp-table .j-head {
+        color: var(--red);
+      }
+
+      .dp-table .v-head,
+      .dp-table .w-head {
+        color: var(--purple);
+      }
+
+      .dp-table .item-prop {
+        color: var(--purple);
+        background: #f8e2d4;
+      }
+
+      .dp-table .item-prop.ref-value {
+        outline: 1.5px solid var(--green);
+        outline-offset: -3px;
+        background: var(--green-soft);
+      }
+
+      .dp-cell.pending {
+        color: #94a3b8;
+        background: #f8fafc;
+      }
+
+      .dp-cell.done {
+        background: #fff;
+      }
+
+      .dp-cell.current {
+        border: 1.5px solid var(--amber);
+        background: var(--yellow-soft);
+      }
+
+      .dp-cell.ref-skip {
+        outline: 1.5px solid var(--pink);
+        outline-offset: -6px;
+      }
+
+      .dp-cell.ref-take {
+        outline: 1.5px solid var(--green);
+        outline-offset: -6px;
+      }
+
+      .dp-cell.answer {
+        background: var(--green-soft);
+        color: #14532d;
+      }
+
+      .dp-arrows {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        overflow: visible;
+      }
+
+      .dp-range-frame {
+        fill: none;
+        stroke: #0f172a;
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+      }
+
+      .dp-arrow-path {
+        fill: none;
+        stroke-width: 2.5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 5 6;
+        animation: dpArrowDash 0.8s linear infinite;
+      }
+
+      .dp-arrow-skip {
+        stroke: var(--pink);
+      }
+
+      .dp-arrow-take {
+        stroke: var(--green);
+      }
+
+      .dp-arrow-win {
+        font-size: 10px;
+        font-weight: 950;
+        paint-order: stroke;
+        stroke: #fff;
+        stroke-width: 3px;
+        stroke-linejoin: round;
+        text-anchor: middle;
+      }
+
+      .dp-arrow-win-skip {
+        fill: var(--pink);
+      }
+
+      .dp-arrow-win-take {
+        fill: var(--green);
+      }
+
+      @keyframes dpArrowDash {
+        to {
+          stroke-dashoffset: -22;
+        }
+      }
+
+      .recurrence {
+        display: none;
+        padding: 5px 7px;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        background: #eff6ff;
+        color: #1e40af;
+        font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 800;
+      }
+
+      .cell-definition {
+        margin-bottom: 0;
+        padding: 5px 7px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #f8fafc;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.35;
+      }
+
+      .calculation-summary {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 5px;
+        align-items: stretch;
+      }
+
+      .inline-formula {
+        margin-left: 10px;
+        color: #1e40af;
+        font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 800;
+      }
+
+      .inline-formula .formula-item {
+        color: var(--blue);
+      }
+
+      .inline-formula .formula-capacity {
+        color: var(--red);
+      }
+
+      .cell-definition .item-emphasis {
+        color: var(--blue);
+      }
+
+      .cell-definition .capacity-emphasis {
+        color: var(--red);
+      }
+
+      .update-explanation {
+        margin-top: 5px;
+        padding: 5px 7px;
+        border: 1px solid #bbf7d0;
+        border-radius: 8px;
+        background: var(--green-soft);
+        color: #166534;
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.4;
+      }
+
+      .update-explanation strong {
+        margin-right: 5px;
+        color: #15803d;
+        font-weight: 950;
+      }
+
+      .capacity-emphasis {
+        color: var(--red);
+        font-weight: 950;
+      }
+
+      .item-emphasis {
+        color: var(--blue);
+        font-weight: 950;
+      }
+
+      .update-explanation strong.value-emphasis,
+      .update-explanation strong.weight-emphasis {
+        color: var(--purple);
+      }
+
+      .side-panel {
+        grid-template-rows: auto auto auto minmax(0, 1fr);
+      }
+
+      .section {
+        min-width: 0;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .message {
+        min-height: 56px;
+        margin-top: 5px;
+        padding: 6px 8px;
+        border-left: 4px solid #2563eb;
+        border-radius: 8px;
+        background: var(--blue-soft);
+        font-size: 11px;
+        font-weight: 750;
+        line-height: 1.42;
+      }
+
+      .message strong {
+        color: #1d4ed8;
+      }
+
+      .candidate-list {
+        margin-top: 5px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 36px minmax(0, 1fr);
+        gap: 5px;
+        align-items: center;
+      }
+
+      .candidate-list.single {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .candidate {
+        min-height: 64px;
+        padding: 6px 7px;
+        border: 2px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        position: relative;
+      }
+
+      .candidate.skip {
+        border-color: var(--pink);
+        background: var(--pink-soft);
+      }
+
+      .candidate.take {
+        border-color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .candidate.skip .candidate-label,
+      .candidate.skip .candidate-value {
+        color: #b0008b;
+      }
+
+      .candidate.take .candidate-label,
+      .candidate.take .candidate-value {
+        color: var(--green);
+      }
+
+      .candidate.chosen {
+        box-shadow: inset 0 0 0 2px rgba(15, 23, 42, 0.1);
+      }
+
+      .candidate.unavailable {
+        color: #94a3b8;
+        border-color: var(--line);
+        background: #f8fafc;
+      }
+
+      .vs-mark {
+        width: 36px;
+        height: 36px;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #fff;
+        color: #334155;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 950;
+        letter-spacing: 0;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+      }
+
+      .win-badge {
+        min-width: 38px;
+        height: 20px;
+        padding: 2px 7px;
+        position: absolute;
+        top: 6px;
+        right: 7px;
+        border-radius: 999px;
+        background: #111827;
+        color: #fff;
+        display: inline-grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 950;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .candidate.skip .win-badge {
+        background: var(--pink);
+      }
+
+      .candidate.take .win-badge {
+        background: var(--green);
+      }
+
+      .candidate-label {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 850;
+      }
+
+      .candidate-value {
+        margin-top: 3px;
+        font-size: 15px;
+        font-weight: 950;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+      }
+
+      .candidate-detail {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 750;
+        line-height: 1.35;
+      }
+
+      .score-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .score-item {
+        min-height: 44px;
+        padding: 5px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        text-align: center;
+      }
+
+      .score-label {
+        color: var(--muted);
+        font-size: 9px;
+        font-weight: 850;
+      }
+
+      .score-value {
+        margin-top: 2px;
+        font-size: 15px;
+        font-weight: 950;
+      }
+
+      .path-line {
+        margin-top: 5px;
+        padding: 5px 7px;
+        border-radius: 8px;
+        background: var(--green-soft);
+        color: #166534;
+        font-size: 11px;
+        font-weight: 850;
+        line-height: 1.35;
+      }
+
+      .code-box {
+        margin: 5px 0 0;
+        padding: 5px 0;
+        border: 1px solid var(--soft-line);
+        border-radius: 8px;
+        background: #0f172a;
+        color: #e2e8f0;
+        overflow: auto;
+      }
+
+      .code-line {
+        min-height: 21px;
+        padding: 2px 9px;
+        white-space: pre;
+        font: 11.5px/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-weight: 750;
+      }
+
+      .code-line.active {
+        background: #f59e0b;
+        color: #111827;
+      }
+
+      .code-comment {
+        color: #4ade80;
+        font-weight: 650;
+      }
+
+      .code-line.active .code-comment {
+        color: #166534;
+      }
+
+      .error {
+        display: none;
+        padding: 7px 10px;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        background: var(--red-soft);
+        color: #991b1b;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      @media (max-width: 1500px) {
+        .workspace {
+          grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+          justify-content: start;
+        }
+
+        .side-panel {
+          width: 100%;
+          max-width: none;
+          grid-template-columns: 1fr;
+          grid-template-rows: auto auto auto;
+        }
+
+        .section:last-child {
+          grid-column: auto;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .side-panel {
+          max-width: 1040px;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .page {
+          padding: 6px;
+        }
+
+        .intro,
+        .capacity-area {
+          grid-template-columns: 1fr;
+        }
+
+        .calculation-summary {
+          grid-template-columns: 1fr;
+        }
+
+        #valuesInput,
+        #weightsInput {
+          width: 100%;
+        }
+
+        .side-panel {
+          grid-template-columns: 1fr;
+        }
+
+        .section:last-child {
+          grid-column: auto;
+        }
+
+        .candidate-list,
+        .candidate-list.single,
+        .score-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .candidate-list {
+          gap: 5px;
+        }
+
+        .vs-mark {
+          justify-self: center;
+        }
+
+        .vs-mark {
+          justify-self: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel intro">
+        <div>
+          <h1>ナップサック問題 DPテーブル</h1>
+          <p>品物を上から1つずつ見て、容量 j ごとの最大価値 dp[i][j] を埋める。</p>
+        </div>
+        <div class="rule">
+          dp[<span class="axis-i">i</span>][<span class="axis-j">j</span>] =
+          max(dp[i-1][j], dp[i-1][j-w[i]] + v[i])
+        </div>
+      </section>
+
+      <section class="panel controls" aria-label="設定">
+        <div class="setting-row">
+          <label for="valuesInput">価値 v</label>
+          <input id="valuesInput" type="text" value="4, 5, 2, 8" />
+          <label for="weightsInput">重さ w</label>
+          <input id="weightsInput" type="text" value="2, 2, 1, 3" />
+          <label for="capacityInput">容量 W</label>
+          <input id="capacityInput" type="number" min="1" max="12" value="5" />
+          <button id="applyBtn" class="primary" type="button">反映</button>
+          <label for="presetSelect">例</label>
+          <select id="presetSelect">
+            <option value="slide" selected>week14 slide</option>
+            <option value="small">small</option>
+            <option value="dense">dense</option>
+          </select>
+        </div>
+        <div id="errorText" class="error"></div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progressBar"></div>
+        </div>
+      </section>
+
+      <div class="workspace">
+        <section class="panel main-panel">
+          <div class="panel-heading stage-heading">
+            <h2>品物と現在の容量</h2>
+            <div class="stage-tools">
+              <span class="legend">ピンク: 入れない / 緑: 入れる / 黄: 計算中 / 青: i / 赤: j</span>
+              <div class="button-row stage-actions">
+                <button id="firstBtn" type="button">先頭</button>
+                <button id="prevBtn" type="button">戻る</button>
+                <button id="nextBtn" class="primary" type="button">次へ</button>
+                <button id="lastBtn" type="button">結果まで</button>
+                <button id="playBtn" type="button">自動</button>
+                <span id="stepCounter" class="step-counter"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stage-wrap">
+            <div class="stage">
+              <div id="itemRow" class="item-row"></div>
+              <div class="capacity-area">
+                <div class="index-card">
+                  <div class="capacity-title">現在使える品物 i</div>
+                  <div id="usableItemValue" class="capacity-value"></div>
+                  <div id="usableItemList" class="idx-list"></div>
+                </div>
+                <div class="capacity-card">
+                  <div class="capacity-title">現在の容量 j</div>
+                  <div id="capacityValue" class="capacity-value"></div>
+                  <div id="capacitySlots" class="capacity-slots"></div>
+                </div>
+                <div class="answer-card">
+                  <span>最終的に知りたいセル</span>
+                  <strong id="targetCell"></strong>
+                  <span id="targetText"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-heading">
+            <h2>DPテーブル</h2>
+            <span id="tableDefinition" class="legend table-definition">品物0まで使って、容量0に収めたときの最適解：dp[0][0] = 0</span>
+          </div>
+          <div id="dpTableWrap" class="table-wrap">
+            <div id="dpTableLayer" class="dp-table-layer">
+              <table id="dpTable" class="dp-table" aria-label="DPテーブル"></table>
+              <svg id="dpArrows" class="dp-arrows" aria-hidden="true"></svg>
+            </div>
+          </div>
+
+          <div class="calculation-summary">
+            <div id="cellDefinition" class="cell-definition"></div>
+            <div id="recurrenceText" class="recurrence"></div>
+          </div>
+          <div id="updateExplanation" class="update-explanation"></div>
+        </section>
+
+        <aside class="panel side-panel">
+          <section class="section">
+            <h2>現在のセル</h2>
+            <div id="message" class="message"></div>
+            <div id="candidateList" class="candidate-list"></div>
+          </section>
+
+          <section class="section">
+            <h2>ここまでの解</h2>
+            <div class="score-grid">
+              <div class="score-item">
+                <div class="score-label">対象</div>
+                <div id="currentCell" class="score-value"></div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">最大価値</div>
+                <div id="currentValue" class="score-value"></div>
+              </div>
+              <div class="score-item">
+                <div class="score-label">残り容量</div>
+                <div id="remainingCapacity" class="score-value"></div>
+              </div>
+            </div>
+            <div id="pathLine" class="path-line"></div>
+          </section>
+
+          <section class="section">
+            <h2>擬似コード</h2>
+            <div class="code-box">
+              <div class="code-line" data-line="base-row">dp[0][j] = 0 <span class="code-comment">// 0行目は初期値</span></div>
+              <div class="code-line" data-line="base-col">dp[i][0] = 0 <span class="code-comment">// 容量0</span></div>
+              <div class="code-line" data-line="loop">for i = 1 ... N: <span class="code-comment">// 品物を順に見る</span></div>
+              <div class="code-line" data-line="skip">    skip = dp[i-1][j] <span class="code-comment">// 入れない</span></div>
+              <div class="code-line" data-line="branch">    if w[i] <= j: <span class="code-comment">// 入れられるか</span></div>
+              <div class="code-line" data-line="take">        take = dp[i-1][j-w[i]] + v[i] <span class="code-comment">// 入れる</span></div>
+              <div class="code-line" data-line="choose">        dp[i][j] = max(skip, take) <span class="code-comment">// 大きい方</span></div>
+              <div class="code-line" data-line="only">    else: dp[i][j] = skip <span class="code-comment">// 入れない</span></div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </main>
+    <script>
+      const presets = {
+        slide: {
+          values: [4, 5, 2, 8],
+          weights: [2, 2, 1, 3],
+          capacity: 5,
+        },
+        small: {
+          values: [6, 4, 5],
+          weights: [3, 2, 4],
+          capacity: 6,
+        },
+        dense: {
+          values: [3, 7, 2, 9, 6],
+          weights: [2, 3, 1, 4, 3],
+          capacity: 7,
+        },
+      };
+
+      const state = {
+        values: presets.slide.values.slice(),
+        weights: presets.slide.weights.slice(),
+        capacity: presets.slide.capacity,
+        dp: [],
+        take: [],
+        filledAt: [],
+        steps: [],
+        current: 0,
+        timer: null,
+      };
+
+      const valuesInput = document.getElementById("valuesInput");
+      const weightsInput = document.getElementById("weightsInput");
+      const capacityInput = document.getElementById("capacityInput");
+      const presetSelect = document.getElementById("presetSelect");
+      const applyBtn = document.getElementById("applyBtn");
+      const firstBtn = document.getElementById("firstBtn");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const lastBtn = document.getElementById("lastBtn");
+      const playBtn = document.getElementById("playBtn");
+      const stepCounter = document.getElementById("stepCounter");
+      const progressBar = document.getElementById("progressBar");
+      const errorText = document.getElementById("errorText");
+      const itemRow = document.getElementById("itemRow");
+      const usableItemValue = document.getElementById("usableItemValue");
+      const usableItemList = document.getElementById("usableItemList");
+      const capacityValue = document.getElementById("capacityValue");
+      const capacitySlots = document.getElementById("capacitySlots");
+      const targetCell = document.getElementById("targetCell");
+      const targetText = document.getElementById("targetText");
+      const updateExplanation = document.getElementById("updateExplanation");
+      const dpTableLayer = document.getElementById("dpTableLayer");
+      const dpTable = document.getElementById("dpTable");
+      const dpArrows = document.getElementById("dpArrows");
+      const cellDefinition = document.getElementById("cellDefinition");
+      const tableDefinition = document.getElementById("tableDefinition");
+      const recurrenceText = document.getElementById("recurrenceText");
+      const message = document.getElementById("message");
+      const candidateList = document.getElementById("candidateList");
+      const currentCell = document.getElementById("currentCell");
+      const currentValue = document.getElementById("currentValue");
+      const remainingCapacity = document.getElementById("remainingCapacity");
+      const pathLine = document.getElementById("pathLine");
+
+      function setTableDefinition(i, j, value) {
+        const result = value === "-" ? "未計算" : `dp[${i}][${j}] = ${value}`;
+        tableDefinition.innerHTML = `品物<span class="item-emphasis">${i}</span>まで使って、容量<span class="capacity-emphasis">${j}</span>に収めたときの最適解：${result}`;
+      }
+
+      dpTable.addEventListener("pointerover", (event) => {
+        const cell = event.target.closest(".dp-cell");
+        if (!cell || !dpTable.contains(cell)) return;
+        const i = Number(cell.dataset.dpI);
+        const j = Number(cell.dataset.dpJ);
+        const order = state.filledAt[i][j];
+        const value = order <= state.current ? state.dp[i][j] : "-";
+        setTableDefinition(i, j, value);
+      });
+
+      dpTable.addEventListener("pointerout", (event) => {
+        const nextCell = event.relatedTarget?.closest?.(".dp-cell");
+        if (nextCell && dpTable.contains(nextCell)) return;
+        const step = getStep();
+        setTableDefinition(step.i, step.j, step.value);
+      });
+
+      function parseList(text, label) {
+        const values = text
+          .split(/[,\s]+/)
+          .map((part) => part.trim())
+          .filter(Boolean)
+          .map(Number);
+
+        if (values.length === 0) {
+          throw new Error(`${label}を1個以上入力してください。`);
+        }
+
+        if (values.length > 8) {
+          throw new Error("画面で追いやすいように、品物数は8個までにしてください。");
+        }
+
+        if (!values.every((value) => Number.isInteger(value) && value > 0 && value <= 99)) {
+          throw new Error(`${label}は1以上99以下の整数で入力してください。`);
+        }
+
+        return values;
+      }
+
+      function readInputs() {
+        const values = parseList(valuesInput.value, "価値");
+        const weights = parseList(weightsInput.value, "重さ");
+        const capacity = Number(capacityInput.value);
+
+        if (values.length !== weights.length) {
+          throw new Error("価値と重さの個数を同じにしてください。");
+        }
+
+        if (!Number.isInteger(capacity) || capacity < 1 || capacity > 12) {
+          throw new Error("容量 W は1以上12以下の整数で入力してください。");
+        }
+
+        if (weights.some((weight) => weight > capacity + 5)) {
+          throw new Error("重さが大きすぎます。授業用には W+5 以下にしてください。");
+        }
+
+        return { values, weights, capacity };
+      }
+
+      function buildModel() {
+        const n = state.values.length;
+        const w = state.capacity;
+        state.dp = Array.from({ length: n + 1 }, () => Array(w + 1).fill(0));
+        state.take = Array.from({ length: n + 1 }, () => Array(w + 1).fill(false));
+        state.filledAt = Array.from({ length: n + 1 }, () => Array(w + 1).fill(Infinity));
+        state.steps = [];
+
+        const addStep = (step) => {
+          state.filledAt[step.i][step.j] = state.steps.length;
+          state.steps.push(step);
+        };
+
+        for (let j = 0; j <= w; j += 1) {
+          addStep({
+            i: 0,
+            j,
+            value: 0,
+            candidates: [],
+            chosen: "base",
+            refs: [],
+            activeLine: "base-row",
+            formula: `dp[0][${j}] = 0`,
+            reason: "品物を1つも使わない0行目なので、どの容量でも最大価値は0です。",
+            ruleHtml: "品物を1つも使わない0行目なので、どの容量でも最大価値は0です。",
+          });
+        }
+
+        for (let i = 1; i <= n; i += 1) {
+          addStep({
+            i,
+            j: 0,
+            value: 0,
+            candidates: [],
+            chosen: "base",
+            refs: [],
+            activeLine: "base-col",
+            formula: `dp[${i}][0] = 0`,
+            reason: "容量0の列なので、品物があっても何も入らず最大価値は0です。",
+            ruleHtml: '容量<span class="capacity-emphasis">0</span>の列なので、品物があっても何も入らず最大価値は0です。',
+          });
+        }
+
+        for (let i = 1; i <= n; i += 1) {
+          for (let j = 1; j <= w; j += 1) {
+            const value = state.values[i - 1];
+            const weight = state.weights[i - 1];
+            const skip = {
+              kind: "skip",
+              label: "入れない",
+              total: state.dp[i - 1][j],
+              refI: i - 1,
+              refJ: j,
+            };
+            let take = null;
+
+            if (weight <= j) {
+              take = {
+                kind: "take",
+                label: "入れる",
+                total: state.dp[i - 1][j - weight] + value,
+                refI: i - 1,
+                refJ: j - weight,
+                itemValue: value,
+                itemWeight: weight,
+              };
+            }
+
+            const chosen = take && take.total > skip.total ? take : skip;
+            state.dp[i][j] = chosen.total;
+            state.take[i][j] = chosen.kind === "take";
+
+            const refs = [skip];
+            if (take) refs.push(take);
+
+            const formula = take
+              ? `dp[${i}][${j}] = max(${skip.total}, ${take.total}) = ${state.dp[i][j]}`
+              : `dp[${i}][${j}] = dp[${i - 1}][${j}] = ${state.dp[i][j]}`;
+            const reason = take
+              ? `容量${j}に収めるときの dp[${i}][${j}] は、品物${i}を入れない場合と、入れる場合を比べます。大きい方の ${state.dp[i][j]} を採用します。`
+              : `容量${j}に収めるときの dp[${i}][${j}] は、品物${i}の重さ ${weight} が容量を超えるので、入れない場合だけを採用します。`;
+            const ruleHtml = take
+              ? `容量<span class="capacity-emphasis">${j}</span>に収めるときの dp[<span class="item-emphasis">${i}</span>][<span class="capacity-emphasis">${j}</span>] は、品物<span class="item-emphasis">${i}</span>（v <strong class="value-emphasis">${value}</strong> w <strong class="weight-emphasis">${weight}</strong>）を入れない場合と、入れる場合を比べます。<br />入れる場合は、品物<span class="item-emphasis">${i}</span>の w <strong class="weight-emphasis">${weight}</strong> を確保するために「現在の容量<span class="capacity-emphasis">${j}</span> - w <strong class="weight-emphasis">${weight}</strong> = <span class="capacity-emphasis">${take.refJ}</span>」として dp[<span class="item-emphasis">${take.refI}</span>][<span class="capacity-emphasis">${take.refJ}</span>] を参照し、品物<span class="item-emphasis">${i}</span>の v <strong class="value-emphasis">${value}</strong> を足して ${take.total} になります。<br />大きい方の ${state.dp[i][j]} を採用します。`
+              : `容量<span class="capacity-emphasis">${j}</span>に収めるときの dp[<span class="item-emphasis">${i}</span>][<span class="capacity-emphasis">${j}</span>] は、品物<span class="item-emphasis">${i}</span>（v <strong class="value-emphasis">${value}</strong> w <strong class="weight-emphasis">${weight}</strong>）の重さが容量を超えるので、入れない場合だけを採用します。`;
+
+            addStep({
+              i,
+              j,
+              value: state.dp[i][j],
+              candidates: take ? [skip, take] : [skip],
+              chosen: chosen.kind,
+              refs,
+              activeLine: take ? "choose" : "only",
+              formula,
+              reason,
+              ruleHtml,
+            });
+          }
+        }
+      }
+
+      function getStep() {
+        return state.steps[state.current];
+      }
+
+      function getChosenItems(i, j) {
+        const selected = [];
+        let row = i;
+        let capacity = j;
+
+        while (row > 0 && capacity >= 0) {
+          if (state.take[row][capacity]) {
+            selected.push(row);
+            capacity -= state.weights[row - 1];
+          }
+          row -= 1;
+        }
+
+        return selected.reverse();
+      }
+
+      function getSelectedWeight(items) {
+        return items.reduce((sum, itemNumber) => sum + state.weights[itemNumber - 1], 0);
+      }
+
+      function showError(text) {
+        errorText.textContent = text;
+        errorText.classList.add("show");
+      }
+
+      function clearError() {
+        errorText.textContent = "";
+        errorText.classList.remove("show");
+      }
+
+      function stopAuto() {
+        if (state.timer !== null) {
+          window.clearInterval(state.timer);
+          state.timer = null;
+        }
+        playBtn.textContent = "自動";
+      }
+
+      function setCurrent(index) {
+        state.current = Math.max(0, Math.min(index, state.steps.length - 1));
+        render();
+      }
+
+      function applyProblem(nextState) {
+        stopAuto();
+        state.values = nextState.values.slice();
+        state.weights = nextState.weights.slice();
+        state.capacity = nextState.capacity;
+        state.current = 0;
+        valuesInput.value = state.values.join(", ");
+        weightsInput.value = state.weights.join(", ");
+        capacityInput.value = state.capacity;
+        buildModel();
+        render();
+      }
+
+      function renderStage() {
+        const step = getStep();
+        const selected = new Set(getChosenItems(step.i, step.j));
+        itemRow.style.setProperty("--item-count", state.values.length);
+        itemRow.innerHTML = state.values
+          .map((value, index) => {
+            const itemNumber = index + 1;
+            const classes = ["item-card"];
+            if (itemNumber === step.i) classes.push("current");
+            if (selected.has(itemNumber)) classes.push("selected");
+            return `
+              <div class="${classes.join(" ")}">
+                <div class="item-name">品物${itemNumber}</div>
+                <div class="item-value"><span>v</span><strong>${value}</strong></div>
+                <div class="item-meta">w <strong>${state.weights[index]}</strong></div>
+              </div>
+            `;
+          })
+          .join("");
+
+        usableItemValue.textContent = `i = ${step.i}`;
+        usableItemList.innerHTML =
+          step.i === 0
+            ? '<span class="idx-empty">使えるidx: なし</span>'
+            : '<span class="idx-label">使えるidx</span>' +
+              Array.from(
+                { length: step.i },
+                (_, index) => `<span class="idx-chip">${index + 1}</span>`
+              ).join("");
+        capacityValue.textContent = `j = ${step.j}`;
+        capacitySlots.style.setProperty("--capacity-cols", state.capacity + 1);
+        capacitySlots.innerHTML = Array.from({ length: state.capacity + 1 }, (_, j) => {
+          const classes = ["slot"];
+          if (j === step.j) classes.push("active");
+          return `<div class="${classes.join(" ")}">${j}</div>`;
+        }).join("");
+
+        targetCell.textContent = `dp[${state.values.length}][${state.capacity}]`;
+        targetText.textContent = `品物${state.values.length}まで / 容量${state.capacity} の最大価値`;
+      }
+
+      function renderTable() {
+        const step = getStep();
+        const refs = new Map(step.refs.map((ref) => [`${ref.refI}-${ref.refJ}`, ref.kind]));
+        const finalItems = getChosenItems(state.values.length, state.capacity);
+        const isFinal = state.current === state.steps.length - 1;
+        const headCells = Array.from(
+          { length: state.capacity + 1 },
+          (_, j) => `<th class="j-head" scope="col">${j}</th>`
+        ).join("");
+
+        const rows = Array.from({ length: state.values.length + 1 }, (_, i) => {
+          const v = i === 0 ? "-" : state.values[i - 1];
+          const w = i === 0 ? "-" : state.weights[i - 1];
+          const hasTakeCandidate = step.candidates.some((candidate) => candidate.kind === "take");
+          const valueClasses = ["item-prop"];
+          if (i === step.i && hasTakeCandidate) valueClasses.push("ref-value");
+          const dpCells = Array.from({ length: state.capacity + 1 }, (_, j) => {
+            const order = state.filledAt[i][j];
+            const classes = ["dp-cell"];
+            const refKind = refs.get(`${i}-${j}`);
+            if (order > state.current) classes.push("pending");
+            if (order < state.current) classes.push("done");
+            if (order === state.current) classes.push("current");
+            if (refKind === "skip") classes.push("ref-skip");
+            if (refKind === "take") classes.push("ref-take");
+            if (isFinal && i === state.values.length && j === state.capacity) classes.push("answer");
+            const value = order <= state.current ? state.dp[i][j] : "-";
+            return `<td class="${classes.join(" ")}" data-dp-i="${i}" data-dp-j="${j}">${value}</td>`;
+          }).join("");
+
+          const selectedMark = isFinal && finalItems.includes(i) ? " selected" : "";
+          return `
+            <tr>
+              <th class="row-index${selectedMark}" scope="row">${i}</th>
+              <td class="${valueClasses.join(" ")}">${v}</td>
+              <td class="item-prop">${w}</td>
+              ${dpCells}
+            </tr>
+          `;
+        }).join("");
+
+        dpTable.innerHTML = `
+          <thead>
+            <tr>
+              <th class="i-head" scope="col">i</th>
+              <th class="v-head" scope="col">v</th>
+              <th class="w-head" scope="col">w</th>
+              <th class="j-head" scope="col" colspan="${state.capacity + 1}">容量 j</th>
+            </tr>
+            <tr>
+              <th class="i-head" scope="col">i↓</th>
+              <th class="v-head" scope="col">価値</th>
+              <th class="w-head" scope="col">重さ</th>
+              ${headCells}
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        `;
+        renderDpArrows();
+      }
+
+      function getDpCell(i, j) {
+        return dpTable.querySelector(`[data-dp-i="${i}"][data-dp-j="${j}"]`);
+      }
+
+      function getCellPoint(cell, layerRect) {
+        const rect = cell.getBoundingClientRect();
+        return {
+          x: rect.left - layerRect.left + rect.width / 2,
+          y: rect.top - layerRect.top + rect.height / 2,
+          width: rect.width,
+          height: rect.height,
+        };
+      }
+
+      function makeArrowPath(from, to, kind) {
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const length = Math.max(1, Math.hypot(dx, dy));
+        const ux = dx / length;
+        const uy = dy / length;
+        const sourcePad = Math.min(18, length * 0.18);
+        const targetPad =
+          kind === "skip"
+            ? to.height * 0.18
+            : Math.min(44, Math.max(to.width, to.height) * 0.34);
+        const start = {
+          x: from.x + ux * sourcePad,
+          y: from.y + uy * sourcePad,
+        };
+        const end = {
+          x: to.x - ux * targetPad,
+          y: to.y - uy * targetPad,
+        };
+
+        return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} L ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+      }
+
+      function renderDpArrows() {
+        const step = getStep();
+        dpArrows.innerHTML = "";
+
+        const target = getDpCell(step.i, step.j);
+        if (!target) return;
+
+        const layerWidth = dpTableLayer.offsetWidth;
+        const layerHeight = dpTableLayer.offsetHeight;
+        const layerRect = dpTableLayer.getBoundingClientRect();
+        dpArrows.setAttribute("viewBox", `0 0 ${layerWidth} ${layerHeight}`);
+        dpArrows.setAttribute("width", layerWidth);
+        dpArrows.setAttribute("height", layerHeight);
+
+        const rangeStart = dpTable.querySelector(".item-prop");
+        if (!rangeStart) return;
+        const startRect = rangeStart.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const frame = `
+          <rect class="dp-range-frame"
+            x="${(startRect.left - layerRect.left).toFixed(1)}"
+            y="${(startRect.top - layerRect.top).toFixed(1)}"
+            width="${(targetRect.right - startRect.left).toFixed(1)}"
+            height="${(targetRect.bottom - startRect.top).toFixed(1)}"></rect>
+        `;
+
+        if (step.chosen === "base" || step.refs.length === 0) {
+          dpArrows.innerHTML = frame;
+          return;
+        }
+
+        const defs = `
+          <defs>
+            <marker id="dpArrowSkip" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="var(--pink)"></path>
+            </marker>
+            <marker id="dpArrowTake" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L7,3.5 L0,7 Z" fill="var(--green)"></path>
+            </marker>
+          </defs>
+        `;
+
+        const targetPoint = getCellPoint(target, layerRect);
+        const arrows = step.refs
+          .map((ref) => {
+            const source = getDpCell(ref.refI, ref.refJ);
+            if (!source) return "";
+            const sourcePoint = getCellPoint(source, layerRect);
+            const path = makeArrowPath(sourcePoint, targetPoint, ref.kind);
+            const marker = ref.kind === "skip" ? "dpArrowSkip" : "dpArrowTake";
+            const winLabel =
+              ref.kind === step.chosen
+                ? `<text class="dp-arrow-win dp-arrow-win-${ref.kind}" x="${((sourcePoint.x + targetPoint.x) / 2).toFixed(1)}" y="${(((sourcePoint.y + targetPoint.y) / 2) - 5).toFixed(1)}">WIN</text>`
+                : "";
+            return `
+              <path class="dp-arrow-path dp-arrow-${ref.kind}" d="${path}" marker-end="url(#${marker})"></path>
+              ${winLabel}
+            `;
+          })
+          .join("");
+
+        dpArrows.innerHTML = `${defs}${frame}${arrows}`;
+      }
+
+      function renderCandidates() {
+        const step = getStep();
+        if (step.chosen === "base") {
+          const label = step.i === 0 ? "0行目の初期化" : "0列目の初期化";
+          const detail = step.i === 0 ? "品物を使わないので価値は0" : "容量0なので何も入らず価値は0";
+          candidateList.classList.add("single");
+          candidateList.innerHTML = `
+            <div class="candidate skip chosen">
+              <span class="win-badge">INIT</span>
+              <div class="candidate-label">${label}</div>
+              <div class="candidate-value">dp[${step.i}][${step.j}] = 0</div>
+              <div class="candidate-detail">${detail}</div>
+            </div>
+            <div class="candidate unavailable">
+              <div class="candidate-label">比較</div>
+              <div class="candidate-value">なし</div>
+              <div class="candidate-detail">先に0行目と0列目を埋める</div>
+            </div>
+          `;
+          return;
+        }
+
+        candidateList.classList.remove("single");
+        const byKind = Object.fromEntries(step.candidates.map((candidate) => [candidate.kind, candidate]));
+        const skip = byKind.skip;
+        const take = byKind.take;
+        const skipChosen = step.chosen === "skip";
+        const takeChosen = step.chosen === "take";
+        const skipCard = `
+          <div class="candidate skip ${skipChosen ? "chosen" : ""}">
+            ${skipChosen ? '<span class="win-badge">WIN</span>' : ""}
+            <div class="candidate-label">入れない</div>
+            <div class="candidate-value">dp[${skip.refI}][${skip.refJ}] = ${skip.total}</div>
+            <div class="candidate-detail">品物${step.i}を使わず、1つ上のセルを見る</div>
+          </div>
+        `;
+        const takeCard = take
+          ? `
+            <div class="candidate take ${takeChosen ? "chosen" : ""}">
+              ${takeChosen ? '<span class="win-badge">WIN</span>' : ""}
+              <div class="candidate-label">入れる</div>
+              <div class="candidate-value">dp[${take.refI}][${take.refJ}] + ${take.itemValue} = ${take.total}</div>
+              <div class="candidate-detail">容量を ${take.itemWeight} 使い、品物${step.i}の価値を足す</div>
+            </div>
+          `
+          : `
+            <div class="candidate unavailable">
+              <div class="candidate-label">入れる</div>
+              <div class="candidate-value">不可</div>
+              <div class="candidate-detail">重さ ${state.weights[step.i - 1]} が容量 ${step.j} を超える</div>
+            </div>
+          `;
+
+        candidateList.innerHTML = `${skipCard}<div class="vs-mark" aria-label="比較">VS</div>${takeCard}`;
+      }
+
+      function renderMessage() {
+        const step = getStep();
+        const formulaHtml = formatFormulaHtml(step);
+        message.innerHTML = `
+          <strong>dp[${step.i}][${step.j}] を計算中。</strong><br />
+          ${step.reason}
+        `;
+        setTableDefinition(step.i, step.j, step.value);
+        cellDefinition.innerHTML = `品物<span class="item-emphasis">${step.i}</span>まで使って、容量<span class="capacity-emphasis">${step.j}</span>に収めたときの最適解：<span class="inline-formula">${formulaHtml}</span>`;
+        recurrenceText.textContent = step.formula;
+        updateExplanation.innerHTML = `<strong>更新ルール</strong>${step.ruleHtml || step.reason}`;
+      }
+
+      function formatFormulaHtml(step) {
+        const dp = (i, j) =>
+          `dp[<span class="formula-item">${i}</span>][<span class="formula-capacity">${j}</span>]`;
+
+        if (step.chosen === "base") {
+          return step.i === 0 ? `${dp(0, step.j)} = 0` : `${dp(step.i, 0)} = 0`;
+        }
+
+        const skip = step.candidates.find((candidate) => candidate.kind === "skip");
+        const take = step.candidates.find((candidate) => candidate.kind === "take");
+        if (!take) return `${dp(step.i, step.j)} = ${dp(skip.refI, skip.refJ)} = ${step.value}`;
+        return `${dp(step.i, step.j)} = max(${skip.total}, ${take.total}) = ${step.value}`;
+      }
+
+      function renderScores() {
+        const step = getStep();
+        const selected = getChosenItems(step.i, step.j);
+        const usedWeight = getSelectedWeight(selected);
+        currentCell.textContent = `i=${step.i}, j=${step.j}`;
+        currentValue.textContent = state.dp[step.i][step.j];
+        remainingCapacity.textContent = Math.max(0, step.j - usedWeight);
+        pathLine.textContent =
+          state.current === state.steps.length - 1
+            ? `答え: 最大価値 ${state.dp[state.values.length][state.capacity]}、選ぶ品物 [${selected.join(", ")}]`
+            : selected.length > 0
+              ? `現在の選択: 品物 [${selected.join(", ")}]、重さ合計 ${usedWeight}`
+              : "現在の選択: なし";
+      }
+
+      function renderCode() {
+        const step = getStep();
+        document.querySelectorAll(".code-line").forEach((line) => {
+          line.classList.toggle("active", line.dataset.line === step.activeLine);
+        });
+      }
+
+      function renderButtons() {
+        firstBtn.disabled = state.current === 0;
+        prevBtn.disabled = state.current === 0;
+        nextBtn.disabled = state.current === state.steps.length - 1;
+        lastBtn.disabled = state.current === state.steps.length - 1;
+        stepCounter.textContent = `${state.current + 1}/${state.steps.length}`;
+        progressBar.style.width = `${(state.current / Math.max(1, state.steps.length - 1)) * 100}%`;
+      }
+
+      function render() {
+        renderStage();
+        renderTable();
+        renderCandidates();
+        renderMessage();
+        renderScores();
+        renderCode();
+        renderButtons();
+      }
+
+      applyBtn.addEventListener("click", () => {
+        try {
+          const nextState = readInputs();
+          clearError();
+          presetSelect.selectedIndex = -1;
+          applyProblem(nextState);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+
+      presetSelect.addEventListener("change", () => {
+        const preset = presets[presetSelect.value];
+        if (!preset) return;
+        clearError();
+        applyProblem(preset);
+      });
+
+      firstBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(0);
+      });
+
+      prevBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.current - 1);
+      });
+
+      nextBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.current + 1);
+      });
+
+      lastBtn.addEventListener("click", () => {
+        stopAuto();
+        setCurrent(state.steps.length - 1);
+      });
+
+      playBtn.addEventListener("click", () => {
+        if (state.timer !== null) {
+          stopAuto();
+          return;
+        }
+
+        playBtn.textContent = "停止";
+        state.timer = window.setInterval(() => {
+          if (state.current >= state.steps.length - 1) {
+            stopAuto();
+            return;
+          }
+          setCurrent(state.current + 1);
+        }, 650);
+      });
+
+      window.addEventListener("resize", renderDpArrows);
+
+      buildModel();
+      render();
+    </script>
+  </body>
+</html>
