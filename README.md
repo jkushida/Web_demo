@@ -99,6 +99,7 @@ individual demos remain subject to their respective licenses.
 
 ### 進化計算 <a id="ec"></a>
 - [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ
+- [NSP Genetic Algorithm](https://jkushida.github.io/Web_demo/EC/nsp-genetic-algorithm-demo.html) - 看護師スケジューリング問題を遺伝的アルゴリズムで探索し、世代交代と系譜を可視化
 - [CMA-ES Simulator](https://jkushida.github.io/Web_demo/EC/cmaes_simulator.html) - CMA-ESのシミュレータ
 - [DE Simulator](https://jkushida.github.io/Web_demo/EC/de_simulator.html) - 差分進化のシミュレータ
 - [PSO Simulator](https://jkushida.github.io/Web_demo/EC/pso_simulator.html) - 粒子群最適化のシミュレータ
