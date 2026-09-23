@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>単語ベクトル空間 | 自然言語処理2026</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="vector.css">
+  <script defer src="vendor/lucide.min.js"></script>
+  <script defer src="vector.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><i data-lucide="orbit"></i><div><small>自然言語処理2026 · 分散表現</small><h1>学習済み単語ベクトル空間</h1></div></div>
+    <div class="header-actions"><a class="top-link" href="index.html"><i data-lucide="home"></i>NLP TOP</a><div class="model-badge"><span class="live-dot"></span><span id="model-name">モデル読込中</span><b id="model-size">—</b></div></div>
+  </header>
+  <main>
+    <aside class="controls">
+      <section>
+        <h2><span>01</span>表示する語を選ぶ</h2>
+        <label for="preset">テーマ</label>
+        <select id="preset">
+          <option value="vehicles">自動車と関連語</option>
+          <option value="technology">コンピュータと技術</option>
+          <option value="places">国と都市</option>
+          <option value="comparison">程度と比較</option>
+          <option value="analogy">類推で使う語</option>
+          <option value="neighbors">指定語の近傍</option>
+        </select>
+        <form id="query-form">
+          <label for="query">調べる英単語</label>
+          <div class="input-row"><input id="query" value="car" maxlength="80" autocomplete="off" spellcheck="false"><button title="近い語を検索" aria-label="近い語を検索"><i data-lucide="search"></i></button></div>
+          <p>点または近傍表の単語も選択可能</p>
+        </form>
+      </section>
+      <section>
+        <h2><span>02</span>空間の見方を変える</h2>
+        <label for="zoom">拡大率 <output id="zoom-value">100%</output></label>
+        <input id="zoom" type="range" min="70" max="220" step="10" value="100">
+        <label class="check"><input id="show-neighbor-labels" type="checkbox" checked>近傍語のラベルを表示</label>
+        <button id="reset-view" class="secondary"><i data-lucide="maximize"></i>表示範囲を戻す</button>
+      </section>
+      <section class="method">
+        <h2><span>03</span>2次元に落とす</h2>
+        <div class="dimension-flow"><b>100次元</b><i data-lucide="arrow-right"></i><b>2次元</b></div>
+        <p>PCAで選択中の語を投影。近い点は、100次元空間でも似ている傾向を持つ。</p>
+        <p>横軸・縦軸に名前や意味はない。表示する語を変えると軸も変わる。</p>
+      </section>
+      <a class="secondary link-button" href="cbow.html"><i data-lucide="workflow"></i>CBOWの学習過程へ</a>
+    </aside>
+
+    <section class="visualization">
+      <div id="error" role="alert" hidden></div>
+      <div class="plot-header">
+        <div><span class="eyebrow">100次元の関係を2次元へ投影</span><h2 id="plot-title">自動車と関連語</h2></div>
+        <div class="legend"><span><b class="focus-dot"></b>テーマ語</span><span><b class="neighbor-dot"></b>近傍語</span><span><b class="query-ring"></b>基準語</span></div>
+      </div>
+      <div class="plot-shell" id="plot-shell">
+        <svg id="plot" viewBox="-500 -330 1000 660" role="img" aria-labelledby="plot-title plot-description">
+          <desc id="plot-description">学習済みCBOWモデルの単語ベクトルをPCAで2次元へ投影した散布図</desc>
+          <g id="grid"></g><g id="links"></g><g id="points"></g>
+        </svg>
+        <div id="tooltip" role="status" hidden></div>
+        <div class="plot-note"><i data-lucide="mouse-pointer-2"></i>点を選ぶと、その語を基準に近傍を再計算</div>
+      </div>
+      <div class="selected-word">
+        <div><span class="eyebrow">選択中の語</span><strong id="selected-word">car</strong></div>
+        <div class="vector-preview"><span id="vector-explanation">類似度は100次元のコサイン類似度で計算</span><code>cos(x, y) = x·y / (‖x‖ ‖y‖)</code></div>
+      </div>
+    </section>
+
+    <aside class="neighbors">
+      <div class="neighbors-heading"><div><span class="eyebrow">100次元で計算</span><h2>近い単語</h2></div><strong id="query-word">car</strong></div>
+      <div id="neighbor-list" class="neighbor-list"></div>
+      <div class="reading">
+        <h3>ここで確認すること</h3>
+        <p>単語は100個の実数で表される。意味や使われ方が近い語は、ベクトルの向きも近くなる。</p>
+        <p>このモデルは新聞記事の小規模コーパスPTBで学習したため、一般知識や日本語は持たない。</p>
+      </div>
+    </aside>
+
+    <section class="analogy">
+      <div class="analogy-heading"><div><span class="eyebrow">ベクトルの足し引き</span><h2>関係の向きを別の語へ移す</h2></div><code>a − b + c ≈ ?</code></div>
+      <form id="analogy-form">
+        <div><label for="positive-a">a</label><input id="positive-a" value="took" maxlength="80"></div>
+        <span class="operator">−</span>
+        <div><label for="negative">b</label><input id="negative" value="take" maxlength="80"></div>
+        <span class="operator">＋</span>
+        <div><label for="positive-b">c</label><input id="positive-b" value="go" maxlength="80"></div>
+        <span class="operator">≈</span>
+        <button><i data-lucide="calculator"></i>計算</button>
+      </form>
+      <div class="preset-analogies"><button data-analogy="took,take,go">took − take + go</button><button data-analogy="cars,car,child">cars − car + child</button><button data-analogy="better,good,bad">better − good + bad</button></div>
+      <div id="analogy-result" class="analogy-result"></div>
+      <p class="analogy-note">類推が常に成功するわけではない。学習コーパスの量・偏りと、単語の出現文脈が結果に現れる。</p>
+    </section>
+  </main>
+  <section class="usage-guide" aria-labelledby="guide-title">
+    <h2 id="guide-title">使い方と単語ベクトルの読み方</h2>
+    <section class="network-explanation" aria-label="改良CBOWのネットワーク構成">
+      <h3>使用モデル：改良CBOWの学習とベクトルの取り出し</h3>
+      <div class="network-flow">
+        <div>周辺語のID<br><small>中心語の左右の語</small></div><b>→</b>
+        <div>共有Embedding<br><small>W_in の該当行を取得</small></div><b>→</b>
+        <div>平均 h<br><small>周辺語ベクトルを平均</small></div><b>→</b>
+        <div>正解語・負例語と内積<br><small>出力側Embeddingを使用</small></div><b>→</b>
+        <div>Sigmoidと二値交差エントロピー<br><small>正解語は1、負例語は0</small></div>
+      </div>
+      <p>各語の損失を合計し、誤差を逆伝播して入力側・出力側の重みを更新する。Negative Samplingでは、全語彙との比較を正解語と少数の負例語との比較に置き換える。</p>
+      <div class="network-flow"><div>学習後の W_in<br><small>1行が1語の100次元ベクトル</small></div><b>→</b><div>学習済み word_vecs</div><b>→</b><div>100次元で近傍検索<br><small>PCAで2次元にして散布図へ</small></div></div>
+    </section>
+    <div class="guide-columns">
+      <article>
+        <h3>1. 単語を入力して、近い語を比べる</h3>
+        <p>「調べる英単語」に <code>car</code> を入力して検索する。右の「近い単語」には、学習済みベクトルの向きが近い語が順に並ぶ。次に <code>computer</code> や <code>tokyo</code> を試し、どんな語が集まるか比べる。</p>
+        <p>散布図の点や近傍表の単語を選ぶと、その語を基準に再検索する。「テーマ」では、自動車・技術・国と都市などの語をまとめて表示できる。</p>
+      </article>
+      <article>
+        <h3>2. 点は、100個の数値を縮約した位置</h3>
+        <p>このモデルでは、単語1つを100個の実数で表す。例えば3次元なら <code>[0.21, -0.45, 0.83]</code> のような形になるが、ここでは数値が100個並ぶ。この数値の列が単語の分散表現だ。</p>
+        <p>散布図は、長さを1にそろえたベクトルをPCAで2次元に縮約したもの。情報の一部は失われるため、画面上で近くても100次元で最も似ているとは限らない。近さの順位は「近い単語」の数値で確認する。</p>
+      </article>
+      <article>
+        <h3>3. 類似度は、ベクトルの向きの近さ</h3>
+        <p>コサイン類似度は、2つのベクトルの向きを比べる値。1に近いほど向きが近く、0なら直交し、-1なら逆向きになる。負の値が反意語を意味するわけではない。</p>
+        <p>似た文脈で使われる語は似た表現を得やすい。ただし、同義語だけでなく関連語や反意語も近くなる場合がある。類似度は「同じ意味である確率」ではない。</p>
+      </article>
+      <article>
+        <h3>4. 足し引きで、語どうしの関係を試す</h3>
+        <p><code>took − take + go</code> を計算する。<code>take</code> から <code>took</code> への変化を <code>go</code> に加えると、過去形の <code>went</code> に近づくかを調べられる。</p>
+        <p>このデモは長さを1にそろえた100次元ベクトルを足し引きし、その結果に近い語を探す。入力した3語は候補から除く。散布図の2次元座標を足し引きしているわけではない。</p>
+      </article>
+      <article>
+        <h3>5. どうやって、この数値を学んだのか</h3>
+        <p>CBOWは文章から「周辺語 → 中心語」の問題と正解を自動で作り、中心語を予測する学習を繰り返す。その過程で入力側の重みが更新され、各行が単語ベクトルになる。</p>
+        <p>この画面は教科書第4章の改良CBOWを学習済みの状態で読み込む。検索操作では再学習しない。重みが変わる過程は <a href="cbow.html">CBOWの学習過程</a>で確認できる。</p>
+      </article>
+      <article>
+        <h3>6. 表示が変わる理由とモデルの限界</h3>
+        <p>PCAの軸は表示中の語から求めるため、検索やテーマ変更で点の位置・軸が変わる。軸は第1・第2主成分であり、「大きさ」「性別」などの意味を人が割り当てた軸ではない。</p>
+        <p>使用モデルは英語新聞コーパスPTBの1万語・100次元。日本語や語彙にない語は検索できない。学習データの量や偏りが近傍語・類推に影響するため、意外な結果も文脈との関係を考える材料になる。</p>
+      </article>
+    </div>
+  </section>
+  <footer><span>使用モデル: 教科書第4章の改良CBOW学習済みパラメータ</span><span>PTB · 語彙10,000 · 100次元</span></footer>
+</body>
+</html>

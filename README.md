@@ -116,7 +116,8 @@ individual demos remain subject to their respective licenses.
 - [語彙表を段階的に作る](https://jkushida.github.io/Web_demo/NLP/vocabulary_builder.html) - 文章を1語ずつ読み、単語IDと出現回数を作成
 - [共起行列を段階的に作る](https://jkushida.github.io/Web_demo/NLP/cooccurrence.html) - 共起行列、コサイン類似度、類似語ランキングを可視化
 - [CBOW実験室](https://jkushida.github.io/Web_demo/NLP/cbow.html) - 学習データ、予測、重み更新、分散表現をブラウザ内で実験
-- [学習済み単語ベクトル空間](https://jkushida.github.io/Web_demo/NLP/index.html) - 10,000語・100次元の学習済みモデルで近傍語とベクトル類推を確認
+- [自然言語処理デモ一覧](https://jkushida.github.io/Web_demo/NLP/) - 語彙表から学習済み単語ベクトルまでを学習順に案内
+- [学習済み単語ベクトル空間](https://jkushida.github.io/Web_demo/NLP/word-vector-space.html) - 10,000語・100次元の学習済みモデルで近傍語とベクトル類推を確認
 
 ### MediaPipe <a id="mediapipe"></a>
 - [Finger Draw](https://jkushida.github.io/Web_demo/MediaPipe/finger_draw.html) - 手と顔の検出による3D描画
