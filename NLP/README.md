@@ -21,7 +21,7 @@ python3 -m http.server 8000
 
 ## モデルと依存物
 
-PPMI・SVD教材は4例文と文脈幅1〜3に対応する。共起行列とPMIはブラウザで計算し、SVDは既存のNumPyで生成した `ppmi-svd-data.js` を読む。`build_ppmi_data.py` で再生成可能。自由入力には未対応。ブラウザへの外部数値ライブラリ追加は不要。
+PPMI・SVD教材は5例文と文脈幅1〜3に対応する。共起行列とPMIはブラウザで計算し、SVDは既存のNumPyで生成した `ppmi-svd-data.js` を読む。`build_ppmi_data.py` で再生成可能。自由入力には未対応。ブラウザへの外部数値ライブラリ追加は不要。
 
 - `pretrained-vectors.f32`: 『ゼロから作るDeep Learning 2』第4章の `cbow_params.pkl` から、各行をL2正規化してFloat32形式へ変換した100次元・10,000語のベクトル。
 - `pretrained-words.json`: 上記モデルの語彙と行番号。

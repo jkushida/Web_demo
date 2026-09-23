@@ -1,7 +1,7 @@
 'use strict';
 const $ = id => document.getElementById(id);
 const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const examples = {textbook:'You say goodbye and I say hello.',two:'I like music. You like movies.',jp:'私 は 猫 が 好き 。 私 は 犬 が 好き 。 君 は 猫 が 好き 。',repeat:'a a b a a b a a c a a c'};
+const examples = {textbook:'You say goodbye and I say hello.',two:'I like music. You like movies.',repeatEnglish:'I like music. I like movies. I like music.',jp:'私 は 猫 が 好き 。 私 は 犬 が 好き 。 君 は 猫 が 好き 。',repeat:'a a b a a b a a c a a c'};
 const names = ['共起行列','出現確率','PMI','PPMI','SVD','散布図','類似語比較'];
 let state, stage = 0, row = 0, col = 1;
 const fmt = n => n === -Infinity ? '−∞' : Math.abs(n) < 1e-10 ? '0' : n.toFixed(3);
