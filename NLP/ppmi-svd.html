@@ -22,6 +22,32 @@
 <div class="step-nav"><button id="previous" aria-label="前の段階">← 前へ</button><span id="step-count"></span><button id="next" aria-label="次の段階">次へ →</button></div>
 </main></div>
 <section id="explanation" class="explanation">
+<h2>PMI・PPMIの用語と式の読み方</h2>
+<div class="explain-grid">
+<article><h3>PMI：点ごとの相互情報量</h3>
+<p><b>Pointwise Mutual Information</b> の略。Pointwiseは「特定の組に着目する」、Mutual Informationは「相互情報量」を意味する。ここでは注目語xと周辺語yという1組について、独立なら期待される共起に対し、実際の共起がどれだけ多いかを測る。</p>
+<p><code>PMI(x,y) = log₂(P(x,y) / (P(x)P(y)))</code></p>
+<p>PMI = 1なら期待の2倍、0なら同じ、−1なら半分の確率で共起している。PMIは確率そのものではなく、負の値にもなる。</p></article>
+<article><h3>PPMI：正の相互情報量</h3>
+<p><b>Positive Pointwise Mutual Information</b> の略。Positiveは「正の」を意味する。PMIの正の値を残し、負の値は0へ置き換える。実際には0も含む、非負の値になる。</p>
+<p><code>PPMI(x,y) = max(0, PMI(x,y))</code></p>
+<p>例えばPMIが0.807ならPPMIも0.807。PMIが−1ならPPMIは0。共起0回のPMIは−∞となり、PPMIでは0として扱う。0になった理由はPPMIだけでは区別できない。</p></article>
+<article><h3>共起・行和・列和・総数</h3>
+<p><b>共起</b>：設定した文脈幅の中で、注目語と周辺語が現れること。同じ文にあるだけで数えるわけではない。</p>
+<p><span class="quantity q-count">C[x,y]</span>：注目語xと周辺語yの共起回数。<span class="quantity q-row">行和</span>：xの行にある共起回数の合計。<span class="quantity q-col">列和</span>：yの列にある共起回数の合計。</p>
+<p><span class="quantity q-total">N</span>：全セルの合計、つまり方向を区別した共起ペアの総数。教科書の英文は8トークンだが、左右1語ではN = 14になる。</p></article>
+<article><h3>P(x,y)・P(x)・P(y)と独立</h3>
+<p>数えた共起ペアから1組を選ぶと考える。<b>P(x,y)</b>はその組がxとyである確率（同時確率）。<b>P(x)</b>は注目語側がxである確率、<b>P(y)</b>は周辺語側がyである確率（周辺確率）。</p>
+<p><code>P(x,y) = C[x,y]/N</code><br><code>P(x) = 行和/N</code><br><code>P(y) = 列和/N</code></p>
+<p><b>独立</b>とは、一方の語が何かを知っても、もう一方の出現確率が変わらないという仮定。独立なら同時確率はP(x)P(y)、期待される共起回数はN × P(x)P(y)になる。</p></article>
+<article><h3>log₂とmaxの意味</h3>
+<p><b>log₂</b>は底が2の対数。「2を何乗するとその比になるか」を表す。log₂(2) = 1、log₂(1) = 0、log₂(1/2) = −1。共起の比を、独立の場合を0とする値に変換する。</p>
+<p><b>max(0, 値)</b>は0とその値のうち大きい方を選ぶ操作。負のPMIは0になり、正のPMIはそのまま残る。</p></article>
+<article><h3>具体例：say × goodbye</h3>
+<p>教科書の英文・左右1語では、共起回数は<span class="quantity q-count">1</span>、行和は<span class="quantity q-row">4</span>、列和は<span class="quantity q-col">2</span>、総数は<span class="quantity q-total">14</span>。</p>
+<p>独立なら期待回数は4 × 2 / 14 ≈ 0.571。実際は1回なので期待の1.75倍。PMI = log₂(1.75) ≈ <span class="quantity q-result">0.807</span>となり、PPMIも<span class="quantity q-result">0.807</span>になる。</p>
+<p>これはこのコーパスでの共起の強さを表す。「同じ意味である確率」ではない。</p></article>
+</div>
 <h2>共起回数を補正し、少ない成分で単語を表す</h2>
 <div class="explain-grid"><article><h3>1. PMIの確率は共起行列から求める</h3><p>Nはコーパスのトークン数ではなく、共起行列Cの全セルの合計。P(x)は行和/N、P(y)は列和/N、P(x,y)はC[x,y]/Nになる。</p><p>PMI = log₂(P(x,y)/(P(x)P(y)))。独立なら期待される共起回数より多いと正、少ないと負になる。出現頻度だけでは分からない結び付きを測る。</p></article>
 <article><h3>2. PPMIで負の値を0にする</h3><p>PPMI = max(0, PMI)。共起0回ではPMIは−∞となり、PPMIは0。PPMIの0には「共起なし」と「独立の場合以下」の両方が含まれる。</p><p>まれにしか現れない語のPMIが高くなる場合がある。PPMIだけで意味の近さが保証されるわけではない。</p></article>
