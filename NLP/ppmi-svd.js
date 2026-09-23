@@ -35,7 +35,8 @@ function apply() {
 }
 function table(matrix, interactive = true, headers = state.words) {
   const max = Math.max(1,...matrix.flat().filter(Number.isFinite).map(Math.abs));
-  return `<div class="scroll"><table><thead><tr><th>行 ＼ 列</th>${headers.map(w=>`<th>${esc(w)}</th>`).join('')}</tr></thead><tbody>${matrix.map((r,i)=>`<tr><th>${esc(state.words[i])}</th>${r.map((v,j)=>`<td>${interactive?`<button data-cell="${i},${j}" class="${i===row&&j===col?'selected':''}" aria-label="${esc(state.words[i])}と${esc(state.words[j])}: ${fmt(v)}" style="background:${v<0?'rgba(173,56,86,':'rgba(8,126,121,'}${Number.isFinite(v)?0.04+Math.abs(v)/max*.26:'.08'})">${fmt(v)}</button>`:fmt(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const show = value => stage === 0 ? String(value) : fmt(value);
+  return `<div class="scroll"><table><thead><tr><th>行 ＼ 列</th>${headers.map(w=>`<th>${esc(w)}</th>`).join('')}</tr></thead><tbody>${matrix.map((r,i)=>`<tr><th>${esc(state.words[i])}</th>${r.map((v,j)=>`<td>${interactive?`<button data-cell="${i},${j}" class="${i===row&&j===col?'selected':''}" aria-label="${esc(state.words[i])}と${esc(state.words[j])}: ${show(v)}" style="background:${v<0?'rgba(173,56,86,':'rgba(8,126,121,'}${Number.isFinite(v)?0.04+Math.abs(v)/max*.26:'.08'})">${show(v)}</button>`:show(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 function cellExplanation() {
   const s=state, c=s.C[row][col], a=s.rows[row], b=s.cols[col];
@@ -68,7 +69,7 @@ function render() {
   }
   if(stage===0 || stage===2 || stage===3) {
     const matrix=stage===0?s.C:stage===2?s.PMI:s.M;
-    $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">青枠：${esc(s.words[row])} × ${esc(s.words[col])}。小数は表示時のみ丸める。</p></div>${cellExplanation()}</div>`;
+    $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">${stage===0?'共起回数は整数。':'PMIの小数は表示時のみ丸める。'} 青枠：${esc(s.words[row])} × ${esc(s.words[col])}</p></div>${cellExplanation()}</div>`;
   } else if(stage===1) {
     $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p></div>${cellExplanation()}</div>`;
   } else if(stage===4) {
