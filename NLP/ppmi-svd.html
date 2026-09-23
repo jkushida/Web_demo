@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>共起行列からPPMI・SVDへ | 自然言語処理</title><link rel="icon" href="data:,">
+<link rel="stylesheet" href="ppmi-svd.css">
+<script defer src="ppmi-svd-data.js"></script><script defer src="ppmi-svd.js"></script>
+</head>
+<body>
+<header><div><small>自然言語処理2026 · 第2章 カウントベースの手法の改善</small><h1>共起行列からPPMI・SVDへ</h1></div><nav><a href="cooccurrence.html">← 共起行列</a><a href="index.html">NLP TOP</a><a href="cbow.html">CBOW →</a></nav></header>
+<div class="workspace"><aside>
+<h2>文章と文脈</h2><label for="preset">例文</label><select id="preset"><option value="textbook">教科書の英文</option><option value="two">英文・2文</option><option value="jp">日本語・3文（分かち書き）</option><option value="repeat">頻出語のある例</option></select>
+<label for="text">コーパス（選択した例文）</label><textarea id="text" rows="4" readonly>You say goodbye and I say hello.</textarea>
+<div class="pair"><div><label for="window">左右の幅</label><select id="window"><option value="1">1語</option><option value="2">2語</option><option value="3">3語</option></select></div><div><label for="dimension">残す次元 k</label><select id="dimension"></select></div></div>
+<button id="apply" class="primary">文脈の幅を適用</button><p id="dirty" hidden>変更あり：適用で再計算</p><p id="error" role="alert" hidden></p>
+<h2>比較する単語</h2><label for="query">基準語</label><select id="query"></select>
+<div class="metrics"><div>トークン数 <b id="tokens"></b></div><div>語彙数 V <b id="vocab"></b></div><div>共起ペア総数 N <b id="total"></b></div></div>
+<p class="note">日本語は空白で分かち書き。英字は小文字化。句読点も数え、文境界をまたいで集計する。</p><a href="#explanation">計算の解説 ↓</a>
+</aside><main>
+<div class="tabs" role="tablist" aria-label="計算の段階"></div>
+<section id="panel" role="tabpanel" tabindex="0"><h2 id="title"></h2><p id="lead"></p><div id="content"></div></section>
+<div class="step-nav"><button id="previous" aria-label="前の段階">← 前へ</button><span id="step-count"></span><button id="next" aria-label="次の段階">次へ →</button></div>
+</main></div>
+<section id="explanation" class="explanation">
+<h2>共起回数を補正し、少ない成分で単語を表す</h2>
+<div class="explain-grid"><article><h3>1. PMIの確率は共起行列から求める</h3><p>Nはコーパスのトークン数ではなく、共起行列Cの全セルの合計。P(x)は行和/N、P(y)は列和/N、P(x,y)はC[x,y]/Nになる。</p><p>PMI = log₂(P(x,y)/(P(x)P(y)))。独立なら期待される共起回数より多いと正、少ないと負になる。出現頻度だけでは分からない結び付きを測る。</p></article>
+<article><h3>2. PPMIで負の値を0にする</h3><p>PPMI = max(0, PMI)。共起0回ではPMIは−∞となり、PPMIは0。PPMIの0には「共起なし」と「独立の場合以下」の両方が含まれる。</p><p>まれにしか現れない語のPMIが高くなる場合がある。PPMIだけで意味の近さが保証されるわけではない。</p></article>
+<article><h3>3. SVDで大きな特異値に対応する成分を残す</h3><p>M = UΣVᵀ。MはPPMI行列。先頭k成分で M ≈ UₖΣₖVₖᵀ と近似する。この教材の単語ベクトルは、教科書同様にUₖの各行。</p><p>Σを掛けたUₖΣₖも利用されるが、ここでの類似度はUₖから計算する。保持率は特異値の二乗和の割合で、正解率ではない。平均を引くPCAとは異なり、PPMI行列をそのまま分解する。</p></article>
+<article><h3>4. 散布図とランキングを区別する</h3><p>散布図はUの第1・第2成分を表示する。kが3以上の場合も図に見えるのは2成分だけで、ランキングは選択したk次元すべてを使う。</p><p>符号が反転したり、同じ特異値の空間内で軸が回転したりしてもSVDは正しい。短文から一般的な意味関係は学べない。次元を減らすと順位が良くなるとは限らない。</p></article></div>
+<p>対応：『ゼロから作るDeep Learning 2』第2章「カウントベースの手法の改善」。4例文と文脈幅1〜3に対応。SVDはNumPyで計算した分解結果を使用する。</p><a href="#">操作画面へ ↑</a>
+</section>
+</body></html>

@@ -27,7 +27,7 @@
   <main>
     <section class="intro">
       <div><h2>単語を数えるところから分散表現まで</h2><p>文章を数値へ変換し、文脈を学習して、単語間の関係を調べる。</p></div>
-      <div class="flow">語彙表 → 共起行列 → CBOW → 学習済みベクトル</div>
+      <div class="flow">語彙表 → 共起行列 → PPMI・SVD → CBOW</div>
     </section>
     <nav class="demo-list" aria-label="自然言語処理デモ一覧">
       <a class="demo" href="vocabulary_builder.html">
@@ -38,16 +38,20 @@
         <span class="step">02</span><div class="name"><span class="icon"><i data-lucide="table-2"></i></span><div><h3>共起行列を作る</h3><span>周辺語の出現回数を数値化</span></div></div>
         <div class="detail"><b>周辺語を数える → 行列 → 類似度</b><p>注目語の近くに現れる語を数え、文脈の似た単語をコサイン類似度で比較する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
+      <a class="demo" href="ppmi-svd.html">
+        <span class="step">03</span><div class="name"><span class="icon"><i data-lucide="grid-3x3"></i></span><div><h3>PPMI・SVDで改善する</h3><span>共起の補正と次元削減</span></div></div>
+        <div class="detail"><b>共起行列 → PPMI → SVD</b><p>語の頻度を考慮して共起を補正し、少ない成分で表した単語の類似度を比較する。</p></div><i class="go" data-lucide="arrow-right"></i>
+      </a>
       <a class="demo" href="cbow.html">
-        <span class="step">03</span><div class="name"><span class="icon"><i data-lucide="network"></i></span><div><h3>CBOWを学習する</h3><span>文脈から中心語を予測</span></div></div>
+        <span class="step">04</span><div class="name"><span class="icon"><i data-lucide="network"></i></span><div><h3>CBOWを学習する</h3><span>文脈から中心語を予測</span></div></div>
         <div class="detail"><b>周辺語 → 中心語の予測 → 重み更新</b><p>文章から正解を自動生成し、予測誤差によって単語ベクトルが変化する過程を操作する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
       <a class="demo" href="word-vector-space.html">
-        <span class="step">04</span><div class="name"><span class="icon"><i data-lucide="orbit"></i></span><div><h3>学習済み単語ベクトルを調べる</h3><span>学習結果を近傍語と類推で確認</span></div></div>
+        <span class="step">05</span><div class="name"><span class="icon"><i data-lucide="orbit"></i></span><div><h3>学習済み単語ベクトルを調べる</h3><span>学習結果を近傍語と類推で確認</span></div></div>
         <div class="detail"><b>1万語・100次元 → 近傍検索・PCA・類推</b><p>教科書第4章の学習済み改良CBOWを使い、単語の近さとベクトルの足し引きを確認する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
     </nav>
-    <section class="outcome"><b>4ページの関係</b><p>01と02はカウントベース、03と04は推論ベース。語彙表で作った単語IDが、共起行列とCBOWの入力になる。</p></section>
+    <section class="outcome"><b>5ページの関係</b><p>01は共通の準備。02・03はカウントベース、04・05は推論ベース。単語IDを作り、2つの方法で分散表現を学ぶ。</p></section>
   </main>
   <footer>自然言語処理2026 · ブラウザだけで実行可能</footer>
   <script>window.addEventListener('DOMContentLoaded',()=>lucide.createIcons())</script>
