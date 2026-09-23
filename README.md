@@ -38,6 +38,7 @@ individual demos remain subject to their respective licenses.
   - [データ構造とアルゴリズム](#dsa)
   - [進化計算](#ec)
   - [機械学習](#ml)
+  - [自然言語処理](#nlp)
   - [MediaPipe](#mediapipe)
   - [音声処理 (Audio)](#audio)
 
@@ -110,6 +111,12 @@ individual demos remain subject to their respective licenses.
 - [k-means Clustering](https://jkushida.github.io/Web_demo/ML/k-means.html) - k-meansクラスタリングのシミュレーション
 - [Polynomial Regression & Overfitting](https://jkushida.github.io/Web_demo/ML/polynomial-overfitting.html) - 多項式回帰と過学習のデモ
 - [PCA Educational Demo](https://jkushida.github.io/Web_demo/ML/pca_educational_demo.html) - 主成分分析（PCA）の教育用デモ
+
+### 自然言語処理 <a id="nlp"></a>
+- [語彙表を段階的に作る](https://jkushida.github.io/Web_demo/NLP/vocabulary_builder.html) - 文章を1語ずつ読み、単語IDと出現回数を作成
+- [共起行列を段階的に作る](https://jkushida.github.io/Web_demo/NLP/cooccurrence.html) - 共起行列、コサイン類似度、類似語ランキングを可視化
+- [CBOW実験室](https://jkushida.github.io/Web_demo/NLP/cbow.html) - 学習データ、予測、重み更新、分散表現をブラウザ内で実験
+- [学習済み単語ベクトル空間](https://jkushida.github.io/Web_demo/NLP/index.html) - 10,000語・100次元の学習済みモデルで近傍語とベクトル類推を確認
 
 ### MediaPipe <a id="mediapipe"></a>
 - [Finger Draw](https://jkushida.github.io/Web_demo/MediaPipe/finger_draw.html) - 手と顔の検出による3D描画

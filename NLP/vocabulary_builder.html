@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>語彙表を作る | 自然言語処理2026</title>
+  <link rel="icon" href="data:,">
+  <script defer src="vendor/lucide.min.js"></script>
+  <style>
+    :root{--ink:#202b2d;--muted:#61706e;--line:#d7e0dc;--teal:#087d79;--teal-soft:#e5f3ef;--orange:#b95f13;--orange-soft:#fff3e8;--blue:#1769aa;--blue-soft:#eaf3fb;--paper:#fff;--bg:#f5f7f5;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;color:var(--ink);letter-spacing:0}*{box-sizing:border-box}body{margin:0;background:var(--bg)}button,select,textarea{font:inherit;color:inherit}button,select{cursor:pointer}button{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:5px;min-height:38px;padding:8px 12px;background:#fff;font-weight:650}button:hover{background:#edf2ef}button:disabled{cursor:default;opacity:.45}button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #3b9aab;outline-offset:2px}button svg,a svg{width:18px;height:18px;flex-shrink:0}.primary{background:var(--teal);border-color:var(--teal);color:#fff}.primary:hover{background:#066965}.icon-button{width:38px;padding:8px}.app-header{min-height:60px;padding:8px clamp(18px,3vw,42px);display:flex;justify-content:space-between;align-items:center;gap:18px;background:var(--paper);border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:11px}.brand>svg{color:var(--teal);width:27px;height:27px}.eyebrow{display:block;font-size:10px;color:var(--muted);font-weight:700;margin-bottom:2px}h1{font-size:21px;line-height:1.2;margin:0}h2{font-size:18px;margin:0}h3{font-size:14px;margin:0}p{line-height:1.7}.back-link{color:var(--teal);text-decoration:none;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.back-link svg{width:16px;height:16px}.layout{max-width:1500px;margin:auto;display:grid;grid-template-columns:280px minmax(0,1fr);min-height:calc(100vh - 60px)}.controls{padding:18px 20px;background:#fafbf9;border-right:1px solid var(--line)}.controls h2{font-size:15px;margin-bottom:12px}.section-no{font-size:11px;color:var(--teal);margin-right:5px}label{display:block;font-size:12px;font-weight:700;margin:12px 0 6px}select,textarea{width:100%;border:1px solid #c9d4ce;border-radius:4px;background:#fff;padding:8px 9px}textarea{min-height:82px;height:82px;resize:vertical;line-height:1.55;font-size:13px}.field-note{color:var(--muted);font-size:10px;line-height:1.55;margin:6px 0 10px}.control-buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.control-buttons .full{grid-column:1 / -1}.status-box{margin-top:16px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.status-box strong{display:block;font-size:25px;color:var(--teal);font-variant-numeric:tabular-nums;margin-top:2px}.status-box span{font-size:10px;color:var(--muted)}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:10px;color:var(--muted)}.legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}.legend .current{background:var(--blue)}.legend .seen{background:var(--teal)}main{padding:18px clamp(20px,3vw,38px) 28px;min-width:0}.intro{display:flex;align-items:end;justify-content:space-between;gap:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}.intro h2{font-size:17px}.intro p{max-width:760px;font-size:12px;line-height:1.6;color:var(--muted);margin:5px 0 0}.step-label{font-size:11px;font-weight:700;color:var(--teal);white-space:nowrap}.token-track{padding:14px 0 12px;border-bottom:1px solid var(--line)}.token-track h2{font-size:14px;margin-bottom:10px}.tokens{display:flex;flex-wrap:wrap;gap:6px}.token{min-width:58px;min-height:49px;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;overflow-wrap:anywhere}.token b{font-size:14px}.token small{font-size:9px;color:var(--muted);font-variant-numeric:tabular-nums}.token.done{background:var(--teal-soft);border-color:#82bcac;color:#075e58}.token.current{background:var(--blue-soft);border:2px solid var(--blue);color:#114e80}.token.pending{opacity:.48}.step-result{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(230px,.9fr);gap:24px;padding:14px 0;border-bottom:1px solid var(--line)}.decision{padding:12px 14px;background:#f4f8f6;border-left:4px solid var(--teal)}.decision.is-new{background:var(--orange-soft);border-color:var(--orange)}.decision .step-kicker{font-size:10px;font-weight:700;color:var(--muted)}.decision strong{display:block;font-size:20px;margin:4px 0}.decision p{font-size:12px;line-height:1.55;margin:0}.decision code{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;background:rgba(255,255,255,.7);padding:2px 4px}.id-line{padding:10px 0}.id-line h3{font-size:13px;margin-bottom:7px}.corpus{display:flex;flex-wrap:wrap;gap:5px;min-height:34px}.id-token{display:flex;align-items:center;gap:4px;font:11px ui-monospace,SFMono-Regular,Consolas,monospace;background:#edf2ef;padding:5px 6px;border-radius:3px}.id-token span{color:var(--muted);font-family:inherit}.id-token.current{background:var(--teal);color:#fff}.id-token.current span{color:#dff4ed}.tables{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:24px;padding-top:16px}.table-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:7px}.table-title h2{font-size:16px}.table-title span{font-size:10px;color:var(--muted)}.table-wrap{max-height:230px;overflow:auto;border-top:1px solid var(--line)}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}th,td{padding:7px 9px;text-align:left;border-bottom:1px solid #e1e8e5;font-size:12px}th{position:sticky;top:0;background:#fafbf9;color:var(--muted);font-size:10px}tr.changed td{background:var(--orange-soft)}.process{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}.process summary{font-size:12px;font-weight:700;cursor:pointer}.algorithm{margin:10px 0 0;padding:12px 14px;background:#f2f5f3;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace}.complete{color:var(--teal);font-weight:700}.empty{color:var(--muted);font-size:12px;padding:12px 0}.error{margin:12px 0;padding:10px;background:#fff0f1;border-left:3px solid #bd4560;color:#8e283e;font-size:12px;line-height:1.6}.hidden{display:none!important}@media(max-width:900px){.layout{grid-template-columns:1fr}.controls{border-right:0;border-bottom:1px solid var(--line);display:grid;grid-template-columns:1fr 1fr;gap:20px}.controls .status-box{margin:0}.controls .legend{grid-column:1 / -1;margin-top:0}.step-result,.tables{grid-template-columns:1fr}.step-result{gap:12px}.tables{gap:22px}}@media(max-width:600px){.app-header{align-items:flex-start}.back-link{font-size:11px}.controls{display:block}.status-box{margin-top:20px!important}.intro{align-items:flex-start;flex-direction:column}.step-label{margin-top:0}.token{min-width:52px;min-height:50px;padding:6px}.token b{font-size:14px}.tables{padding-top:18px}main{padding:22px 16px 30px}.controls{padding:20px 16px}.app-header{padding:12px 16px}.brand>svg{display:none}}
+    /* Compact layout is retained while text stays readable at lecture-room scale. */
+    .eyebrow{font-size:11px}.back-link{font-size:13px}.controls h2{font-size:16px}label{font-size:13px}.section-no{font-size:12px}select,textarea{font-size:14px}.field-note{font-size:11px}.status-box span,.legend{font-size:11px}.intro h2{font-size:19px}.intro p{font-size:13px}.step-label{font-size:12px}.token-track h2{font-size:16px}.token b{font-size:15px}.token small{font-size:10px}.decision .step-kicker{font-size:11px}.decision strong{font-size:21px}.decision p{font-size:13px}.id-line h3{font-size:14px}.id-token{font-size:12px}.table-title h2{font-size:17px}.table-title span,th{font-size:11px}th,td{font-size:13px}.process summary{font-size:13px}.empty{font-size:13px}
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand"><i data-lucide="list-tree" aria-hidden="true"></i><div><span class="eyebrow">自然言語処理2026 · 単語ID</span><h1>語彙表を段階的に作る</h1></div></div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap"><a class="back-link" href="cooccurrence.html"><i data-lucide="table"></i>共起行列へ</a><a class="back-link" href="cbow.html"><i data-lucide="arrow-left"></i>CBOW実験室へ</a></div>
+  </header>
+  <div class="layout">
+    <aside class="controls">
+      <section>
+        <h2><span class="section-no">01</span>文章を用意する</h2>
+        <label for="preset">例文</label>
+        <select id="preset">
+          <option value="japanese">日本語・3文（分かち書き済み）</option>
+          <option value="english" selected>教科書の英文</option>
+          <option value="shortJapanese">日本語・2文（分かち書き済み）</option>
+          <option value="custom">自由入力</option>
+        </select>
+        <label for="text">コーパス</label>
+        <textarea id="text" spellcheck="false">You say goodbye and I say hello.</textarea>
+        <p class="field-note">日本語は語の間を空白で区切る。英字は小文字へそろえ、ピリオドも1語として扱う。</p>
+        <button id="apply" class="primary"><i data-lucide="refresh-cw"></i>最初から作る</button>
+      </section>
+      <section class="status-box"><span>読み込んだ語</span><strong><span id="processed">0</span> / <span id="total">0</span></strong><span>初出の語だけに、新しいIDを付ける</span></section>
+      <div class="control-buttons"><button id="previous" title="前の状態へ戻る" aria-label="前の状態へ戻る"><i data-lucide="chevron-left"></i>戻る</button><button id="next" class="primary"><i data-lucide="chevron-right"></i>次の語</button><button id="finish" class="full"><i data-lucide="fast-forward"></i>最後まで進める</button></div>
+      <div class="legend"><span><b class="current"></b>次に読む語</span><span><b class="seen"></b>処理済み</span></div>
+    </aside>
+    <main>
+      <div id="error" class="error hidden" role="alert"></div>
+      <section class="intro"><div><h2>左から1語ずつ読み、初出の語を登録する</h2><p><code>word_to_id</code> は単語からIDを引く表。初めて現れた語には現在の語彙数をIDとして付け、2回目以降は同じIDを使う。</p></div><span id="step-label" class="step-label">開始前</span></section>
+      <section class="token-track" aria-labelledby="token-title"><h2 id="token-title">文章を単語列として読む</h2><div id="tokens" class="tokens"></div></section>
+      <section class="step-result">
+        <div id="decision" class="decision"><span class="step-kicker">ここに処理内容が表示される</span><strong>「次の語」で開始</strong><p>最初の単語から、ID付与と出現回数の更新を確認する。</p></div>
+        <div class="id-line"><h3><code>corpus</code> に単語IDを追加する</h3><div id="corpus" class="corpus"><span class="empty">まだID列は作られていない</span></div></div>
+      </section>
+      <section class="tables">
+        <section><div class="table-title"><h2>語彙表 <code>word_to_id</code></h2><span id="vocab-count">0語</span></div><div class="table-wrap"><table><thead><tr><th>単語</th><th>ID</th><th>出現回数</th></tr></thead><tbody id="vocab-body"></tbody></table></div></section>
+        <section><div class="table-title"><h2>今回の処理履歴</h2><span>新規登録 / 既存参照</span></div><div class="table-wrap"><table><thead><tr><th>位置</th><th>語</th><th>判定</th><th>ID</th><th>回数</th></tr></thead><tbody id="history-body"></tbody></table></div></section>
+      </section>
+      <details class="process"><summary>このページで実行している処理</summary><pre class="algorithm">for word in tokens:
+    if word not in word_to_id:
+        word_to_id[word] = len(word_to_id)  # 初出ならIDを付ける
+    corpus.append(word_to_id[word])         # ID列へ追加
+    count[word] += 1                        # 出現回数を増やす</pre></details>
+    </main>
+  </div>
+  <script>
+    "use strict";
+    const $ = (id) => document.getElementById(id);
+    const presets = {
+      japanese: "私 は 猫 が 好き 。 私 は 犬 が 好き 。 君 は 猫 が 好き 。",
+      english: "You say goodbye and I say hello.",
+      shortJapanese: "私 は 本 を 読む 。 私 は 音楽 を 聴く 。",
+    };
+    let tokens = [];
+    let position = 0;
+
+    const escapeHTML = (value) => String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
+    function normalize(text) {
+      return text.trim().toLowerCase().replaceAll(".", " .").split(/\s+/).filter(Boolean);
+    }
+    function reset() {
+      const nextTokens = normalize($("text").value);
+      const error = $("error");
+      if (nextTokens.length < 1) { error.textContent = "1語以上の文章を入力する。"; error.classList.remove("hidden"); return; }
+      if (nextTokens.length > 80) { error.textContent = "このデモでは80語以内にする。"; error.classList.remove("hidden"); return; }
+      tokens = nextTokens;
+      position = 0;
+      error.classList.add("hidden");
+      render();
+    }
+    function buildState() {
+      const mapping = new Map();
+      const counts = new Map();
+      const corpus = [];
+      const history = [];
+      for (let index = 0; index < position; index += 1) {
+        const word = tokens[index];
+        const isNew = !mapping.has(word);
+        if (isNew) mapping.set(word, mapping.size);
+        counts.set(word, (counts.get(word) || 0) + 1);
+        const id = mapping.get(word);
+        corpus.push(id);
+        history.push({index, word, id, isNew, count:counts.get(word)});
+      }
+      return {mapping, counts, corpus, history};
+    }
+    function render() {
+      const state = buildState();
+      $("processed").textContent = position;
+      $("total").textContent = tokens.length;
+      $("vocab-count").textContent = `${state.mapping.size}語`;
+      $("step-label").textContent = position === 0 ? "開始前" : position === tokens.length ? "完了" : `${position + 1}語目を読む`;
+      $("previous").disabled = position === 0;
+      $("next").disabled = position === tokens.length;
+      $("finish").disabled = position === tokens.length;
+
+      $("tokens").innerHTML = tokens.map((word, index) => {
+        const status = index < position ? "done" : index === position ? "current" : "pending";
+        const label = index < position ? `ID ${state.corpus[index]}` : index === position ? "次に読む" : "未処理";
+        return `<div class="token ${status}"><b>${escapeHTML(word)}</b><small>${label}</small></div>`;
+      }).join("");
+
+      const decision = $("decision");
+      decision.classList.toggle("is-new", false);
+      if (position === 0) {
+        decision.innerHTML = '<span class="step-kicker">まだ1語も読んでいない</span><strong>「次の語」で開始</strong><p>現在の語彙数は0。最初の語は必ず初出なので、ID 0を付ける。</p>';
+      } else {
+        const entry = state.history.at(-1);
+        decision.classList.toggle("is-new", entry.isNew);
+        const verdict = entry.isNew ? "初出: 新しいIDを登録" : "既出: 登録済みIDを再利用";
+        const detail = entry.isNew
+          ? `語彙表に <code>${escapeHTML(entry.word)} → ${entry.id}</code> を追加した。`
+          : `<code>${escapeHTML(entry.word)}</code> はすでにID ${entry.id}として登録済み。新しいIDは付けない。`;
+        const finish = position === tokens.length ? ' <span class="complete">全ての語を読み終えた。</span>' : "";
+        decision.innerHTML = `<span class="step-kicker">${verdict}</span><strong>${escapeHTML(entry.word)} → ID ${entry.id}</strong><p>${detail} 出現回数は ${entry.count} 回。${finish}</p>`;
+      }
+
+      $("corpus").innerHTML = state.corpus.length
+        ? state.corpus.map((id, index) => `<span class="id-token ${index === position - 1 ? "current" : ""}"><span>${escapeHTML(tokens[index])}</span>${id}</span>`).join("")
+        : '<span class="empty">まだID列は作られていない</span>';
+      $("vocab-body").innerHTML = state.mapping.size
+        ? [...state.mapping.entries()].map(([word, id]) => `<tr class="${position && state.history.at(-1).word === word ? "changed" : ""}"><td>${escapeHTML(word)}</td><td>${id}</td><td>${state.counts.get(word)}</td></tr>`).join("")
+        : '<tr><td colspan="3" class="empty">最初の語を読むと表ができる</td></tr>';
+      $("history-body").innerHTML = state.history.length
+        ? state.history.map((entry, index) => `<tr class="${index === state.history.length - 1 ? "changed" : ""}"><td>${entry.index}</td><td>${escapeHTML(entry.word)}</td><td>${entry.isNew ? "新規" : "既出"}</td><td>${entry.id}</td><td>${entry.count}</td></tr>`).join("")
+        : '<tr><td colspan="5" class="empty">処理履歴はまだない</td></tr>';
+    }
+    $("preset").addEventListener("change", () => { const text = presets[$("preset").value]; if (text) $("text").value = text; });
+    $("text").addEventListener("input", () => { $("preset").value = "custom"; });
+    $("apply").addEventListener("click", reset);
+    $("previous").addEventListener("click", () => { position -= 1; render(); });
+    $("next").addEventListener("click", () => { position += 1; render(); });
+    $("finish").addEventListener("click", () => { position = tokens.length; render(); });
+    window.addEventListener("DOMContentLoaded", () => { window.lucide?.createIcons(); reset(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CBOW実験室 | 自然言語処理2026</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css?v=20260914-inference">
+  <style>
+    .data-recipe{margin-top:32px;padding-top:24px;border-top:1px solid #ccd9d5;max-width:100%;line-height:1.85}
+    .data-recipe h2{font-size:22px}.data-recipe h3{font-size:17px;margin:0 0 8px}
+    .data-recipe p{font-size:15px;margin:8px 0;overflow-wrap:anywhere}
+    .data-recipe ol{padding-left:26px}.data-recipe li{padding:16px 0;border-bottom:1px solid #e1e8e5}
+    .data-recipe pre{font-size:14px;line-height:1.8;background:#eff5f2;padding:14px;white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%}
+  </style>
+  <script defer src="vendor/lucide.min.js"></script>
+  <script defer src="cbow-engine.js"></script>
+  <script defer src="app.js?v=20260923-static"></script>
+</head>
+<body>
+<header class="app-header">
+  <div class="brand"><i data-lucide="network" aria-hidden="true"></i><div><span class="eyebrow">自然言語処理2026 · 第9・10回</span><h1>CBOW実験室</h1></div></div>
+  <div class="header-right"><a class="icon-button" href="vocabulary_builder.html" title="語彙表を段階的に作る" aria-label="語彙表を段階的に作る"><i data-lucide="list-tree"></i></a><button id="settings-toggle" class="icon-button" title="コーパス・学習設定" aria-label="コーパス・学習設定" aria-expanded="false" aria-controls="settings-panel"><i data-lucide="sliders-horizontal"></i></button><span class="status"><span id="status-dot"></span><span id="status">準備中</span></span><a class="icon-button" href="10_simple_cbow_colab_output.ipynb" download title="対応ノートブック" aria-label="対応ノートブックをダウンロード"><i data-lucide="notebook-text"></i></a></div>
+</header>
+<div class="workspace">
+  <aside class="settings" id="settings-panel">
+    <form id="input-form">
+      <h2><span class="section-no">01</span> 文章から正解を作る</h2>
+      <label for="preset">例文</label>
+      <select id="preset"><option value="textbook">教科書の英文</option><option value="shortEnglish">短い英文・1文</option><option value="parallelEnglish">英文・2文（cat / dog）</option><option value="japanese">日本語・3文（分かち書き済み）</option><option value="shortJapanese">日本語・2文（本 / 音楽）</option><option value="conflict">同じ文脈・異なる正解</option><option value="custom">自由入力</option></select>
+      <label for="text">コーパス</label>
+      <textarea id="text" rows="4" maxlength="4000" spellcheck="false">You say goodbye and I say hello.</textarea>
+      <p class="field-note" id="input-note">英字は小文字へ変換。ピリオドも1語。</p>
+      <div class="two-settings"><div><label for="hidden">埋め込み次元 H</label><select id="hidden"><option>2</option><option selected>3</option><option>5</option><option>8</option></select></div><div><label>文脈の幅</label><div class="fixed-value">左右1語</div></div></div>
+      <button type="submit" class="primary full"><i data-lucide="check"></i>文章・次元を適用</button>
+      <p id="dirty" class="field-note" hidden>変更は未適用。適用時に重みを初期化。</p>
+    </form>
+    <section class="training-settings">
+      <h2><span class="section-no">02</span> 予測して重みを更新</h2>
+      <label for="rate">学習率 η <output id="rate-value">1.00</output></label>
+      <input id="rate" type="range" min="0.05" max="2" step="0.05" value="1">
+      <div class="training-buttons"><button id="step" title="全学習例で1回更新"><i data-lucide="step-forward"></i>1回</button><button id="train" class="primary"><i data-lucide="play"></i>連続学習</button><button id="reset" class="icon-button" title="重みを初期化（同じ乱数）" aria-label="重みを初期化"><i data-lucide="rotate-ccw"></i></button></div>
+      <div class="epoch"><span>重み更新</span><strong id="epoch">0</strong><span>回</span></div>
+      <div class="loss-heading"><span>全学習例の平均損失</span><strong id="mean-loss">—</strong></div>
+      <canvas id="loss-chart" aria-label="平均交差エントロピーの推移" role="img"></canvas>
+      <div class="chart-legend"><span>0回</span><span id="chart-end">0回</span></div>
+      <p class="field-note">全件一括のSGD。連続学習は1000回で停止。</p>
+    </section>
+    <div class="scope-note"><i data-lucide="info"></i><p>小さなコーパスでの学習実験。訓練時の損失低下だけでは、未知の文への性能は分からない。</p></div>
+  </aside>
+  <main>
+    <div id="error" role="alert" hidden></div>
+    <section class="dimensions" aria-label="モデルの形状">
+      <div><span>語彙数 V</span><strong id="vocab-size">7</strong><small>文章に含まれる異なり語数</small></div>
+      <div><span>学習データ数 N</span><strong id="sample-count">6</strong><small id="sample-count-formula">8トークン − 左右1語 × 2 = 6組</small></div>
+      <div><span>埋め込み次元 H</span><strong id="hidden-size">3</strong><small>1語を表す実数の個数</small></div>
+      <div><span>入力側の重み W_in</span><strong id="shape-in">(7, 3)</strong><small>語彙数 × 埋め込み次元</small></div>
+      <div><span>出力側の重み W_out</span><strong id="shape-out">(3, 7)</strong><small>埋め込み次元 × 語彙数</small></div>
+    </section>
+    <nav class="tabs" role="tablist" aria-label="実験の表示"><button role="tab" id="tab-data" aria-controls="panel-data" aria-selected="true" data-tab="data">学習データ</button><button role="tab" id="tab-model" aria-controls="panel-model" aria-selected="false" data-tab="model">CBOWの計算</button><button role="tab" id="tab-inference" aria-controls="panel-inference" aria-selected="false" data-tab="inference">推論（予測）</button><button role="tab" id="tab-vectors" aria-controls="panel-vectors" aria-selected="false" data-tab="vectors">分散表現</button></nav>
+    <section class="sample-strip"><div><span class="eyebrow">選択中の学習例</span><div id="sample-equation" class="sample-equation">you ＋ goodbye → say</div></div><div class="sample-controls"><button id="previous" class="icon-button" title="前の学習例" aria-label="前の学習例"><i data-lucide="chevron-left"></i></button><select id="sample" aria-label="学習例"></select><button id="next" class="icon-button" title="次の学習例" aria-label="次の学習例"><i data-lucide="chevron-right"></i></button></div></section>
+    <section id="panel-data" role="tabpanel" aria-labelledby="tab-data">
+      <div class="panel-heading"><h2>単語 → ID → 周辺語と中心語</h2><span class="legend"><b class="context-key"></b>周辺語 <b class="target-key"></b>中心語（正解）</span></div>
+      <div id="tokens" class="tokens" aria-label="文章内の単語とID"></div>
+      <div class="corpus-line"><code>corpus =</code><code id="corpus"></code></div>
+      <p class="sample-count-note"><strong>学習データ数 N = <span id="sample-count-detail">6</span>組</strong><span id="sample-count-reason">8トークンから、先頭・末尾を除いた6か所を中心語にする。</span></p>
+      <div class="data-grid"><section><h3>語彙表 <code>word_to_id</code></h3><div id="vocab-table" class="table-scroll"></div></section><section><h3>文章自身が正解ラベルになる</h3><div id="examples-table" class="table-scroll"></div></section></div>
+      <p class="concept-line">中心語を入力から外し、左右の語だけで予測する。人による正解ラベル付けは不要。</p>
+      <section class="data-recipe" aria-labelledby="recipe-title">
+        <h2 id="recipe-title">文章から学習データを作る手順</h2>
+        <p>以下は初期例文 <code>You say goodbye and I say hello.</code> での作成例。入力文を変更しても、同じ手順で上の表を作る。</p>
+        <ol>
+          <li><h3>小文字にそろえ、単語に分割する</h3><p>英字を小文字に変換し、ピリオドの前に空白を入れてから空白で分割する。ピリオドも1語として扱う。</p><pre>you | say | goodbye | and | i | say | hello | .</pre><p>日本語の入力例は分かち書き済み。この画面では形態素解析を行わない。</p></li>
+          <li><h3>初めて現れた語にIDを割り当てる</h3><p><code>you → 0</code>、<code>say → 1</code>、<code>goodbye → 2</code> …と、出現順に登録する。2回目の <code>say</code> にも同じIDの1を使う。8個のトークンに対して、異なる語は7種類になる。</p></li>
+          <li><h3>文章を単語ID列 corpus に置き換える</h3><pre>corpus = [0, 1, 2, 3, 4, 1, 5, 6]</pre><p>「位置」は文章中の何番目か、「ID」はどの単語かを表す。例えば位置5の <code>say</code> のIDは1。IDの大小は意味の近さを表さない。</p></li>
+          <li><h3>中心語を隠し、左右1語を入力にする</h3><p>位置1の <code>say</code> を中心語にすると、左の <code>you</code> と右の <code>goodbye</code> が周辺語になる。ウィンドウサイズ1は、左右それぞれ1語という意味。</p><pre>入力 contexts[0] = [0, 2]  # you, goodbye
+正解 target[0]   = 1       # say</pre></li>
+          <li><h3>中心位置を1つずつ右にずらす</h3><p>次は <code>say, and → goodbye</code>。同様に末尾まで進める。先頭と末尾は左右の語がそろわないため中心語にしない。8トークンから <code>8 − 2 = 6</code> 個の学習例を作る。</p><pre>contexts = [[0,2], [1,3], [2,4], [3,1], [4,5], [1,6]]
+target   = [1, 2, 3, 4, 1, 5]</pre></li>
+          <li><h3>通常CBOWへ渡すone-hot表現を作る</h3><p>語彙数7に合わせた長さ7の配列を用意し、その単語のIDの位置だけを1にする。周辺語と正解をこの表現に変換してモデルへ渡す。</p><pre>you     (ID 0) → [1, 0, 0, 0, 0, 0, 0]
+goodbye (ID 2) → [0, 0, 1, 0, 0, 0, 0]
+say     (ID 1) → [0, 1, 0, 0, 0, 0, 0]</pre><p>正解は元の文章の中心語から作れる。これがCBOWを自己教師あり学習と呼ぶ理由。次の「CBOWの計算」タブで、周辺語から正解語を予測する処理を確認する。</p></li>
+        </ol>
+      </section>
+    </section>
+    <section id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden>
+      <h2>通常CBOWのネットワーク構造</h2>
+      <p>左右のone-hot入力は同じ W_in を共有する。取り出した2つのベクトルを平均し、全語彙のスコアから中心語の確率を求める。</p>
+      <div style="overflow-x:auto;width:100%"><svg id="network-svg" role="img" aria-label="入力2本から共有重み、中間層、出力、Softmax、正解へ進むCBOWネットワーク" style="display:block;width:100%;min-width:1000px"></svg></div>
+      <p>丸の中の数値は現在の学習例の計算値。緑は入力で1となる位置、赤は正解語。正解ラベルはSoftmaxの出力と比較して損失を求めるために使う。</p>
+    </section>
+    <section id="panel-model" role="tabpanel" aria-labelledby="tab-model" hidden>
+      <div class="model-grid"><section class="computation">
+        <div class="panel-heading"><h2>周辺語から中間表現 h を作る</h2></div>
+        <div id="one-hot"></div>
+        <div id="lookup-equation" class="lookup-equation"></div>
+        <div class="matrix-heading"><h3>共有する W_in <span id="matrix-shape"></span></h3><span class="matrix-scale">負 <span></span> 正</span></div>
+        <div id="input-matrix" class="table-scroll matrix-scroll"></div>
+        <div class="average"><code>h = (h₀ + h₁) / 2</code><div id="average-vector" class="vector-values"></div></div>
+        <div class="score-formula"><code>score = h @ W_out</code><span>→</span><code>p = softmax(score)</code></div>
+      </section><section class="prediction"><h2>語彙全体から中心語を予測</h2><div id="probabilities"></div><div class="prediction-result" id="prediction-result"></div><div class="sample-loss"><code>L = −log p(正解)</code><strong id="sample-loss">—</strong></div><p class="field-note">バーは現在の確率、縦線は学習前の確率。</p></section></div>
+      <div id="ambiguity" class="notice" hidden></div>
+      <details class="math-details"><summary>対応するコードと W_out</summary><pre>h0 = contexts[:, 0] @ w_in
+h1 = contexts[:, 1] @ w_in
+h = 0.5 * (h0 + h1)
+score = h @ w_out
+probability = softmax(score)
+d_score = (probability - target) / batch_size
+w_in -= learning_rate * grad_w_in
+w_out -= learning_rate * grad_w_out</pre><div id="output-matrix" class="table-scroll"></div></details>
+    </section>
+    <section id="panel-inference" role="tabpanel" aria-labelledby="tab-inference" hidden>
+      <div class="panel-heading"><div><h2>学習済みの重みで中心語を予測する</h2><p class="field-note">ここでは <code>W_in</code> と <code>W_out</code> を更新しない。周辺語を入力し、中心語ごとの確率だけを読む。</p></div><span class="inference-badge">重みを固定</span></div>
+      <div class="inference-grid">
+        <section class="inference-input">
+          <h3>周辺語を選ぶ</h3>
+          <div class="inference-controls"><label>左の語<select id="inference-left" aria-label="推論で使う左の周辺語"></select></label><span class="inference-plus">＋</span><label>右の語<select id="inference-right" aria-label="推論で使う右の周辺語"></select></label></div>
+          <div class="inference-path"><span id="inference-equation">you ＋ goodbye</span><span>→</span><code>h = (W_in[left] + W_in[right]) / 2</code><span>→</span><code>softmax(h @ W_out)</code></div>
+          <div class="inference-vector"><span>中間表現 h</span><div id="inference-hidden" class="vector-values"></div></div>
+          <p id="inference-result" class="inference-result" aria-live="polite"></p>
+        </section>
+        <section class="inference-output">
+          <h3>中心語の予測確率</h3>
+          <div id="inference-probabilities"></div>
+        </section>
+      </div>
+      <aside id="window-note" class="notice" hidden></aside>
+    </section>
+    <section id="panel-vectors" role="tabpanel" aria-labelledby="tab-vectors" hidden>
+      <div class="panel-heading"><h2>W_in の各行が、1語の分散表現</h2></div>
+      <div class="vector-grid"><section><div class="view-controls"><label for="vector-mode">表示する値</label><select id="vector-mode"><option value="current">現在の重み</option><option value="initial">学習前の重み</option><option value="delta">学習による変化量</option></select></div><div id="vectors-table" class="table-scroll"></div></section><section class="similarity"><h3>ベクトルの向きの近さ</h3><label for="query">比較の基準となる語</label><select id="query"></select><div id="similarities"></div><code>cos(x, y) = x·y / (‖x‖‖y‖)</code><p class="field-note">類似度は現在の W_in から計算。小さな例文では、意味の近さより出現文脈の偏りが強く現れる。</p></section></div>
+    </section>
+    <footer><span>通常CBOW · バイアスなし · 文脈の順序は平均で失われる</span><span id="accuracy">訓練データ正解率 —</span></footer>
+  </main>
+</div>
+</body>
+</html>
