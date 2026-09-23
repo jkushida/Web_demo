@@ -40,7 +40,18 @@ function table(matrix, interactive = true, headers = state.words) {
 function cellExplanation() {
   const s=state, c=s.C[row][col], a=s.rows[row], b=s.cols[col];
   const expected=a*b/s.N, p=s.PMI[row][col];
-  return `<div class="formula"><h3>${esc(s.words[row])} × ${esc(s.words[col])}</h3><p>共起回数 C[x,y] = <b>${c}</b></p><p>行和 = ${a} ／ 列和 = ${b} ／ N = ${s.N}</p><p>P(x,y) = ${c}/${s.N} = ${fmt(c/s.N)}</p><p>P(x)P(y) = (${a}/${s.N}) × (${b}/${s.N}) = ${fmt(a*b/s.N**2)}</p><p>独立なら期待される回数 = ${fmt(expected)}</p><hr><p>PMI = log₂((${c} × ${s.N}) / (${a} × ${b}))</p><p class="value">${fmt(p)}</p><p>PPMI = max(0, ${fmt(p)}) = <b>${fmt(Math.max(0,p))}</b></p><p>${c===0?'共起0回なのでPMIは−∞、PPMIは0。':p>0?'独立と仮定した期待回数より多く共起している。':p<0?'独立と仮定した期待回数より少なく共起している。':'独立と仮定した期待回数と一致する。'}</p></div>`;
+  const mark = (role, value, label) => `<span class="quantity q-${role}" title="${label}">${esc(value)}</span>`;
+  const count = mark('count', c, '共起回数 C[x,y]'), rsum = mark('row', a, '行和：注目語側'), csum = mark('col', b, '列和：周辺語側'), total = mark('total', s.N, '共起ペア総数 N');
+  const result = value => mark('result', fmt(value), '計算結果');
+  return `<div class="formula"><h3><span class="q-row">${esc(s.words[row])}</span> × <span class="q-col">${esc(s.words[col])}</span></h3>
+    <div class="quantity-legend" aria-label="数値の色と役割"><span class="q-count">共起回数</span><span class="q-row">行和</span><span class="q-col">列和</span><span class="q-total">総数 N</span><span class="q-result">計算結果</span></div>
+    <p>共起回数 C[x,y] = ${count}</p><p>行和 = ${rsum} ／ 列和 = ${csum} ／ N = ${total}</p>
+    <p>P(x,y) = ${count}/${total} = ${result(c/s.N)}</p>
+    <p>P(x)P(y) = (${rsum}/${total}) × (${csum}/${total}) = ${result(a*b/s.N**2)}</p>
+    <p>独立なら期待される回数 = ${result(expected)}</p><hr>
+    <p>PMI = log₂((${count} × ${total}) / (${rsum} × ${csum}))</p><p class="value">${result(p)}</p>
+    <p>PPMI = max(0, ${result(p)}) = ${result(Math.max(0,p))}</p>
+    <p>${c===0?'共起0回なのでPMIは−∞、PPMIは0。':p>0?'独立と仮定した期待回数より多く共起している。':p<0?'独立と仮定した期待回数より少なく共起している。':'独立と仮定した期待回数と一致する。'}</p></div>`;
 }
 function cosine(a,b) {const den=Math.hypot(...a)*Math.hypot(...b);return den<1e-12?null:a.reduce((v,x,i)=>v+x*b[i],0)/den;}
 function render() {
