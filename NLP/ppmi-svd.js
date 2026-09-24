@@ -44,7 +44,8 @@ function cellExplanation() {
   const mark = (role, value, label) => `<span class="quantity q-${role}" title="${label}">${esc(value)}</span>`;
   const count = mark('count', c, '共起回数 C[x,y]'), rsum = mark('row', a, '行和：注目語側'), csum = mark('col', b, '列和：周辺語側'), total = mark('total', s.N, '共起ペア総数 N');
   const result = value => mark('result', fmt(value), '計算結果');
-  return `<div class="formula"><h3><span class="q-row">${esc(s.words[row])}</span> × <span class="q-col">${esc(s.words[col])}</span></h3>
+  const pairSelectors=stage===1?`<div class="pair-selectors"><label for="pair-row">注目語 x<select id="pair-row" data-pair-row>${s.words.map((word,i)=>`<option value="${i}" ${i===row?'selected':''}>${esc(word)}</option>`).join('')}</select></label><label for="pair-col">周辺語 y<select id="pair-col" data-pair-col>${s.words.map((word,i)=>`<option value="${i}" ${i===col?'selected':''}>${esc(word)}</option>`).join('')}</select></label></div>`:'';
+  return `<div class="formula">${pairSelectors}<h3><span class="q-row">${esc(s.words[row])}</span> × <span class="q-col">${esc(s.words[col])}</span></h3>
     <div class="quantity-legend" aria-label="数値の色と役割"><span class="q-count">共起回数</span><span class="q-row">行和</span><span class="q-col">列和</span><span class="q-total">総数 N</span><span class="q-result">計算結果</span></div>
     <p>共起回数 C[x,y] = ${count}</p><p>行和 = ${rsum} ／ 列和 = ${csum} ／ N = ${total}</p>
     <p>P(x,y) = ${count}/${total} = ${result(c/s.N)}</p>
@@ -132,6 +133,7 @@ document.querySelector('.tabs').innerHTML=names.map((name,i)=>`<button role="tab
 document.querySelector('.tabs').onclick=e=>{const b=e.target.closest('[data-stage]');if(b){stage=Number(b.dataset.stage);render();}};
 document.querySelector('.tabs').onkeydown=e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();stage=e.key==='Home'?0:e.key==='End'?6:(stage+(e.key==='ArrowRight'?1:6))%7;render();$(`tab-${stage}`).focus();};
 $('content').onclick=e=>{const b=e.target.closest('[data-cell]');if(b){[row,col]=b.dataset.cell.split(',').map(Number);render();}};
+$('content').onchange=e=>{if(e.target.matches('[data-pair-row]'))row=Number(e.target.value);else if(e.target.matches('[data-pair-col]'))col=Number(e.target.value);else return;render();};
 $('apply').onclick=apply;$('dimension').onchange=render;$('query').onchange=render;
 $('preset').onchange=()=>{if(examples[$('preset').value]){$('text').value=examples[$('preset').value];apply();}};
 $('text').oninput=()=>{$('preset').value='custom';$('dirty').hidden=false;};$('window').onchange=()=>{$('dirty').hidden=false;};
