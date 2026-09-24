@@ -79,7 +79,12 @@ function render() {
   }
   if(stage===0 || stage===2 || stage===3) {
     const matrix=stage===0?s.C:stage===2?s.PMI:s.M;
-    $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">${stage===0?'共起回数は整数。':'PMIの小数は表示時のみ丸める。'} 青枠：${esc(s.words[row])} × ${esc(s.words[col])}</p></div>${cellExplanation()}</div>`;
+    const matrixValues=stage===0?s.C.flat():[];
+    const totalCells=matrixValues.length;
+    const valueCounts=matrixValues.reduce((counts,value)=>counts.set(value,(counts.get(value)||0)+1),new Map());
+    const matrixTotal=valueCounts.size?[...valueCounts].sort(([a],[b])=>a-b).map(([value,count])=>`${value}×${count}`).join(' + '):'';
+    const matrixGuide=stage===0?`<div class="matrix-guide"><b>C[i,j] は「注目語 i と周辺語 j」の組を数えた1セル</b><span>行列の大きさ：${s.words.length}×${s.words.length} = ${totalCells}セル</span><span>セルの値ごとの内訳：${[...valueCounts].sort(([a],[b])=>a-b).map(([value,count])=>`${value}のセル ${count}個`).join(' ／ ')}</span><strong>総和 N = ${matrixTotal} = ${s.N}</strong><p>行列の大きさはセルの個数、Nは全セルの値を足した数。0のセルも行列には含むが、合計には値を加えない。</p></div>`:'';
+    $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">${stage===0?'共起回数は整数。':'PMIの小数は表示時のみ丸める。'} 青枠：${esc(s.words[row])} × ${esc(s.words[col])}</p>${matrixGuide}</div>${cellExplanation()}</div>`;
   } else if(stage===1) {
     $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p></div>${cellExplanation()}</div>${pairCountWalk()}`;
   } else if(stage===4) {
