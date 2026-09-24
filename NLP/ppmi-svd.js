@@ -70,7 +70,7 @@ function render() {
   const s=state, k=Number($('dimension').value), q=Number($('query').value), reduced=s.U.map(r=>r.slice(0,k));
   document.querySelectorAll('[role=tab]').forEach((b,i)=>{b.setAttribute('aria-selected',String(stage===i));b.tabIndex=stage===i?0:-1;});
   $('panel').setAttribute('aria-labelledby',`tab-${stage}`);
-  $('title').textContent = ['回数の行列が出発点','共起ペアを確率に変える','期待される共起と実際の共起を比べる','PMIの負の値を0にする','PPMIを少ない成分で近似する','単語ベクトルUの先頭2成分','表現を変えたときの近い語'][stage];
+  $('title').textContent = ['共起行列 C の生成','共起ペアを確率に変える','期待される共起と実際の共起を比べる','PMIの負の値を0にする','PPMIを少ない成分で近似する','単語ベクトルUの先頭2成分','表現を変えたときの近い語'][stage];
   $('lead').textContent = ['セルを選ぶと、同じ語の組を確率・PMI・PPMIまで追跡できる。','N個の共起ペアから1組を選ぶとき、注目語がxである確率をP(x)とする。','PMIが正なら、独立と仮定した場合より多く共起している。','0を含む疎な行列はまだ語彙数V次元。次にSVDで次元を減らす。',`単語1つを${s.words.length}成分から${k}成分へ。教科書と同じUₖを使用。`,'点を選ぶと基準語が変わる。軸の符号や向き自体に意味はない。',`基準語「${s.words[q]}」を除外して比較。SVDは${k}次元を使用。`][stage];
   if(stage>=4 && s.S[0]<1e-12) {
     $('content').innerHTML='<div class="formula"><h3>PPMI行列が全て0</h3><p>共起の正の関連が残っていないため、SVDの軸から単語の関係を読み取れない。別の文章で比較する。</p></div>';
