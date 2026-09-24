@@ -54,6 +54,16 @@ function cellExplanation() {
     <p>PPMI = max(0, ${result(p)}) = ${result(Math.max(0,p))}</p>
     <p>${c===0?'共起0回なのでPMIは−∞、PPMIは0。':p>0?'独立と仮定した期待回数より多く共起している。':p<0?'独立と仮定した期待回数より少なく共起している。':'独立と仮定した期待回数と一致する。'}</p></div>`;
 }
+function pairCountWalk() {
+  const s=state, entries=[];
+  s.tokens.forEach((word,i)=>{
+    for(let d=1;d<=Number($('window').value);d++) for(const j of [i-d,i+d]) if(j>=0&&j<s.tokens.length) entries.push({i,j,word,neighbor:s.tokens[j]});
+  });
+  const tokens=s.tokens.map((word,i)=>`<span class="token-position"><small>${i+1}</small>${esc(word)}</span>`).join('');
+  const rows=entries.map((e,i)=>`<tr><td>${i+1}</td><td>${e.i+1}</td><td><b>${esc(e.word)}</b> → ${esc(e.neighbor)} <small>(位置 ${e.j+1})</small></td><td>C[${esc(e.word)}, ${esc(e.neighbor)}] に +1</td></tr>`).join('');
+  const gaps=entries.length/2;
+  return `<section class="pair-walk"><h3>どの語の組を数えたか</h3><p>コーパスを左から位置番号で示す。各位置の語を注目語にし、左右の幅 ${$('window').value} 語以内にある語を周辺語として、対応する行列セルに1を加える。</p><div class="token-line" aria-label="位置番号付きコーパス">${tokens}</div><p><b>${s.tokens.length}語</b>の列から、文脈内の組を<b>${entries.length}回</b>数える。各組は「注目語 → 周辺語」の向きで1回ずつ記録する。</p><details open><summary>加算記録をすべて表示（${entries.length}回）</summary><div class="scroll pair-scroll"><table><thead><tr><th>加算順</th><th>注目位置</th><th>注目語 → 周辺語</th><th>増える行列セル</th></tr></thead><tbody>${rows}</tbody></table></div></details><p class="note">行列の全セルを合計：${entries.length}回の加算で N = ${s.N}。対称な文脈窓では、同じ隣接箇所も注目語を逆にして数えるため、${gaps}箇所 × 2方向 = ${entries.length}回。句点を含めて1列にしているので、文の境界もまたいで集計する。</p></section>`;
+}
 function cosine(a,b) {const den=Math.hypot(...a)*Math.hypot(...b);return den<1e-12?null:a.reduce((v,x,i)=>v+x*b[i],0)/den;}
 function render() {
   if(!state)return;
@@ -71,7 +81,7 @@ function render() {
     const matrix=stage===0?s.C:stage===2?s.PMI:s.M;
     $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">${stage===0?'共起回数は整数。':'PMIの小数は表示時のみ丸める。'} 青枠：${esc(s.words[row])} × ${esc(s.words[col])}</p></div>${cellExplanation()}</div>`;
   } else if(stage===1) {
-    $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p></div>${cellExplanation()}</div>`;
+    $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p></div>${cellExplanation()}</div>${pairCountWalk()}`;
   } else if(stage===4) {
     const energy=s.S.reduce((a,v)=>a+v*v,0), kept=s.S.slice(0,k).reduce((a,v)=>a+v*v,0);
     const error=Math.sqrt(Math.max(0,energy-kept));
