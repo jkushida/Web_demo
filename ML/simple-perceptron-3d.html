@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="description"
+    content="単純パーセプトロンによる2クラス分類を、3次元のステップ関数とデータ点で学ぶ操作型デモ。"
+  />
+  <title>単純パーセプトロンによる2クラス分類</title>
+  <link rel="icon" href="data:," />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --text: #182230;
+      --muted: #5c6877;
+      --line: #d8dee6;
+      --line-strong: #aab4c0;
+      --blue: #2385df;
+      --blue-dark: #12538d;
+      --red: #ed5948;
+      --red-dark: #9d3025;
+      --accent: #1f6f5f;
+      --warning: #bd7a00;
+      --focus: #0b66c3;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    a:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 28%, transparent);
+      outline-offset: 2px;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 20px 0 32px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .back-link {
+      color: #364152;
+      font-size: 14px;
+      font-weight: 650;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .status-label {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .intro {
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 36px);
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .intro p {
+      max-width: 820px;
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .plot-panel,
+    .control-panel,
+    .lesson {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .plot-panel {
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .plot-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 48px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-soft);
+    }
+
+    .plot-toolbar strong {
+      font-size: 14px;
+    }
+
+    .plot-toolbar span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .plot-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-button {
+      display: inline-grid;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: #344054;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .icon-button:hover {
+      border-color: var(--line-strong);
+      background: #f2f4f7;
+    }
+
+    .plot-wrap {
+      position: relative;
+      min-height: 460px;
+      background: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1.32 / 1;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    canvas.is-dragging {
+      cursor: grabbing;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      right: 12px;
+      bottom: 10px;
+      padding: 5px 8px;
+      border: 1px solid rgba(216, 222, 230, 0.88);
+      border-radius: 5px;
+      color: #667085;
+      background: rgba(255, 255, 255, 0.88);
+      font-size: 11px;
+      pointer-events: none;
+    }
+
+    .control-panel {
+      overflow: hidden;
+    }
+
+    .panel-section {
+      padding: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-section:last-child {
+      border-bottom: 0;
+    }
+
+    .panel-section h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .equation {
+      padding: 10px;
+      border-left: 3px solid var(--accent);
+      color: #263441;
+      background: #f1f7f5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .boundary-text {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .slider-row + .slider-row {
+      margin-top: 13px;
+    }
+
+    .slider-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 5px;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    output {
+      min-width: 46px;
+      color: var(--accent);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .text-button {
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 1px solid #1f6f5f;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .text-button.secondary {
+      border-color: var(--line);
+      color: #344054;
+      background: #fff;
+    }
+
+    .text-button:hover {
+      filter: brightness(0.96);
+    }
+
+    .generate-button {
+      width: 100%;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      color: #475467;
+      font-size: 13px;
+    }
+
+    .toggle-row input {
+      width: 17px;
+      height: 17px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .display-mode {
+      min-width: 0;
+      margin: 0 0 12px;
+      padding: 0;
+      border: 0;
+    }
+
+    .display-mode legend {
+      margin-bottom: 6px;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #eef2f5;
+    }
+
+    .segmented label {
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .segmented input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .segmented span {
+      display: grid;
+      min-height: 32px;
+      padding: 5px 8px;
+      place-items: center;
+      border-radius: 4px;
+      color: #596579;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .segmented input:checked + span {
+      color: #164f44;
+      background: #fff;
+      box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12);
+    }
+
+    .segmented input:focus-visible + span {
+      outline: 3px solid color-mix(in srgb, var(--focus) 28%, transparent);
+      outline-offset: 1px;
+    }
+
+    .display-mode-note {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-soft);
+    }
+
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 2px;
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .confusion-block {
+      margin-top: 12px;
+    }
+
+    .confusion-caption {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .confusion-caption strong {
+      font-size: 13px;
+    }
+
+    .confusion-caption span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .confusion-matrix {
+      width: 100%;
+      table-layout: fixed;
+      border-spacing: 4px;
+    }
+
+    .confusion-matrix th {
+      height: 28px;
+      color: #596579;
+      font-size: 10px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .confusion-matrix th:first-child {
+      width: 64px;
+      text-align: left;
+    }
+
+    .matrix-cell {
+      height: 58px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    .matrix-cell span,
+    .matrix-cell strong {
+      display: block;
+    }
+
+    .matrix-cell span {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .matrix-cell strong {
+      margin-top: 1px;
+      font-size: 19px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .matrix-cell.correct {
+      border-color: #a8d5c8;
+      background: #eef8f4;
+    }
+
+    .matrix-cell.correct strong {
+      color: #176b5c;
+    }
+
+    .matrix-cell.error {
+      border-color: #efd49d;
+      background: #fff8e9;
+    }
+
+    .matrix-cell.error strong {
+      color: #9a6200;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #475467;
+      font-size: 12px;
+    }
+
+    .legend-dot {
+      width: 11px;
+      height: 11px;
+      flex: 0 0 auto;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+    }
+
+    .legend-dot.red {
+      color: var(--red-dark);
+      background: var(--red);
+    }
+
+    .legend-dot.blue {
+      color: var(--blue-dark);
+      background: var(--blue);
+    }
+
+    .legend-surface {
+      width: 18px;
+      height: 9px;
+      flex: 0 0 auto;
+      border: 1px solid #7b8794;
+      background: linear-gradient(90deg, rgba(35, 133, 223, 0.55), rgba(237, 89, 72, 0.55));
+    }
+
+    .lesson {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      margin-top: 14px;
+      overflow: hidden;
+    }
+
+    .lesson article {
+      padding: 15px 16px;
+      border-right: 1px solid var(--line);
+    }
+
+    .lesson article:last-child {
+      border-right: 0;
+    }
+
+    .lesson h2 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .lesson p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 900px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .control-panel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .panel-section {
+        border-right: 1px solid var(--line);
+      }
+
+      .panel-section:nth-child(even) {
+        border-right: 0;
+      }
+
+      .lesson {
+        grid-template-columns: 1fr;
+      }
+
+      .lesson article {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .lesson article:last-child {
+        border-bottom: 0;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .page {
+        width: min(100% - 20px, 1180px);
+        padding-top: 12px;
+      }
+
+      .topbar {
+        margin-bottom: 12px;
+      }
+
+      .status-label,
+      .plot-toolbar span {
+        display: none;
+      }
+
+      .canvas-hint {
+        display: none;
+      }
+
+      .plot-wrap {
+        min-height: 340px;
+      }
+
+      canvas {
+        min-height: 340px;
+        aspect-ratio: 1 / 1;
+      }
+
+      .control-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-section,
+      .panel-section:nth-child(even) {
+        border-right: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="topbar" aria-label="ページナビゲーション">
+      <a class="back-link" href="../index.html">← デモ一覧へ戻る</a>
+      <span class="status-label">外部ライブラリ不使用・ブラウザ内で計算</span>
+    </nav>
+
+    <header class="intro">
+      <h1>単純パーセプトロンによる2クラス分類</h1>
+      <p>
+        2つの特徴量から線形結合を計算し、ステップ関数でクラス0とクラス1に分ける。
+        重みを動かすと決定境界と予測クラスが変わり、各点が出力0と1の間を移動する。
+      </p>
+    </header>
+
+    <section class="workspace" aria-label="パーセプトロン可視化と操作">
+      <section class="plot-panel" aria-labelledby="plot-heading">
+        <div class="plot-toolbar">
+          <div>
+            <strong id="plot-heading">3Dステップ関数</strong>
+            <span>赤い面: 予測1　青い面: 予測0</span>
+          </div>
+          <div class="plot-actions">
+            <button id="zoomOutButton" class="icon-button" type="button" title="縮小" aria-label="縮小">−</button>
+            <button id="zoomInButton" class="icon-button" type="button" title="拡大" aria-label="拡大">＋</button>
+            <button id="resetViewButton" class="icon-button" type="button" title="視点を戻す" aria-label="視点を戻す">↺</button>
+          </div>
+        </div>
+        <div class="plot-wrap">
+          <canvas
+            id="plotCanvas"
+            width="820"
+            height="620"
+            role="img"
+            aria-label="単純パーセプトロンの3次元ステップ関数。点の色は正解ラベル、高さは選択中の正解または予測クラス。"
+          >
+            このブラウザはCanvas表示に対応していない。
+          </canvas>
+          <div class="canvas-hint">ドラッグ: 回転　ホイール: 拡大・縮小</div>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="モデル操作">
+        <section class="panel-section">
+          <h2>モデル</h2>
+          <div class="equation">
+            ŷ = H(w₀ + w₁x₁ + w₂x₂)
+            <span id="boundaryText" class="boundary-text"></span>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>重みを変更</h2>
+          <div class="slider-row">
+            <label class="slider-label" for="w0Range">バイアス w₀ <output id="w0Value">1.00</output></label>
+            <input id="w0Range" type="range" min="-8" max="8" step="0.1" value="1" />
+          </div>
+          <div class="slider-row">
+            <label class="slider-label" for="w1Range">重み w₁ <output id="w1Value">0.50</output></label>
+            <input id="w1Range" type="range" min="-1" max="1" step="0.05" value="0.5" />
+          </div>
+          <div class="slider-row">
+            <label class="slider-label" for="w2Range">重み w₂ <output id="w2Value">0.50</output></label>
+            <input id="w2Range" type="range" min="-1" max="1" step="0.05" value="0.5" />
+          </div>
+          <div class="button-row">
+            <button id="resetWeightsButton" class="text-button secondary" type="button">初期値に戻す</button>
+            <button id="flipWeightsButton" class="text-button" type="button">符号を反転</button>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>分類結果</h2>
+          <fieldset class="display-mode">
+            <legend>点の高さとして表示する値</legend>
+            <div class="segmented">
+              <label>
+                <input type="radio" name="pointHeight" value="prediction" checked />
+                <span>予測 ŷ</span>
+              </label>
+              <label>
+                <input type="radio" name="pointHeight" value="label" />
+                <span>正解 y</span>
+              </label>
+            </div>
+            <p id="displayModeNote" class="display-mode-note">重みを変えると、点が予測先の面へ移動する。</p>
+          </fieldset>
+          <div class="stats">
+            <div class="stat"><span>正解率</span><strong id="accuracyValue">-</strong></div>
+            <div class="stat"><span>誤分類</span><strong id="errorValue">-</strong></div>
+          </div>
+          <div class="confusion-block">
+            <div class="confusion-caption">
+              <strong>混同行列</strong>
+              <span>行: 正解 y ／ 列: 予測 ŷ</span>
+            </div>
+            <table class="confusion-matrix" aria-label="行が正解ラベル、列が予測ラベルの混同行列">
+              <thead>
+                <tr>
+                  <th scope="col"></th>
+                  <th scope="col">予測1</th>
+                  <th scope="col">予測0</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">正解1</th>
+                  <td class="matrix-cell correct"><span>TP</span><strong id="tpValue">-</strong></td>
+                  <td class="matrix-cell error"><span>FN</span><strong id="fnValue">-</strong></td>
+                </tr>
+                <tr>
+                  <th scope="row">正解0</th>
+                  <td class="matrix-cell error"><span>FP</span><strong id="fpValue">-</strong></td>
+                  <td class="matrix-cell correct"><span>TN</span><strong id="tnValue">-</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="legend" aria-label="凡例">
+            <div class="legend-item"><span class="legend-dot red"></span>クラス1（正解 y=1）</div>
+            <div class="legend-item"><span class="legend-dot blue"></span>クラス0（正解 y=0）</div>
+            <div class="legend-item"><span class="legend-surface"></span>予測出力 ŷ の段差面</div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>データ</h2>
+          <button id="generateButton" class="text-button generate-button" type="button">データを再生成</button>
+          <label class="toggle-row" for="autoRotateInput">
+            <input id="autoRotateInput" type="checkbox" />
+            自動回転
+          </label>
+          <label class="toggle-row" for="errorHighlightInput">
+            <input id="errorHighlightInput" type="checkbox" checked />
+            誤分類点を黄色で囲む
+          </label>
+        </section>
+      </aside>
+    </section>
+
+    <section class="lesson" aria-label="グラフの読み方">
+      <article>
+        <h2>入力</h2>
+        <p>横方向の2軸が特徴量 x₁ と x₂。赤40点と青40点は、平均の異なる正規分布から生成する。</p>
+      </article>
+      <article>
+        <h2>処理</h2>
+        <p>w₀ + w₁x₁ + w₂x₂ が0以上なら予測1、0未満なら予測0。面の切り替わる位置が決定境界になる。</p>
+      </article>
+      <article>
+        <h2>出力</h2>
+        <p>縦軸 y は第3の特徴量ではなく出力値。点の色は正解ラベル、高さは予測 ŷ または正解 y を切り替えて比較できる。</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const canvas = document.getElementById("plotCanvas");
+    const ctx = canvas.getContext("2d");
+    const w0Range = document.getElementById("w0Range");
+    const w1Range = document.getElementById("w1Range");
+    const w2Range = document.getElementById("w2Range");
+    const w0Value = document.getElementById("w0Value");
+    const w1Value = document.getElementById("w1Value");
+    const w2Value = document.getElementById("w2Value");
+    const boundaryText = document.getElementById("boundaryText");
+    const accuracyValue = document.getElementById("accuracyValue");
+    const errorValue = document.getElementById("errorValue");
+    const tpValue = document.getElementById("tpValue");
+    const fnValue = document.getElementById("fnValue");
+    const fpValue = document.getElementById("fpValue");
+    const tnValue = document.getElementById("tnValue");
+    const displayModeNote = document.getElementById("displayModeNote");
+    const autoRotateInput = document.getElementById("autoRotateInput");
+    const errorHighlightInput = document.getElementById("errorHighlightInput");
+
+    const limits = {
+      xMin: -15,
+      xMax: 20,
+      yMin: -20,
+      yMax: 10,
+      zMin: -0.16,
+      zMax: 1.2,
+    };
+
+    const defaultCamera = {
+      yaw: -0.72,
+      pitch: 0.48,
+      zoom: 1,
+    };
+
+    const camera = { ...defaultCamera };
+    let cssWidth = 820;
+    let cssHeight = 620;
+    let data = [];
+    let dragging = false;
+    let lastPointer = { x: 0, y: 0 };
+    let animationFrame = 0;
+    let previousAnimationTime = 0;
+
+    function createRandom(seed) {
+      let state = seed >>> 0;
+      return function random() {
+        state += 0x6d2b79f5;
+        let value = state;
+        value = Math.imul(value ^ (value >>> 15), value | 1);
+        value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+        return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function createRandomSeed() {
+      if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+        return window.crypto.getRandomValues(new Uint32Array(1))[0];
+      }
+      return Math.floor(Math.random() * 4294967296);
+    }
+
+    function createGaussian(random) {
+      let spare = null;
+      return function gaussian(mean, standardDeviation) {
+        if (spare !== null) {
+          const value = spare;
+          spare = null;
+          return mean + value * standardDeviation;
+        }
+
+        let u = 0;
+        let v = 0;
+        while (u === 0) u = random();
+        while (v === 0) v = random();
+        const magnitude = Math.sqrt(-2 * Math.log(u));
+        const angle = 2 * Math.PI * v;
+        spare = magnitude * Math.sin(angle);
+        return mean + magnitude * Math.cos(angle) * standardDeviation;
+      };
+    }
+
+    function generateData(seed) {
+      const random = createRandom(seed);
+      const gaussian = createGaussian(random);
+      const class1X = Array.from({ length: 40 }, () => gaussian(10, 3));
+      const class1Y = Array.from({ length: 40 }, () => gaussian(1, 3));
+      const class0X = Array.from({ length: 40 }, () => gaussian(-4, 3));
+      const class0Y = Array.from({ length: 40 }, () => gaussian(-8, 3));
+
+      data = [
+        ...class1X.map((x, index) => ({ x, y: class1Y[index], label: 1 })),
+        ...class0X.map((x, index) => ({ x, y: class0Y[index], label: 0 })),
+      ];
+      updateModel();
+    }
+
+    function getWeights() {
+      return {
+        w0: Number(w0Range.value),
+        w1: Number(w1Range.value),
+        w2: Number(w2Range.value),
+      };
+    }
+
+    function scorePoint(point, weights = getWeights()) {
+      return weights.w0 + weights.w1 * point.x + weights.w2 * point.y;
+    }
+
+    function predict(point, weights = getWeights()) {
+      return scorePoint(point, weights) >= 0 ? 1 : 0;
+    }
+
+    function formatNumber(value) {
+      const clean = Math.abs(value) < 0.0001 ? 0 : value;
+      return clean.toFixed(2);
+    }
+
+    function formatBoundary(weights) {
+      if (Math.abs(weights.w1) < 0.0001 && Math.abs(weights.w2) < 0.0001) {
+        return weights.w0 >= 0
+          ? "入力に関係なく ŷ = 1"
+          : "入力に関係なく ŷ = 0";
+      }
+
+      if (Math.abs(weights.w2) >= 0.0001) {
+        const slope = -weights.w1 / weights.w2;
+        const intercept = -weights.w0 / weights.w2;
+        return `決定境界: x₂ = ${formatNumber(slope)}x₁ ${intercept >= 0 ? "+" : "−"} ${formatNumber(Math.abs(intercept))}`;
+      }
+
+      return `決定境界: x₁ = ${formatNumber(-weights.w0 / weights.w1)}`;
+    }
+
+    function updateModel() {
+      const weights = getWeights();
+      w0Value.textContent = formatNumber(weights.w0);
+      w1Value.textContent = formatNumber(weights.w1);
+      w2Value.textContent = formatNumber(weights.w2);
+      boundaryText.textContent = formatBoundary(weights);
+
+      let truePositive = 0;
+      let falseNegative = 0;
+      let falsePositive = 0;
+      let trueNegative = 0;
+      data.forEach((point) => {
+        const prediction = predict(point, weights);
+        if (point.label === 1 && prediction === 1) truePositive += 1;
+        if (point.label === 1 && prediction === 0) falseNegative += 1;
+        if (point.label === 0 && prediction === 1) falsePositive += 1;
+        if (point.label === 0 && prediction === 0) trueNegative += 1;
+      });
+
+      const total = data.length || 1;
+      const correct = truePositive + trueNegative;
+      const errors = falseNegative + falsePositive;
+      accuracyValue.textContent = `${((correct / total) * 100).toFixed(1)}%`;
+      errorValue.textContent = `${errors} / ${data.length}`;
+      tpValue.textContent = String(truePositive);
+      fnValue.textContent = String(falseNegative);
+      fpValue.textContent = String(falsePositive);
+      tnValue.textContent = String(trueNegative);
+      draw();
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      cssWidth = Math.max(1, Math.round(rect.width));
+      cssHeight = Math.max(1, Math.round(rect.height));
+      canvas.width = Math.round(cssWidth * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function toWorld(point) {
+      const xCenter = (limits.xMin + limits.xMax) / 2;
+      const yCenter = (limits.yMin + limits.yMax) / 2;
+      return {
+        x: (point.y - yCenter) / ((limits.yMax - limits.yMin) / 2),
+        y: (point.x - xCenter) / ((limits.xMax - limits.xMin) / 2),
+        z: (point.z - 0.5) * 1.38,
+      };
+    }
+
+    function project(point) {
+      const world = toWorld(point);
+      const cosYaw = Math.cos(camera.yaw);
+      const sinYaw = Math.sin(camera.yaw);
+      const horizontal = cosYaw * world.x - sinYaw * world.y;
+      const depthBeforePitch = sinYaw * world.x + cosYaw * world.y;
+      const cosPitch = Math.cos(camera.pitch);
+      const sinPitch = Math.sin(camera.pitch);
+      const vertical = cosPitch * world.z - sinPitch * depthBeforePitch;
+      const depth = sinPitch * world.z + cosPitch * depthBeforePitch;
+      const scale = Math.min(cssWidth / 3.15, cssHeight / 2.95) * camera.zoom;
+      const perspective = 1 / Math.max(0.78, 1 - depth * 0.08);
+
+      return {
+        x: cssWidth * 0.5 + horizontal * scale * perspective,
+        y: cssHeight * 0.52 - vertical * scale * perspective,
+        depth,
+      };
+    }
+
+    function scoreXY(point, weights) {
+      return weights.w0 + weights.w1 * point.x + weights.w2 * point.y;
+    }
+
+    function clipPolygon(polygon, weights, keepPositive) {
+      const result = [];
+      for (let index = 0; index < polygon.length; index += 1) {
+        const current = polygon[index];
+        const previous = polygon[(index + polygon.length - 1) % polygon.length];
+        const currentScore = scoreXY(current, weights);
+        const previousScore = scoreXY(previous, weights);
+        const currentInside = keepPositive ? currentScore >= 0 : currentScore < 0;
+        const previousInside = keepPositive ? previousScore >= 0 : previousScore < 0;
+
+        if (currentInside !== previousInside) {
+          const denominator = previousScore - currentScore;
+          const ratio = Math.abs(denominator) < 1e-9 ? 0 : previousScore / denominator;
+          result.push({
+            x: previous.x + (current.x - previous.x) * ratio,
+            y: previous.y + (current.y - previous.y) * ratio,
+          });
+        }
+        if (currentInside) result.push(current);
+      }
+      return result;
+    }
+
+    function getBoundaryEndpoints(weights) {
+      const candidates = [];
+
+      if (Math.abs(weights.w2) > 1e-9) {
+        [limits.xMin, limits.xMax].forEach((x) => {
+          const y = -(weights.w0 + weights.w1 * x) / weights.w2;
+          if (y >= limits.yMin - 1e-7 && y <= limits.yMax + 1e-7) candidates.push({ x, y });
+        });
+      }
+
+      if (Math.abs(weights.w1) > 1e-9) {
+        [limits.yMin, limits.yMax].forEach((y) => {
+          const x = -(weights.w0 + weights.w2 * y) / weights.w1;
+          if (x >= limits.xMin - 1e-7 && x <= limits.xMax + 1e-7) candidates.push({ x, y });
+        });
+      }
+
+      const unique = [];
+      candidates.forEach((candidate) => {
+        const exists = unique.some(
+          (point) => Math.abs(point.x - candidate.x) < 1e-6 && Math.abs(point.y - candidate.y) < 1e-6,
+        );
+        if (!exists) unique.push(candidate);
+      });
+      return unique.slice(0, 2);
+    }
+
+    function drawLine3d(start, end, options = {}) {
+      const a = project(start);
+      const b = project(end);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = options.color || "#c7d0da";
+      ctx.lineWidth = options.width || 1;
+      if (options.dash) ctx.setLineDash(options.dash);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawPolygon3d(points, fill, stroke, width = 1) {
+      if (points.length < 3) return;
+      const projected = points.map(project);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(projected[0].x, projected[0].y);
+      projected.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      if (stroke) {
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = width;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawGrid() {
+      const floorZ = limits.zMin;
+      const xTicks = [-15, -10, -5, 0, 5, 10, 15, 20];
+      const yTicks = [-20, -15, -10, -5, 0, 5, 10];
+
+      xTicks.forEach((x) => {
+        drawLine3d(
+          { x, y: limits.yMin, z: floorZ },
+          { x, y: limits.yMax, z: floorZ },
+          { color: "#e2e7ed", width: 1 },
+        );
+      });
+      yTicks.forEach((y) => {
+        drawLine3d(
+          { x: limits.xMin, y, z: floorZ },
+          { x: limits.xMax, y, z: floorZ },
+          { color: "#e2e7ed", width: 1 },
+        );
+      });
+
+      [0, 0.5, 1].forEach((z) => {
+        drawLine3d(
+          { x: limits.xMin, y: limits.yMax, z },
+          { x: limits.xMax, y: limits.yMax, z },
+          { color: "#e5e9ef", width: 1 },
+        );
+        drawLine3d(
+          { x: limits.xMin, y: limits.yMin, z },
+          { x: limits.xMin, y: limits.yMax, z },
+          { color: "#e5e9ef", width: 1 },
+        );
+      });
+
+      const axisStyle = { color: "#687586", width: 1.5 };
+      drawLine3d(
+        { x: limits.xMin, y: limits.yMin, z: floorZ },
+        { x: limits.xMax, y: limits.yMin, z: floorZ },
+        axisStyle,
+      );
+      drawLine3d(
+        { x: limits.xMin, y: limits.yMin, z: floorZ },
+        { x: limits.xMin, y: limits.yMax, z: floorZ },
+        axisStyle,
+      );
+      drawLine3d(
+        { x: limits.xMin, y: limits.yMin, z: floorZ },
+        { x: limits.xMin, y: limits.yMin, z: limits.zMax },
+        axisStyle,
+      );
+    }
+
+    function mixColor(from, to, ratio, alpha) {
+      const red = Math.round(from[0] + (to[0] - from[0]) * ratio);
+      const green = Math.round(from[1] + (to[1] - from[1]) * ratio);
+      const blue = Math.round(from[2] + (to[2] - from[2]) * ratio);
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    }
+
+    function drawSurface(weights) {
+      const rectangle = [
+        { x: limits.xMin, y: limits.yMin },
+        { x: limits.xMax, y: limits.yMin },
+        { x: limits.xMax, y: limits.yMax },
+        { x: limits.xMin, y: limits.yMax },
+      ];
+      const lowRegion = clipPolygon(rectangle, weights, false);
+      const highRegion = clipPolygon(rectangle, weights, true);
+      const regions = [
+        {
+          points: lowRegion.map((point) => ({ ...point, z: 0 })),
+          fill: "rgba(35, 133, 223, 0.44)",
+          stroke: "rgba(18, 83, 141, 0.58)",
+        },
+        {
+          points: highRegion.map((point) => ({ ...point, z: 1 })),
+          fill: "rgba(237, 89, 72, 0.44)",
+          stroke: "rgba(157, 48, 37, 0.58)",
+        },
+      ];
+
+      regions
+        .map((region) => ({
+          ...region,
+          depth: region.points.length
+            ? region.points.reduce((sum, point) => sum + project(point).depth, 0) / region.points.length
+            : 0,
+        }))
+        .sort((a, b) => a.depth - b.depth)
+        .forEach((region) => drawPolygon3d(region.points, region.fill, region.stroke, 1));
+
+      const boundary = getBoundaryEndpoints(weights);
+      if (boundary.length === 2) {
+        const segments = 18;
+        for (let index = 0; index < segments; index += 1) {
+          const z0 = index / segments;
+          const z1 = (index + 1) / segments;
+          drawPolygon3d(
+            [
+              { ...boundary[0], z: z0 },
+              { ...boundary[1], z: z0 },
+              { ...boundary[1], z: z1 },
+              { ...boundary[0], z: z1 },
+            ],
+            mixColor([35, 133, 223], [237, 89, 72], (z0 + z1) / 2, 0.5),
+            null,
+          );
+        }
+        drawLine3d(
+          { ...boundary[0], z: 0 },
+          { ...boundary[1], z: 0 },
+          { color: "rgba(34, 48, 65, 0.72)", width: 1.5 },
+        );
+        drawLine3d(
+          { ...boundary[0], z: 1 },
+          { ...boundary[1], z: 1 },
+          { color: "rgba(34, 48, 65, 0.72)", width: 1.5 },
+        );
+      }
+    }
+
+    function drawPoints(weights) {
+      const highlightErrors = errorHighlightInput.checked;
+      const pointHeightMode = document.querySelector('input[name="pointHeight"]:checked').value;
+      const projectedPoints = data.map((point) => {
+        const prediction = predict(point, weights);
+        const displayHeight = pointHeightMode === "prediction" ? prediction : point.label;
+        return {
+          ...point,
+          prediction,
+          projected: project({ x: point.x, y: point.y, z: displayHeight }),
+          isCorrect: prediction === point.label,
+        };
+      });
+
+      projectedPoints.sort((a, b) => a.projected.depth - b.projected.depth);
+      projectedPoints.forEach((point) => {
+        const radius = Math.max(3.2, Math.min(5.3, cssWidth / 155));
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(point.projected.x, point.projected.y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = point.label === 1 ? "#ed5948" : "#2385df";
+        ctx.fill();
+        ctx.strokeStyle =
+          highlightErrors && !point.isCorrect
+            ? "#f4b400"
+            : point.label === 1
+              ? "#8f2a21"
+              : "#104f88";
+        ctx.lineWidth = highlightErrors && !point.isCorrect ? 3 : 1;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    function drawLabel(text, point, offsetX, offsetY, options = {}) {
+      const projected = project(point);
+      ctx.save();
+      ctx.font = options.font || "600 14px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      ctx.textAlign = options.align || "center";
+      ctx.textBaseline = "middle";
+      const metrics = ctx.measureText(text);
+      const width = metrics.width + 8;
+      const x = Math.max(width / 2 + 4, Math.min(cssWidth - width / 2 - 4, projected.x + offsetX));
+      const y = Math.max(16, Math.min(cssHeight - 18, projected.y + offsetY));
+      ctx.fillStyle = "rgba(255, 255, 255, 0.82)";
+      ctx.fillRect(x - width / 2, y - 9, width, 18);
+      ctx.fillStyle = options.color || "#455468";
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawAxisLabels() {
+      const feature1End = { x: limits.xMax, y: limits.yMin, z: limits.zMin };
+      const feature2Start = { x: limits.xMin, y: limits.yMin, z: limits.zMin };
+      const feature2End = { x: limits.xMin, y: limits.yMax, z: limits.zMin };
+      const feature2Direction = project(feature2End).x - project(feature2Start).x;
+      drawLabel(
+        "特徴量1 (x₁)",
+        feature1End,
+        -12,
+        21,
+      );
+      drawLabel(
+        "特徴量2 (x₂)",
+        feature2End,
+        feature2Direction >= 0 ? 60 : -60,
+        21,
+      );
+      drawLabel(
+        "出力 (y)",
+        { x: limits.xMin, y: limits.yMin, z: limits.zMax },
+        -30,
+        -7,
+      );
+      drawLabel("0", { x: limits.xMin, y: limits.yMin, z: 0 }, -13, 4, { font: "11px sans-serif" });
+      drawLabel("1", { x: limits.xMin, y: limits.yMin, z: 1 }, -13, 2, { font: "11px sans-serif" });
+    }
+
+    function draw() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, cssWidth, cssHeight);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+      const weights = getWeights();
+      drawGrid();
+      drawSurface(weights);
+      drawPoints(weights);
+      drawAxisLabels();
+    }
+
+    function resetView() {
+      Object.assign(camera, defaultCamera);
+      draw();
+    }
+
+    function changeZoom(factor) {
+      camera.zoom = Math.max(0.66, Math.min(1.65, camera.zoom * factor));
+      draw();
+    }
+
+    function stopAutoRotation() {
+      if (autoRotateInput.checked) autoRotateInput.checked = false;
+    }
+
+    canvas.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      stopAutoRotation();
+      lastPointer = { x: event.clientX, y: event.clientY };
+      canvas.classList.add("is-dragging");
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const dx = event.clientX - lastPointer.x;
+      const dy = event.clientY - lastPointer.y;
+      camera.yaw += dx * 0.008;
+      camera.pitch = Math.max(-0.05, Math.min(1.12, camera.pitch + dy * 0.006));
+      lastPointer = { x: event.clientX, y: event.clientY };
+      draw();
+    });
+
+    function endDrag(event) {
+      dragging = false;
+      canvas.classList.remove("is-dragging");
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    }
+
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    canvas.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+        stopAutoRotation();
+        changeZoom(event.deltaY < 0 ? 1.08 : 0.92);
+      },
+      { passive: false },
+    );
+    canvas.addEventListener("dblclick", resetView);
+
+    [w0Range, w1Range, w2Range].forEach((input) => input.addEventListener("input", updateModel));
+    errorHighlightInput.addEventListener("change", draw);
+    document.querySelectorAll('input[name="pointHeight"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        const showPrediction = input.value === "prediction" && input.checked;
+        if (showPrediction) {
+          displayModeNote.textContent = "重みを変えると、点が予測先の面へ移動する。";
+        } else if (input.checked) {
+          displayModeNote.textContent = "点を正解ラベルの高さに固定し、予測面とのずれを比較する。";
+        }
+        draw();
+      });
+    });
+
+    document.getElementById("resetWeightsButton").addEventListener("click", () => {
+      w0Range.value = "1";
+      w1Range.value = "0.5";
+      w2Range.value = "0.5";
+      updateModel();
+    });
+
+    document.getElementById("flipWeightsButton").addEventListener("click", () => {
+      w0Range.value = String(-Number(w0Range.value));
+      w1Range.value = String(-Number(w1Range.value));
+      w2Range.value = String(-Number(w2Range.value));
+      updateModel();
+    });
+
+    document.getElementById("generateButton").addEventListener("click", () => {
+      generateData(createRandomSeed());
+    });
+
+    document.getElementById("zoomInButton").addEventListener("click", () => changeZoom(1.1));
+    document.getElementById("zoomOutButton").addEventListener("click", () => changeZoom(0.9));
+    document.getElementById("resetViewButton").addEventListener("click", resetView);
+
+    function animate(time) {
+      if (autoRotateInput.checked) {
+        const elapsed = previousAnimationTime ? Math.min(40, time - previousAnimationTime) : 16;
+        camera.yaw += elapsed * 0.00025;
+        draw();
+      }
+      previousAnimationTime = time;
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+    const resizeObserver = new ResizeObserver(resizeCanvas);
+    resizeObserver.observe(canvas);
+    generateData(42);
+    resizeCanvas();
+    animationFrame = requestAnimationFrame(animate);
+
+    window.addEventListener("pagehide", () => cancelAnimationFrame(animationFrame), { once: true });
+  </script>
+</body>
+</html>
