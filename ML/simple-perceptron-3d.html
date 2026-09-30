@@ -103,7 +103,7 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 310px;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 310px;
       gap: 14px;
       align-items: start;
     }
@@ -126,7 +126,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      min-height: 48px;
+      min-height: 51px;
       padding: 8px 12px;
       border-bottom: 1px solid var(--line);
       background: var(--panel-soft);
@@ -184,7 +184,6 @@
     }
 
     .top-view-canvas {
-      aspect-ratio: 1.12 / 1;
       cursor: default;
       touch-action: auto;
     }
@@ -562,7 +561,7 @@
 
     @media (max-width: 1190px) {
       .workspace {
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .control-panel {
@@ -620,7 +619,8 @@
         min-height: 0;
       }
 
-      #plotCanvas {
+      #plotCanvas,
+      #topViewCanvas {
         aspect-ratio: 1 / 1;
       }
 
