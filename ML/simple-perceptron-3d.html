@@ -53,7 +53,7 @@
     }
 
     .page {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1440px, calc(100% - 32px));
       margin: 0 auto;
       padding: 20px 0 32px;
     }
@@ -103,7 +103,7 @@
 
     .workspace {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 310px;
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 310px;
       gap: 14px;
       align-items: start;
     }
@@ -167,7 +167,6 @@
 
     .plot-wrap {
       position: relative;
-      min-height: 460px;
       background: #fff;
     }
 
@@ -182,6 +181,12 @@
 
     canvas.is-dragging {
       cursor: grabbing;
+    }
+
+    .top-view-canvas {
+      aspect-ratio: 1.12 / 1;
+      cursor: default;
+      touch-action: auto;
     }
 
     .canvas-hint {
@@ -555,13 +560,14 @@
       line-height: 1.65;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1190px) {
       .workspace {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
       }
 
       .control-panel {
         display: grid;
+        grid-column: 1 / -1;
         grid-template-columns: 1fr 1fr;
       }
 
@@ -587,10 +593,14 @@
       }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
       .page {
-        width: min(100% - 20px, 1180px);
+        width: min(100% - 20px, 1440px);
         padding-top: 12px;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
       }
 
       .topbar {
@@ -607,15 +617,15 @@
       }
 
       .plot-wrap {
-        min-height: 340px;
+        min-height: 0;
       }
 
-      canvas {
-        min-height: 340px;
+      #plotCanvas {
         aspect-ratio: 1 / 1;
       }
 
       .control-panel {
+        grid-column: auto;
         grid-template-columns: 1fr;
       }
 
@@ -665,6 +675,25 @@
             このブラウザはCanvas表示に対応していない。
           </canvas>
           <div class="canvas-hint">ドラッグ: 回転　ホイール: 拡大・縮小</div>
+        </div>
+      </section>
+
+      <section class="plot-panel" aria-labelledby="top-view-heading">
+        <div class="plot-toolbar">
+          <strong id="top-view-heading">真上から見た分類</strong>
+          <span>x₁–x₂ 平面</span>
+        </div>
+        <div class="plot-wrap">
+          <canvas
+            id="topViewCanvas"
+            class="top-view-canvas"
+            width="480"
+            height="430"
+            role="img"
+            aria-label="真上から見た特徴量1と特徴量2の分布。背景色は予測領域、点の色は正解クラス。"
+          >
+            このブラウザはCanvas表示に対応していない。
+          </canvas>
         </div>
       </section>
 
@@ -787,6 +816,8 @@
 
     const canvas = document.getElementById("plotCanvas");
     const ctx = canvas.getContext("2d");
+    const topCanvas = document.getElementById("topViewCanvas");
+    const topCtx = topCanvas.getContext("2d");
     const w0Range = document.getElementById("w0Range");
     const w1Range = document.getElementById("w1Range");
     const w2Range = document.getElementById("w2Range");
@@ -822,6 +853,8 @@
     const camera = { ...defaultCamera };
     let cssWidth = 820;
     let cssHeight = 620;
+    let topWidth = 480;
+    let topHeight = 430;
     let data = [];
     let dragging = false;
     let lastPointer = { x: 0, y: 0 };
@@ -947,6 +980,7 @@
       fpValue.textContent = String(falsePositive);
       tnValue.textContent = String(trueNegative);
       draw();
+      drawTopView();
     }
 
     function resizeCanvas() {
@@ -958,6 +992,17 @@
       canvas.height = Math.round(cssHeight * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       draw();
+    }
+
+    function resizeTopCanvas() {
+      const rect = topCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      topWidth = Math.max(1, Math.round(rect.width));
+      topHeight = Math.max(1, Math.round(rect.height));
+      topCanvas.width = Math.round(topWidth * dpr);
+      topCanvas.height = Math.round(topHeight * dpr);
+      topCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawTopView();
     }
 
     function toWorld(point) {
@@ -1042,6 +1087,113 @@
         if (!exists) unique.push(candidate);
       });
       return unique.slice(0, 2);
+    }
+
+    function drawTopView() {
+      if (!topCtx) return;
+      const left = topWidth < 400 ? 42 : 50;
+      const top = 20;
+      const plotWidth = topWidth - left - 18;
+      const plotHeight = topHeight - top - 48;
+      const mapPoint = (point) => ({
+        x: left + ((point.x - limits.xMin) / (limits.xMax - limits.xMin)) * plotWidth,
+        y: top + ((limits.yMax - point.y) / (limits.yMax - limits.yMin)) * plotHeight,
+      });
+
+      topCtx.clearRect(0, 0, topWidth, topHeight);
+      topCtx.fillStyle = "#fff";
+      topCtx.fillRect(0, 0, topWidth, topHeight);
+
+      const weights = getWeights();
+      const rectangle = [
+        { x: limits.xMin, y: limits.yMin },
+        { x: limits.xMax, y: limits.yMin },
+        { x: limits.xMax, y: limits.yMax },
+        { x: limits.xMin, y: limits.yMax },
+      ];
+
+      [
+        { polygon: clipPolygon(rectangle, weights, false), color: "#dceefc" },
+        { polygon: clipPolygon(rectangle, weights, true), color: "#fbe3df" },
+      ].forEach(({ polygon, color }) => {
+        if (polygon.length < 3) return;
+        topCtx.beginPath();
+        polygon.map(mapPoint).forEach((point, index) => {
+          if (index === 0) topCtx.moveTo(point.x, point.y);
+          else topCtx.lineTo(point.x, point.y);
+        });
+        topCtx.closePath();
+        topCtx.fillStyle = color;
+        topCtx.fill();
+      });
+
+      topCtx.save();
+      topCtx.font = "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      topCtx.fillStyle = "#596579";
+      topCtx.strokeStyle = "rgba(113, 130, 148, 0.2)";
+      topCtx.lineWidth = 1;
+      topCtx.textAlign = "center";
+      [-15, -10, -5, 0, 5, 10, 15, 20].forEach((value) => {
+        const x = mapPoint({ x: value, y: limits.yMin }).x;
+        topCtx.beginPath();
+        topCtx.moveTo(x, top);
+        topCtx.lineTo(x, top + plotHeight);
+        topCtx.stroke();
+        topCtx.fillText(String(value), x, top + plotHeight + 17);
+      });
+      topCtx.textAlign = "right";
+      [-20, -15, -10, -5, 0, 5, 10].forEach((value) => {
+        const y = mapPoint({ x: limits.xMin, y: value }).y;
+        topCtx.beginPath();
+        topCtx.moveTo(left, y);
+        topCtx.lineTo(left + plotWidth, y);
+        topCtx.stroke();
+        topCtx.fillText(String(value), left - 7, y + 4);
+      });
+      topCtx.strokeStyle = "#8793a0";
+      topCtx.strokeRect(left, top, plotWidth, plotHeight);
+      topCtx.restore();
+
+      const boundary = getBoundaryEndpoints(weights);
+      if (boundary.length === 2) {
+        const start = mapPoint(boundary[0]);
+        const end = mapPoint(boundary[1]);
+        topCtx.beginPath();
+        topCtx.moveTo(start.x, start.y);
+        topCtx.lineTo(end.x, end.y);
+        topCtx.strokeStyle = "#394354";
+        topCtx.lineWidth = 2.5;
+        topCtx.stroke();
+      }
+
+      topCtx.save();
+      topCtx.beginPath();
+      topCtx.rect(left, top, plotWidth, plotHeight);
+      topCtx.clip();
+      data.forEach((point) => {
+        const position = mapPoint(point);
+        const isError = predict(point, weights) !== point.label;
+        topCtx.beginPath();
+        topCtx.arc(position.x, position.y, 4.2, 0, Math.PI * 2);
+        topCtx.fillStyle = point.label === 1 ? "#ed5948" : "#2385df";
+        topCtx.fill();
+        topCtx.strokeStyle = errorHighlightInput.checked && isError
+          ? "#f4b400"
+          : point.label === 1 ? "#8f2a21" : "#104f88";
+        topCtx.lineWidth = errorHighlightInput.checked && isError ? 2.6 : 1;
+        topCtx.stroke();
+      });
+      topCtx.restore();
+
+      topCtx.fillStyle = "#455468";
+      topCtx.font = "600 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+      topCtx.textAlign = "center";
+      topCtx.fillText("特徴量1 (x₁)", left + plotWidth / 2, topHeight - 8);
+      topCtx.save();
+      topCtx.translate(15, top + plotHeight / 2);
+      topCtx.rotate(-Math.PI / 2);
+      topCtx.fillText("特徴量2 (x₂)", 0, 0);
+      topCtx.restore();
     }
 
     function drawLine3d(start, end, options = {}) {
@@ -1339,7 +1491,10 @@
     canvas.addEventListener("dblclick", resetView);
 
     [w0Range, w1Range, w2Range].forEach((input) => input.addEventListener("input", updateModel));
-    errorHighlightInput.addEventListener("change", draw);
+    errorHighlightInput.addEventListener("change", () => {
+      draw();
+      drawTopView();
+    });
     document.querySelectorAll('input[name="pointHeight"]').forEach((input) => {
       input.addEventListener("change", () => {
         const showPrediction = input.value === "prediction" && input.checked;
@@ -1386,8 +1541,11 @@
 
     const resizeObserver = new ResizeObserver(resizeCanvas);
     resizeObserver.observe(canvas);
+    const topResizeObserver = new ResizeObserver(resizeTopCanvas);
+    topResizeObserver.observe(topCanvas);
     generateData(42);
     resizeCanvas();
+    resizeTopCanvas();
     animationFrame = requestAnimationFrame(animate);
 
     window.addEventListener("pagehide", () => cancelAnimationFrame(animationFrame), { once: true });
