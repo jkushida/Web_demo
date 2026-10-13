@@ -1,0 +1,28 @@
+:root { color-scheme: light; }
+html { scroll-behavior: smooth; }
+body { margin: 0 auto; max-width: 920px; padding: 36px 28px 72px; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif; font-size: 16px; line-height: 1.85; color: #242c2a; background: #fff; letter-spacing: 0; }
+h1 { font-size: 30px; line-height: 1.45; margin: 0 0 12px; }
+h2 { margin: 48px 0 20px; padding-bottom: 10px; border-bottom: 2px solid #378270; font-size: 23px; line-height: 1.5; }
+h3 { margin: 30px 0 8px; font-size: 18px; line-height: 1.6; overflow-wrap: anywhere; }
+p { margin: 10px 0 18px; }
+a { color: #175eaa; text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+a:focus-visible { outline: 2px solid #175eaa; outline-offset: 4px; }
+nav { background: #f2f6f4; padding: 18px 24px; margin: 28px 0; border-left: 4px solid #378270; }
+nav a { color: #285747; }
+nav ul { margin: 0; padding-left: 22px; }
+nav li { margin: 5px 0; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+th, td { text-align: left; padding: 12px; vertical-align: top; border-bottom: 1px solid #dce4e0; overflow-wrap: anywhere; }
+th { background: #f2f6f4; }
+tr:nth-child(even) { background: #fafcfb; }
+.date { color: #56645f; }
+@media (max-width: 600px) { body { padding: 24px 18px 48px; } h1 { font-size: 26px; } h2 { font-size: 21px; } nav { padding: 14px; } table { font-size: 13px; } th, td { padding: 8px 5px; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media print { nav { display: none; } body { max-width: none; padding: 0; } h2, h3 { break-after: avoid; } a { color: inherit; } }
+figure.site-screenshot { margin: 12px 0 18px; }
+.site-screenshot > a { display: block; width: 240px; max-width: 100%; }
+.site-screenshot img { display: block; width: 100%; max-width: 100%; height: auto; border: 1px solid #d6ded9; border-radius: 4px; box-sizing: border-box; background: #f5f6f5; }
+.site-screenshot figcaption { margin-top: 8px; color: #56645f; font-size: 13px; line-height: 1.7; }
+.site-screenshot figcaption a { display: inline; }
+h3 { margin-top: 30px; }
+@media print { .site-screenshot { break-inside: avoid; } }
