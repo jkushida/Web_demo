@@ -22,7 +22,7 @@ University students studying computer science, programming, and AI.
 
 ## Website
 
-https://jkushida.github.io/Web_demo/index.html
+[デモ一覧・有益な外部リンクを開く](https://jkushida.github.io/Web_demo/)
 
 ## License
 
@@ -32,103 +32,12 @@ Original code and educational materials in this repository are released under
 the MIT License. Third-party libraries, models, and external resources used by
 individual demos remain subject to their respective licenses.
 
-## 目次
+## ローカルでの確認
 
-- [デモ一覧](#demo-list)
-  - [データ構造とアルゴリズム](#dsa)
-  - [進化計算](#ec)
-  - [機械学習](#ml)
-  - [自然言語処理](#nlp)
-  - [MediaPipe](#mediapipe)
-  - [音声処理 (Audio)](#audio)
+`index.html`をブラウザで開く。各デモの利用条件や入力操作は、そのページを参照。
 
-## デモ一覧 <a id="demo-list"></a>
+## 一覧の管理
 
-### データ構造とアルゴリズム <a id="dsa"></a>
+デモ一覧の管理先は`index.html`。デモを追加・更新するときは、対応するページと`index.html`のリンク・説明を更新する。READMEには個別デモの一覧を重複掲載しない。
 
-- **再帰・状態空間探索**
-  - [Recursive Call Sum](https://jkushida.github.io/Web_demo/DSA/recursive-call-sum.html) - calc_sum(n) で再帰呼び出しの領域・呼び出し順・戻り値を可視化
-  - [Water Jug Problem](https://jkushida.github.io/Web_demo/DSA/water-jug-problem.html) - 4Lと3Lの水差しで2Lを作るシミュレーション
-  - [Stairs Recursion](https://jkushida.github.io/Web_demo/DSA/stairs_recursion.html) - 再帰による階段の登り方問題のデモ
-  - [Tower of Hanoi](https://jkushida.github.io/Web_demo/DSA/hanoi.html) - ハノイの塔のインタラクティブなデモ
-  - [River Crossing](https://jkushida.github.io/Web_demo/DSA/river-crossing.html) - 川渡り問題のシミュレーション
-
-- **探索・ハッシュ**
-  - [Sentinel Search Comparison](https://jkushida.github.io/Web_demo/DSA/sentinel-search.html) - 番兵あり・なしの線形探索を並べて、要素比較と範囲確認の差を可視化
-  - [Binary Search Visualization](https://jkushida.github.io/Web_demo/DSA/binary-search.html) - ソート済み配列からターゲットを絞り込む二分探索の過程を、ツリー状の可視化と擬似コードで表示
-  - [Hash Search](https://jkushida.github.io/Web_demo/DSA/hash-search.html) - ハッシュ法の探索例と衝突処理を、オープンアドレス法/チェイン法で可視化
-  - [DFS Stack Animation](https://jkushida.github.io/Web_demo/DSA/depth-first-search-stack.html) - 深さ優先探索の探索順とスタックによるバックトラックを可視化
-  - [Maze Search (BFS/DFS)](https://jkushida.github.io/Web_demo/DSA/maze-search.html) - 幅優先/深さ優先で迷路を探索。探索木とログを動的表示
-
-- **データ構造**
-  - [Singly Linked List](https://jkushida.github.io/Web_demo/DSA/singly-linked-list.html) - 単方向リストの挿入・削除で、nextポインタのつなぎ替えをステップごとに可視化
-  - [Huffman Coding](https://jkushida.github.io/Web_demo/DSA/huffman-coding.html) - 出現頻度からハフマン木を構築し、符号表・平均符号長・エントロピーHを可視化
-  - [BST Insertion (Array)](https://jkushida.github.io/Web_demo/DSA/bst-insertion-array.html) - 配列 tree[10] で表した二分探索木に値を追加する手順を、擬似コードと木構造で可視化
-  - [BST / AVL Rotation Visualizer](https://jkushida.github.io/Web_demo/DSA/bst-avl-rotation.html) - 同じ挿入列で BST と AVL を並べ、回転と木の高さの差を可視化
-
-- **木・グラフ**
-  - [Preorder One-Stroke Traversal](https://jkushida.github.io/Web_demo/DSA/preorder-one-stroke.html) - 木の外周を一筆書きし、ノード左側を通る順番が前順になる様子を可視化
-  - [Preorder Recursive Search](https://jkushida.github.io/Web_demo/DSA/preorder-recursive-search.html) - 再帰関数 search で node_order に追加しながら、行きがけ順の探索手順を可視化
-  - [Non-Recursive Tree Traversal](https://jkushida.github.io/Web_demo/DSA/non-recursive-tree-traversal.html) - 2次元リストの木を、dataスタックへのPush/Popで非再帰に走査する手順を可視化
-  - [Recursive Tree Traversal](https://jkushida.github.io/Web_demo/DSA/recursive-tree-traversal.html) - 再帰関数 search(pos) による行きがけ順の走査と呼び出しスタックを可視化
-  - [Graph Visualizer](https://jkushida.github.io/Web_demo/DSA/graph-visualizer.html) - BFS/最短経路などの可視化
-
-- **ソート**
-  - 比較によるソート
-    - [Bubble Sort Animation](https://jkushida.github.io/Web_demo/DSA/bubble-sort-animation.html) - 配列のスワップ移動と疑似コードの対応でバブルソートを可視化
-    - [Selection Sort Animation](https://jkushida.github.io/Web_demo/DSA/selection-sort-animation.html) - 未ソート部分から最小値を探し，a[i] と交換
-    - [Insertion Sort Animation (ins/cmp/temp Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-shift-animation.html) - 後ろへまとめてずらして挿入する版
-    - [Insertion Sort Animation (Swap Ver.)](https://jkushida.github.io/Web_demo/DSA/insertion-sort-animation.html) - 隣接交換で1データずつ前へ送る挿入ソート
-    - [Merge Sort Animation](https://jkushida.github.io/Web_demo/DSA/merge-sort-animation.html) - 配列を半分ずつに分割し，左右を整列してからマージする手順を可視化
-  - クイックソート
-    - [Quick Sort Partition](https://jkushida.github.io/Web_demo/DSA/quick-sort-partition.html) - pivot を基準に pl/pr を動かし、分割の決め方をステップごとに可視化
-    - [Quick Sort Partition (Head Pivot)](https://jkushida.github.io/Web_demo/DSA/quick-sort-partition-head-pivot.html) - 先頭要素 a[head] を基準値にし、基準値の位置を確定する教科書方式を可視化
-    - [Quick Sort Animation](https://jkushida.github.io/Web_demo/DSA/quick-sort-animation.html) - 中央の要素を pivot として、pl/pr で分割を繰り返すクイックソートを可視化
-    - [Quick Sort (Head Pivot Textbook Ver.)](https://jkushida.github.io/Web_demo/DSA/quick-sort-head-pivot.html) - 教科書の divideArray を使い、先頭基準値の分割と左右の再帰呼び出しを可視化
-    - [Non-Recursive Quick Sort](https://jkushida.github.io/Web_demo/DSA/quick-sort-non-recursive.html) - スタックに範囲を push/pop しながら，非再帰版クイックソートの処理順を可視化
-  - ヒープソート
-    - [Heap Sort Visualizer (Slide Ver.)](https://jkushida.github.io/Web_demo/DSA/heap-sort.html) - スライド版。最後の親から根へ sift-down して最大ヒープを作る版
-    - [Heap Sort Visualizer (Textbook Ver.)](https://jkushida.github.io/Web_demo/DSA/heap-sort-makeheap.html) - 教科書版。先頭から末尾へ1つずつ追加し、sift-up で最大ヒープを作る版
-  - 比較によらないソート
-    - [Bucket Sort Animation](https://jkushida.github.io/Web_demo/DSA/bucket-sort-animation.html) - 値を対応する bucket に振り分けてから順に回収する流れを可視化
-    - [Radix Sort Animation](https://jkushida.github.io/Web_demo/DSA/radix-sort-animation.html) - 1の位から100の位まで安定に桁ごとの並べ替えを可視化
-    - [Count Sort Animation](https://jkushida.github.io/Web_demo/DSA/count-sort-animation.html) - counts と累積和を使って tmp を作る流れを可視化
-
-- **数理・信号処理**
-  - [Euclidean Algorithm Visualizer](https://jkushida.github.io/Web_demo/DSA/euclidean-algorithm.html) - ユークリッドの互除法で最大公約数を求める過程を可視化
-  - [Fourier Epicycles](https://jkushida.github.io/Web_demo/DSA/fourier-epicycles.html) - 手描き軌跡のフーリエ復元
-
-### 進化計算 <a id="ec"></a>
-- [GA OneMax](https://jkushida.github.io/Web_demo/EC/ga-onemax.html) - OneMax問題を解く遺伝的アルゴリズムのデモ
-- [NSP Genetic Algorithm](https://jkushida.github.io/Web_demo/EC/nsp-genetic-algorithm-demo.html) - 看護師スケジューリング問題を遺伝的アルゴリズムで探索し、世代交代と系譜を可視化
-- [CMA-ES Simulator](https://jkushida.github.io/Web_demo/EC/cmaes_simulator.html) - CMA-ESのシミュレータ
-- [DE Simulator](https://jkushida.github.io/Web_demo/EC/de_simulator.html) - 差分進化のシミュレータ
-- [PSO Simulator](https://jkushida.github.io/Web_demo/EC/pso_simulator.html) - 粒子群最適化のシミュレータ
-- [ACO TSP](https://jkushida.github.io/Web_demo/EC/aco_tsp.html) - アリコロニー最適化でTSP
-- [Genetic Programming Regression](https://jkushida.github.io/Web_demo/EC/gp_regression.html) - 遺伝的プログラミングによる回帰
-
-### 機械学習 <a id="ml"></a>
-- [k-means Clustering](https://jkushida.github.io/Web_demo/ML/k-means.html) - k-meansクラスタリングのシミュレーション
-- [Polynomial Regression & Overfitting](https://jkushida.github.io/Web_demo/ML/polynomial-overfitting.html) - 多項式回帰と過学習のデモ
-- [PCA Educational Demo](https://jkushida.github.io/Web_demo/ML/pca_educational_demo.html) - 主成分分析（PCA）の教育用デモ
-
-### 自然言語処理 <a id="nlp"></a>
-- [語彙表を段階的に作る](https://jkushida.github.io/Web_demo/NLP/vocabulary_builder.html) - 文章を1語ずつ読み、単語IDと出現回数を作成
-- [共起行列を段階的に作る](https://jkushida.github.io/Web_demo/NLP/cooccurrence.html) - 共起行列、コサイン類似度、類似語ランキングを可視化
-- [CBOW実験室](https://jkushida.github.io/Web_demo/NLP/cbow.html) - 学習データ、予測、重み更新、分散表現をブラウザ内で実験
-- [自然言語処理デモ一覧](https://jkushida.github.io/Web_demo/NLP/) - 語彙表から学習済み単語ベクトルまでを学習順に案内
-- [学習済み単語ベクトル空間](https://jkushida.github.io/Web_demo/NLP/word-vector-space.html) - 10,000語・100次元の学習済みモデルで近傍語とベクトル類推を確認
-
-### MediaPipe <a id="mediapipe"></a>
-- [Finger Draw](https://jkushida.github.io/Web_demo/MediaPipe/finger_draw.html) - 手と顔の検出による3D描画
-- [Boid Fish (Hand Control)](https://jkushida.github.io/Web_demo/MediaPipe/boid-fish-hand-control.html) - 手の動きで群れ（Boids）の魚を制御
-- [3D Physics × Hand Tracking](https://jkushida.github.io/Web_demo/MediaPipe/mediapipe_physics_3d.html) - 3D物理×ハンドトラッキング
-- [Emotion Recognition](https://jkushida.github.io/Web_demo/MediaPipe/emotion_recognition.html) - 表情認識（Face Mesh + face-api.js）
-- [Virtual Makeup](https://jkushida.github.io/Web_demo/MediaPipe/virtual-makeup.html) - バーチャルメイク（MediaPipe Face Mesh）
-
-### 音声処理 (Audio) <a id="audio"></a>
-- [マイク波形（リアルタイム）](https://jkushida.github.io/Web_demo/Audio/mic-waveform.html) - マイク入力の時間波形をリアルタイム描画
-- [リアルタイムFFT（波形+スペクトラム）](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-plot.html) - 波形と周波数スペクトラムを同時表示
-- [リアルタイムFFT+スペクトログラム](https://jkushida.github.io/Web_demo/Audio/realtime-audio-fft-spec-plot.html) - 波形・スペクトラム・スペクトログラムを同時表示
-- [音声コマンド認識（TF.js + Chart）](https://jkushida.github.io/Web_demo/Audio/speech-commands-chart.html) - 音声コマンドの認識結果を可視化
-- [リアルタイム日本語スピーチ→テキスト（Web Speech API）](https://jkushida.github.io/Web_demo/Audio/ja-speech-to-text.html) - 日本語音声をブラウザで逐次認識し、テキストを表示
+外部教材は`resources/ml-algorithm-visualizations.md`で管理する。HTMLの生成手順は[resources/README.md](resources/README.md)を参照。画像・データなどの共通リソースは`assets/`に配置する。
