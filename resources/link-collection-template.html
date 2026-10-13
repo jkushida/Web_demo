@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="$lang$">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$pagetitle$</title>
+$for(css)$
+  <link rel="stylesheet" href="$css$">
+$endfor$
+</head>
+<body>
+  <header id="title-block-header">
+    <h1 class="title">$title$</h1>
+$if(date)$
+    <p class="date">$date$</p>
+$endif$
+  </header>
+$if(toc)$
+  <details class="category-index">
+    <summary>すべてのカテゴリ・目次</summary>
+    <nav id="TOC" role="doc-toc" aria-label="目次">
+$toc$
+    </nav>
+  </details>
+$endif$
+$body$
+</body>
+</html>

@@ -1,38 +1,21 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="ja" xml:lang="ja">
+<html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <meta name="dcterms.date" content="2026-10-12" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>機械学習・統計・AIの可視化サイトリンク集</title>
-  <style>
-    code{white-space: pre-wrap;}
-    span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    /* The extra [class] is a hack that increases specificity enough to
-       override a similar rule in reveal.js */
-    ul.task-list[class]{list-style: none;}
-    ul.task-list li input[type="checkbox"] {
-      font-size: inherit;
-      width: 0.8em;
-      margin: 0 0.8em 0.2em -1.6em;
-      vertical-align: middle;
-    }
-    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
-  </style>
-  <link rel="stylesheet" href="link-collection.css" />
+  <link rel="stylesheet" href="link-collection.css">
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">機械学習・統計・AIの可視化サイトリンク集</h1>
-<p class="date">2026-10-12</p>
-</header>
-<nav id="TOC" role="doc-toc">
-<h2 id="toc-title">目次</h2>
+  <header id="title-block-header">
+    <h1 class="title">機械学習・統計・AIの可視化サイトリンク集</h1>
+    <p class="date">2026-10-12</p>
+  </header>
+  <details class="category-index">
+    <summary>すべてのカテゴリ・目次</summary>
+    <nav id="TOC" role="doc-toc" aria-label="目次">
 <ul>
+<li><a href="#目的から探す" id="toc-目的から探す">目的から探す</a></li>
 <li><a href="#まず見る教材" id="toc-まず見る教材">まず見る教材</a></li>
 <li><a href="#確認状態と調査範囲"
 id="toc-確認状態と調査範囲">確認状態と調査範囲</a></li>
@@ -40,14 +23,14 @@ id="toc-確認状態と調査範囲">確認状態と調査範囲</a></li>
 id="toc-掲載サイトの補足">掲載サイトの補足</a></li>
 <li><a href="#総合教材教材を探す入口"
 id="toc-総合教材教材を探す入口">総合教材・教材を探す入口</a></li>
-<li><a href="#確率統計ベイズ推論"
-id="toc-確率統計ベイズ推論">確率・統計・ベイズ推論</a></li>
-<li><a href="#線形代数数学の基礎"
-id="toc-線形代数数学の基礎">線形代数・数学の基礎</a></li>
+<li><a href="#topic-statistics"
+id="toc-topic-statistics">確率・統計・ベイズ推論</a></li>
+<li><a href="#topic-mathematics"
+id="toc-topic-mathematics">線形代数・数学の基礎</a></li>
 <li><a href="#回帰分類クラスタリング"
 id="toc-回帰分類クラスタリング">回帰・分類・クラスタリング</a></li>
-<li><a href="#モデル評価汎化公平性の指標"
-id="toc-モデル評価汎化公平性の指標">モデル評価・汎化・公平性の指標</a></li>
+<li><a href="#topic-evaluation"
+id="toc-topic-evaluation">モデル評価・汎化・公平性の指標</a></li>
 <li><a href="#ニューラルネットワーク誤差逆伝播最適化"
 id="toc-ニューラルネットワーク誤差逆伝播最適化">ニューラルネットワーク・誤差逆伝播・最適化</a></li>
 <li><a href="#次元削減埋め込みガウス過程"
@@ -58,10 +41,10 @@ id="toc-画像処理cnnグラフニューラルネットワーク">画像処理�
 id="toc-自然言語処理transformerllm">自然言語処理・Transformer・LLM</a></li>
 <li><a href="#生成モデル強化学習"
 id="toc-生成モデル強化学習">生成モデル・強化学習</a></li>
-<li><a href="#説明可能aiバイアスモデル内部の探索"
-id="toc-説明可能aiバイアスモデル内部の探索">説明可能AI・バイアス・モデル内部の探索</a></li>
-<li><a href="#実データ学習ログモデル構造を可視化するツール"
-id="toc-実データ学習ログモデル構造を可視化するツール">実データ・学習ログ・モデル構造を可視化するツール</a></li>
+<li><a href="#topic-interpretability"
+id="toc-topic-interpretability">説明可能AI・バイアス・モデル内部の探索</a></li>
+<li><a href="#topic-tools"
+id="toc-topic-tools">実データ・学習ログ・モデル構造を可視化するツール</a></li>
 <li><a href="#直接取得できなかった参考候補"
 id="toc-直接取得できなかった参考候補">直接取得できなかった参考候補</a></li>
 <li><a href="#授業自習での組み合わせ"
@@ -69,12 +52,54 @@ id="toc-授業自習での組み合わせ">授業・自習での組み合わせ<
 <li><a href="#調査方法と未確認事項"
 id="toc-調査方法と未確認事項">調査方法と未確認事項</a></li>
 </ul>
-</nav>
+    </nav>
+  </details>
 <p><a href="../index.html">Webデモへ戻る</a></p>
 <p>調査日: <strong>2026年10月12日</strong>。本編は
 <strong>95リソース・12分野</strong>、末尾に直接取得できなかった参考候補を3件収録。1サイト内の独立した教材ページも1リソースとして数えているため、95の独立サイトという意味ではない。</p>
 <p>公式サイト、著者のページ、大学・研究グループ、公式リポジトリ・論文を横断して調査した。操作型教材を探す場合は<a
 href="ml-algorithm-visualizations.html">機械学習アルゴリズムの可視化リンク集</a>も参照。</p>
+<h2 id="目的から探す">目的から探す</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th>目的</th>
+<th>入口</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>NN・SVM・決定木などを操作して学ぶ</td>
+<td><a
+href="ml-algorithm-visualizations.html">アルゴリズム別リンク集（44件・サムネイル付き）</a></td>
+</tr>
+<tr>
+<td>確率・統計・ベイズ推論を学ぶ</td>
+<td><a href="#topic-statistics">確率・統計</a></td>
+</tr>
+<tr>
+<td>数学の基礎を補う</td>
+<td><a href="#topic-mathematics">線形代数・数学</a></td>
+</tr>
+<tr>
+<td>モデルの性能と汎化を理解する</td>
+<td><a href="#topic-evaluation">モデル評価</a></td>
+</tr>
+<tr>
+<td>AIの説明・公平性・内部表現を調べる</td>
+<td><a href="#topic-interpretability">説明可能AI</a></td>
+</tr>
+<tr>
+<td>自分のデータ・モデルを分析する</td>
+<td><a href="#topic-tools">分析・可視化ツール</a></td>
+</tr>
+</tbody>
+</table>
+<p>このページは95件の総合索引。44件版に掲載した教材も含むため、両方の件数を足して数えない。アルゴリズムの操作と画面を比較する場合は44件版、基礎理論や分析ツールまで調べる場合はこの総合版を使う。</p>
 <h2 id="まず見る教材">まず見る教材</h2>
 <p>以下は、確認した説明内容に基づく編集上の選定。授業で実際に操作できるかは、使用する端末で事前確認が必要。</p>
 <table>
@@ -231,7 +256,7 @@ href="https://ml.kano.ac/playground/">機械学習 Playground</a></h3>
 Simulator</a></h3>
 <p>対象: 初級〜中級 / 形式: 操作 / 言語: 日本語あり / 確認: 検索のみ</p>
 <p>日本語ページを持つAI学習用ビジュアルラボ。データ作成とモデル実験を案内している。直接取得できなかったため候補扱い。</p>
-<h2 id="確率統計ベイズ推論">確率・統計・ベイズ推論</h2>
+<h2 id="topic-statistics">確率・統計・ベイズ推論</h2>
 <h3 id="resource-014">14. <a
 href="https://seeing-theory.brown.edu/">Seeing Theory</a></h3>
 <p>対象: 初級〜中級 / 形式: 操作 / 言語: 英語 / 確認:
@@ -288,7 +313,7 @@ href="https://setosa.io/ev/markov-chains/">Markov Chains / EV</a></h3>
 href="https://dagitty.net/">DAGitty</a></h3>
 <p>対象: 中級〜上級 / 形式: 操作・分析 / 言語: 英語 / 確認: 本文</p>
 <p>因果ダイアグラムをブラウザで作成・編集・分析する。交絡と調整変数を扱い、予測モデルと因果推論の違いを補う。</p>
-<h2 id="線形代数数学の基礎">線形代数・数学の基礎</h2>
+<h2 id="topic-mathematics">線形代数・数学の基礎</h2>
 <h3 id="resource-026">26. <a
 href="https://immersivemath.com/ila/index.html">Immersive Linear
 Algebra</a></h3>
@@ -366,7 +391,7 @@ K-Means Clustering</a></h3>
 <p>対象: 初級 / 形式: 操作 / 言語: 英語 / 確認: 本文</p>
 <p>Naftali
 Harrisによるk-means可視化。点のクラスタへの割当てと重心更新を反復して観察する。</p>
-<h2 id="モデル評価汎化公平性の指標">モデル評価・汎化・公平性の指標</h2>
+<h2 id="topic-evaluation">モデル評価・汎化・公平性の指標</h2>
 <h3 id="resource-041">41. <a
 href="https://mlu-explain.github.io/train-test-validation/">Train, Test
 and Validation / MLU</a></h3>
@@ -594,7 +619,7 @@ Bandits / Simon Ward-Jones</a></h3>
 <p>対象: 中級 / 形式: 図解・解説 / 言語: 英語 / 確認: 本文</p>
 <p>状況に応じて行動を選ぶ文脈付きバンディットを説明する。単純なバンディットから推薦・意思決定への接続に使う。</p>
 <h2
-id="説明可能aiバイアスモデル内部の探索">説明可能AI・バイアス・モデル内部の探索</h2>
+id="topic-interpretability">説明可能AI・バイアス・モデル内部の探索</h2>
 <h3 id="resource-081">81. <a
 href="https://pair.withgoogle.com/explorables/">Google PAIR AI
 Explorables</a></h3>
@@ -638,7 +663,7 @@ href="https://transformer-circuits.pub/">Transformer Circuits</a></h3>
 <p>対象: 上級 / 形式: 研究・図解 / 言語: 英語 / 確認: 本文</p>
 <p>Transformerの回路や特徴を研究する一次資料集。入門用の操作型教材より専門的だが、内部の可視化と解釈の根拠を追える。</p>
 <h2
-id="実データ学習ログモデル構造を可視化するツール">実データ・学習ログ・モデル構造を可視化するツール</h2>
+id="topic-tools">実データ・学習ログ・モデル構造を可視化するツール</h2>
 <h3 id="resource-089">89. <a href="https://netron.app/">Netron</a></h3>
 <p>対象: 中級 / 形式: モデル構造解析 / 言語: 英語 / 確認:
 本文・公式コード</p>

@@ -10,6 +10,19 @@ date: 2026-10-12
 
 公式サイト、著者のページ、大学・研究グループ、公式リポジトリ・論文を横断して調査した。操作型教材を探す場合は[機械学習アルゴリズムの可視化リンク集](ml-algorithm-visualizations.html)も参照。
 
+## 目的から探す
+
+| 目的 | 入口 |
+| --- | --- |
+| NN・SVM・決定木などを操作して学ぶ | [アルゴリズム別リンク集（44件・サムネイル付き）](ml-algorithm-visualizations.html) |
+| 確率・統計・ベイズ推論を学ぶ | [確率・統計](#topic-statistics) |
+| 数学の基礎を補う | [線形代数・数学](#topic-mathematics) |
+| モデルの性能と汎化を理解する | [モデル評価](#topic-evaluation) |
+| AIの説明・公平性・内部表現を調べる | [説明可能AI](#topic-interpretability) |
+| 自分のデータ・モデルを分析する | [分析・可視化ツール](#topic-tools) |
+
+このページは95件の総合索引。44件版に掲載した教材も含むため、両方の件数を足して数えない。アルゴリズムの操作と画面を比較する場合は44件版、基礎理論や分析ツールまで調べる場合はこの総合版を使う。
+
 ## まず見る教材
 
 以下は、確認した説明内容に基づく編集上の選定。授業で実際に操作できるかは、使用する端末で事前確認が必要。
@@ -124,7 +137,7 @@ Victor Powell・Lewis Leheによる数学の操作型解説。PCA、固有値、
 
 日本語ページを持つAI学習用ビジュアルラボ。データ作成とモデル実験を案内している。直接取得できなかったため候補扱い。
 
-## 確率・統計・ベイズ推論
+## 確率・統計・ベイズ推論 {#topic-statistics}
 
 ### 14. [Seeing Theory](https://seeing-theory.brown.edu/) {#resource-014}
 
@@ -198,7 +211,7 @@ Kristoffer Magnussonの統計可視化集。Cohen's d、検出力、p値、信�
 
 因果ダイアグラムをブラウザで作成・編集・分析する。交絡と調整変数を扱い、予測モデルと因果推論の違いを補う。
 
-## 線形代数・数学の基礎
+## 線形代数・数学の基礎 {#topic-mathematics}
 
 ### 26. [Immersive Linear Algebra](https://immersivemath.com/ila/index.html) {#resource-026}
 
@@ -292,7 +305,7 @@ TU Delftの線形代数教材に対応する2D・3Dの操作型図集。線形�
 
 Naftali Harrisによるk-means可視化。点のクラスタへの割当てと重心更新を反復して観察する。
 
-## モデル評価・汎化・公平性の指標
+## モデル評価・汎化・公平性の指標 {#topic-evaluation}
 
 ### 41. [Train, Test and Validation / MLU](https://mlu-explain.github.io/train-test-validation/) {#resource-041}
 
@@ -558,7 +571,7 @@ GridWorldの動的計画法・TD学習と、DQNのデモを収録。状態価値
 
 状況に応じて行動を選ぶ文脈付きバンディットを説明する。単純なバンディットから推薦・意思決定への接続に使う。
 
-## 説明可能AI・バイアス・モデル内部の探索
+## 説明可能AI・バイアス・モデル内部の探索 {#topic-interpretability}
 
 ### 81. [Google PAIR AI Explorables](https://pair.withgoogle.com/explorables/) {#resource-081}
 
@@ -610,7 +623,7 @@ PAIR教材の有志による日本語翻訳。翻訳された記事の範囲で�
 
 Transformerの回路や特徴を研究する一次資料集。入門用の操作型教材より専門的だが、内部の可視化と解釈の根拠を追える。
 
-## 実データ・学習ログ・モデル構造を可視化するツール
+## 実データ・学習ログ・モデル構造を可視化するツール {#topic-tools}
 
 ### 89. [Netron](https://netron.app/) {#resource-089}
 

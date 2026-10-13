@@ -8,6 +8,18 @@ date: 2026-10-13
 
 **NN・SVM・クラスタリングなど、学ぶカテゴリごとに44件を整理。** 各カテゴリでは、自分でデータやパラメータを変えられるページを優先して並べている。スクリーンショットは小さなサムネイルで、クリックすると拡大できる。
 
+## 学ぶカテゴリから探す
+
+| 分野 | カテゴリ |
+| --- | --- |
+| 基本のアルゴリズム | [NN・逆伝播](#category-nn) / [SVM](#category-svm) / [決定木・アンサンブル](#category-trees) / [回帰・確率モデル](#category-regression) |
+| 教師なし学習 | [クラスタリング](#category-clustering) / [次元削減](#category-dimensionality-reduction) |
+| 深層学習の発展 | [CNN・画像処理](#category-cnn) / [RNN・LSTM](#category-rnn) / [Transformer・LLM](#category-transformer) / [GNN](#category-gnn) |
+| 生成・意思決定 | [GAN・拡散モデル](#category-generative-models) / [強化学習・バンディット](#category-reinforcement-learning) |
+| 比較・横断 | [分類器を比較](#category-model-comparison) / [教材ポータル](#category-collections) |
+
+**確率統計・数学・モデル評価・AIの解釈まで探す:** [総合リンク集（95件）](ml-visualization-resources.html)。総合版には、このページと共通の教材も含まれる。44件と95件を足した件数ではなく、目的別の入口と総合索引の関係。
+
 ## 最初に操作する8ページ
 
 | 学びたいこと | 操作するページ | 変えられるもの |
