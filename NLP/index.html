@@ -12,11 +12,15 @@
     header{min-height:112px;padding:22px clamp(24px,4vw,64px);display:flex;align-items:center;justify-content:space-between;gap:24px;background:var(--white);border-top:5px solid var(--teal);border-bottom:1px solid var(--line)}
     .brand{display:flex;align-items:center;gap:18px}.brand>svg{width:44px;height:44px;color:var(--teal)}small{display:block;color:var(--muted);font-size:16px;font-weight:700;margin-bottom:3px}h1{font-size:34px;line-height:1.2;margin:0}
     .top-link{display:inline-flex;align-items:center;gap:8px;color:var(--teal);text-decoration:none;font-size:17px;font-weight:800;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#fff}.top-link svg{width:20px}.top-link:hover{border-color:var(--teal);background:var(--teal-soft)}
-    main{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:30px 0 34px}.intro{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:20px}.intro h2{font-size:25px;margin:0 0 5px}.intro p{margin:0;color:var(--muted);font-size:17px}.flow{font-weight:800;color:var(--teal);white-space:nowrap;font-size:16px}
-    .demo-list{border-top:1px solid var(--line)}.demo{display:grid;grid-template-columns:72px 1.05fr 1.45fr 44px;align-items:center;gap:22px;min-height:126px;padding:18px 20px;border-bottom:1px solid var(--line);background:var(--white);text-decoration:none;color:inherit;transition:background .15s}.demo:hover{background:#f0f8f6}.step{font-size:16px;font-weight:900;color:var(--teal);align-self:start;padding-top:5px}.name{display:flex;align-items:center;gap:14px}.icon{width:48px;height:48px;display:grid;place-items:center;border:1px solid #a9cfca;border-radius:6px;background:var(--teal-soft);color:var(--teal);flex:none}.icon svg{width:27px;height:27px}.name h3{font-size:22px;margin:0 0 4px}.name span{font-size:15px;color:var(--muted)}.detail b{display:block;font-size:18px;margin-bottom:6px}.detail p{margin:0;color:var(--muted);font-size:16px;line-height:1.55}.go{color:var(--teal)}
+    main{width:min(1180px,calc(100% - 48px));margin:0 auto;padding:30px 0 34px}.intro{display:flex;align-items:end;justify-content:space-between;gap:24px;margin-bottom:20px}.intro h2{font-size:25px;margin:0 0 5px}.intro p{margin:0;color:var(--muted);font-size:17px}.flow{display:grid;gap:3px;font-weight:800;color:var(--teal);font-size:15px;line-height:1.4}
+    .demo-list{border-top:1px solid var(--line)}.track-label{margin:0;padding:10px 20px;background:#eef5f3;border-bottom:1px solid var(--line);font-size:16px;color:#17635f}.demo{display:grid;grid-template-columns:72px 1.05fr 1.45fr 44px;align-items:center;gap:22px;min-height:112px;padding:15px 20px;border-bottom:1px solid var(--line);background:var(--white);text-decoration:none;color:inherit;transition:background .15s}.demo:hover{background:#f0f8f6}.step{font-size:16px;font-weight:900;color:var(--teal);align-self:start;padding-top:5px}.name{display:flex;align-items:center;gap:14px}.icon{width:48px;height:48px;display:grid;place-items:center;border:1px solid #a9cfca;border-radius:6px;background:var(--teal-soft);color:var(--teal);flex:none}.icon svg{width:27px;height:27px}.name h3{font-size:22px;margin:0 0 4px}.name span{font-size:15px;color:var(--muted)}.detail b{display:block;font-size:18px;margin-bottom:6px}.detail p{margin:0;color:var(--muted);font-size:16px;line-height:1.55}.go{color:var(--teal)}
     .outcome{margin-top:22px;padding:17px 20px;border-left:5px solid var(--accent);background:#fff7f0;display:flex;gap:20px;align-items:center}.outcome b{font-size:17px;white-space:nowrap}.outcome p{margin:0;color:#5f5147;line-height:1.55;font-size:16px}
+    .learning-map{margin:0 0 22px;padding:15px 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#eef5f3;font-size:17px}
+    .map-start,.map-route,.map-after{display:flex;align-items:center;gap:10px}.map-start{font-weight:800;margin-bottom:8px}.map-start a,.map-route a,.map-after a{color:#075f5b;text-decoration:underline;text-decoration-color:#8bbcb5;text-underline-offset:3px}.map-start a:hover,.map-route a:hover,.map-after a:hover{text-decoration-color:currentColor}
+    .map-route{display:grid;grid-template-columns:28px minmax(0,1fr) 150px;gap:10px;padding:6px 0;border-top:1px solid #dce8e5}.map-branch{color:#678580;font-size:22px;line-height:1;align-self:start}.map-steps{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 8px;min-width:0}.map-arrow{color:#65817d}.map-target{font-size:15px;color:#324d55;white-space:nowrap}.map-route:first-child .map-target{color:#245d91}.map-after{padding:8px 0 0 38px;border-top:1px solid #dce8e5;font-size:15px}.map-after small{display:inline;font-size:13px;font-weight:400;margin:0}.map-after svg{width:17px;height:17px;color:var(--teal)}
     footer{padding:15px 24px;text-align:center;border-top:1px solid var(--line);color:var(--muted);font-size:14px;background:var(--white)}
-    @media(max-width:780px){header{align-items:flex-start;padding:18px 20px}.brand{gap:12px}.brand>svg{width:34px;height:34px}small{font-size:13px}h1{font-size:26px}.top-link{font-size:0;padding:9px}.top-link svg{width:22px}main{width:min(100% - 28px,1180px);padding-top:22px}.intro{display:block}.flow{margin-top:12px;white-space:normal}.demo{grid-template-columns:44px 1fr 34px;gap:12px;padding:16px 10px;min-height:0}.step{font-size:14px}.name{gap:10px}.icon{width:40px;height:40px}.icon svg{width:23px}.name h3{font-size:19px}.name span{font-size:13px}.detail{grid-column:2/4}.detail b{font-size:16px}.detail p{font-size:14px}.outcome{display:block}.outcome b{display:block;margin-bottom:7px}}
+    @media(max-width:780px){header{align-items:flex-start;padding:18px 20px}.brand{gap:12px}.brand>svg{width:34px;height:34px}small{font-size:13px}h1{font-size:26px}.top-link{font-size:0;padding:9px}.top-link svg{width:22px}main{width:min(100% - 28px,1180px);padding-top:22px}.intro{display:block}.flow{margin-top:12px}.track-label{padding:9px 10px}.demo{grid-template-columns:44px 1fr 34px;gap:12px;padding:16px 10px;min-height:0}.step{font-size:14px}.name{gap:10px}.icon{width:40px;height:40px}.icon svg{width:23px}.name h3{font-size:19px}.name span{font-size:13px}.detail{grid-column:2/4}.detail b{font-size:16px}.detail p{font-size:14px}.outcome{display:block}.outcome b{display:block;margin-bottom:7px}}
+    @media(max-width:780px){.intro{margin-bottom:14px}.learning-map{padding:10px 12px;font-size:15px;margin-bottom:16px}.map-route{grid-template-columns:20px minmax(0,1fr);gap:2px 6px}.map-branch{font-size:18px}.map-target{grid-column:2;font-size:13px}.map-after{padding-left:26px;flex-wrap:wrap;gap:4px 7px;font-size:14px}.map-after small{flex-basis:100%;font-size:12px}}
   </style>
 </head>
 <body>
@@ -26,14 +30,27 @@
   </header>
   <main>
     <section class="intro">
-      <div><h2>単語を数えるところから分散表現まで</h2><p>文章を数値へ変換し、文脈を学習して、単語間の関係を調べる。</p></div>
-      <div class="flow">語彙表 → 共起行列 → PPMI・SVD → CBOW</div>
+      <div><h2>文章から文書・単語のベクトルへ</h2><p>語彙表から、何を表すかに応じて3つの流れに分かれる。</p></div>
+    </section>
+    <section class="learning-map" aria-label="教材の全体図">
+      <div class="map-start"><span>文章</span><i data-lucide="arrow-right" aria-hidden="true"></i><a href="vocabulary_builder.html">語彙表</a></div>
+      <div class="map-route"><span class="map-branch" aria-hidden="true">├</span><div class="map-steps"><a href="bow-tfidf.html">BoW</a><span class="map-arrow" aria-hidden="true">→</span><a href="bow-tfidf.html">TF-IDF</a><span class="map-arrow" aria-hidden="true">→</span><a href="bow-tfidf.html">文書検索</a></div><strong class="map-target">「文書」を表す</strong></div>
+      <div class="map-route"><span class="map-branch" aria-hidden="true">├</span><div class="map-steps"><a href="cooccurrence.html">共起行列</a><span class="map-arrow" aria-hidden="true">→</span><a href="ppmi-svd.html">PPMI</a><span class="map-arrow" aria-hidden="true">→</span><a href="ppmi-svd.html">SVD</a></div><strong class="map-target">「単語」を表す</strong></div>
+      <div class="map-route"><span class="map-branch" aria-hidden="true">└</span><div class="map-steps"><a href="cbow.html">通常CBOW</a><span class="map-arrow" aria-hidden="true">→</span><a href="cbow-improved.html">改良CBOW</a></div><strong class="map-target">「単語」を表す</strong></div>
+      <div class="map-after"><i data-lucide="corner-down-right" aria-hidden="true"></i><a href="word-vector-space.html">学習済み単語ベクトルを調べる</a><small>別の大規模コーパスで学習したモデル</small></div>
     </section>
     <nav class="demo-list" aria-label="自然言語処理デモ一覧">
+      <h3 class="track-label">共通の準備</h3>
       <a class="demo" href="vocabulary_builder.html">
         <span class="step">01</span><div class="name"><span class="icon"><i data-lucide="list-tree"></i></span><div><h3>語彙表を作る</h3><span>単語を一意なIDへ変換</span></div></div>
         <div class="detail"><b>文章 → word_to_id → ID列</b><p>左から1語ずつ読み、初出語にIDを付け、同じ語には同じIDを再利用する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
+      <h3 class="track-label">文書の表現：出現回数から文書検索へ</h3>
+      <a class="demo" href="bow-tfidf.html">
+        <span class="step">補足</span><div class="name"><span class="icon"><i data-lucide="files"></i></span><div><h3>BoW・TF-IDFと文書検索</h3><span>1本のベクトルで文書を表す</span></div></div>
+        <div class="detail"><b>文書 × 単語 → TF-IDF → 検索順位</b><p>回数と重み付けによる検索結果を比較し、単語の共起行列との違いを確認する。</p></div><i class="go" data-lucide="arrow-right"></i>
+      </a>
+      <h3 class="track-label">カウントベース：共起を数えて単語を表す</h3>
       <a class="demo" href="cooccurrence.html">
         <span class="step">02</span><div class="name"><span class="icon"><i data-lucide="table-2"></i></span><div><h3>共起行列を作る</h3><span>周辺語の出現回数を数値化</span></div></div>
         <div class="detail"><b>周辺語を数える → 行列 → 類似度</b><p>注目語の近くに現れる語を数え、文脈の似た単語をコサイン類似度で比較する。</p></div><i class="go" data-lucide="arrow-right"></i>
@@ -42,16 +59,21 @@
         <span class="step">03</span><div class="name"><span class="icon"><i data-lucide="grid-3x3"></i></span><div><h3>PPMI・SVDで改善する</h3><span>共起の補正と次元削減</span></div></div>
         <div class="detail"><b>共起行列 → PPMI → SVD</b><p>語の頻度を考慮して共起を補正し、少ない成分で表した単語の類似度を比較する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
+      <h3 class="track-label">推論ベース：予測を学習して単語を表す</h3>
       <a class="demo" href="cbow.html">
         <span class="step">04</span><div class="name"><span class="icon"><i data-lucide="network"></i></span><div><h3>CBOWを学習する</h3><span>文脈から中心語を予測</span></div></div>
         <div class="detail"><b>周辺語 → 中心語の予測 → 重み更新</b><p>文章から正解を自動生成し、予測誤差によって単語ベクトルが変化する過程を操作する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
+      <a class="demo" href="cbow-improved.html">
+        <span class="step">05</span><div class="name"><span class="icon"><i data-lucide="zap"></i></span><div><h3>通常CBOWから改良CBOWへ</h3><span>入力と出力の計算を効率化</span></div></div>
+        <div class="detail"><b>Embedding → Negative Sampling → 単語ベクトル</b><p>同じ学習例で計算の違いを比較し、正例・負例の学習と重み更新を確認する。</p></div><i class="go" data-lucide="arrow-right"></i>
+      </a>
       <a class="demo" href="word-vector-space.html">
-        <span class="step">05</span><div class="name"><span class="icon"><i data-lucide="orbit"></i></span><div><h3>学習済み単語ベクトルを調べる</h3><span>学習結果を近傍語と類推で確認</span></div></div>
+        <span class="step">06</span><div class="name"><span class="icon"><i data-lucide="orbit"></i></span><div><h3>学習済み単語ベクトルを調べる</h3><span>学習結果を近傍語と類推で確認</span></div></div>
         <div class="detail"><b>1万語・100次元 → 近傍検索・PCA・類推</b><p>教科書第4章の学習済み改良CBOWを使い、単語の近さとベクトルの足し引きを確認する。</p></div><i class="go" data-lucide="arrow-right"></i>
       </a>
     </nav>
-    <section class="outcome"><b>5ページの関係</b><p>01は共通の準備。02・03はカウントベース、04・05は推論ベース。単語IDを作り、2つの方法で分散表現を学ぶ。</p></section>
+    <section class="outcome"><b>文書と単語を区別する</b><p>BoW・TF-IDFは文書の表現。02→03と04→05→06は単語の表現を作る別の方法で、03のSVD結果を04のCBOWへ渡すわけではない。</p></section>
   </main>
   <footer>自然言語処理2026 · ブラウザだけで実行可能</footer>
   <script>window.addEventListener('DOMContentLoaded',()=>lucide.createIcons())</script>

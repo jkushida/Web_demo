@@ -42,14 +42,18 @@ function cellExplanation() {
   const s=state, c=s.C[row][col], a=s.rows[row], b=s.cols[col];
   const expected=a*b/s.N, p=s.PMI[row][col];
   const mark = (role, value, label) => `<span class="quantity q-${role}" title="${label}">${esc(value)}</span>`;
-  const count = mark('count', c, '共起回数 C[x,y]'), rsum = mark('row', a, '行和：注目語側'), csum = mark('col', b, '列和：周辺語側'), total = mark('total', s.N, '延べ共起回数 N');
+  const count = mark('count', c, '共起回数 C[x,y]'), rsum = mark('row', a, '行和：注目語側'), csum = mark('col', b, '列和：周辺語側'), total = mark('total', s.N, '実装の N：共起行列の全セルの合計');
   const result = value => mark('result', fmt(value), '計算結果');
+  const percent = value => `${(value*100).toFixed(1)}%`;
   const pairSelectors=stage===1?`<div class="pair-selectors"><label for="pair-row">注目語 x<select id="pair-row" data-pair-row>${s.words.map((word,i)=>`<option value="${i}" ${i===row?'selected':''}>${esc(word)}</option>`).join('')}</select></label><label for="pair-col">周辺語 y<select id="pair-col" data-pair-col>${s.words.map((word,i)=>`<option value="${i}" ${i===col?'selected':''}>${esc(word)}</option>`).join('')}</select></label></div>`:'';
   return `<div class="formula">${pairSelectors}<h3><span class="q-row">${esc(s.words[row])}</span> × <span class="q-col">${esc(s.words[col])}</span></h3>
-    <div class="quantity-legend" aria-label="数値の色と役割"><span class="q-count">共起回数</span><span class="q-row">行和</span><span class="q-col">列和</span><span class="q-total">延べ回数 N</span><span class="q-result">計算結果</span></div>
-    <p>共起回数 C[x,y] = ${count}</p><p>行和 = ${rsum} ／ 列和 = ${csum} ／ N = ${total}</p>
+    <div class="quantity-legend" aria-label="数値の色と役割"><span class="q-count">共起回数</span><span class="q-row">行和</span><span class="q-col">列和</span><span class="q-total">実装の N = ΣC</span><span class="q-result">計算結果</span></div>
+    <p>共起回数 C[x,y] = ${count}</p><p>行和 = ${rsum} ／ 列和 = ${csum} ／ 実装の N = ${total}</p>
     <p>P(x,y) = ${count}/${total} = ${result(c/s.N)}</p>
+    <p><b>P(x,y) の意味：</b>数えた共起ペアを延べ${s.N}件から1件選んだとき、注目語が「${esc(s.words[row])}」で、同時に周辺語が「${esc(s.words[col])}」である実際の確率。</p>
     <p>P(x)P(y) = (${rsum}/${total}) × (${csum}/${total}) = ${result(a*b/s.N**2)}</p>
+    <p><b>P(x)P(y) の意味：</b>注目語が「${esc(s.words[row])}」と分かっても周辺語が「${esc(s.words[col])}」になる確率は変わらない、と仮定した場合の同時確率。</p>
+    <p>実際は <b>${percent(c/s.N)}</b>、独立なら <b>${percent(a*b/s.N**2)}</b>。${c ? `実際は期待の <b>${(c*s.N/(a*b)).toFixed(1)}倍</b>。` : 'この組は実際には共起していない。'}語の出現頻度を考慮したうえで、共起が期待より多いかを比べる。</p>
     <p>独立なら期待される回数 = ${result(expected)}</p><hr>
     <p>PMI = log₂((${count} × ${total}) / (${rsum} × ${csum}))</p><p class="value">${result(p)}</p>
     <p>PPMI = max(0, ${result(p)}) = ${result(Math.max(0,p))}</p>
@@ -63,7 +67,7 @@ function pairCountWalk() {
   const tokens=s.tokens.map((word,i)=>`<span class="token-position"><small>${i+1}</small>${esc(word)}</span>`).join('');
   const rows=entries.map((e,i)=>`<tr><td>${i+1}</td><td>${e.i+1}</td><td><b>${esc(e.word)}</b> → ${esc(e.neighbor)} <small>(位置 ${e.j+1})</small></td><td>C[${esc(e.word)}, ${esc(e.neighbor)}] に +1</td></tr>`).join('');
   const gaps=entries.length/2;
-  return `<section class="pair-walk"><h3>どの語の組を数えたか</h3><p>コーパスを左から位置番号で示す。各位置の語を注目語にし、左右の幅 ${$('window').value} 語以内にある語を周辺語として、対応する行列セルに1を加える。</p><div class="token-line" aria-label="位置番号付きコーパス">${tokens}</div><p><b>${s.tokens.length}語</b>の列から、文脈内の組を<b>${entries.length}回</b>数える。各組は「注目語 → 周辺語」の向きで1回ずつ記録する。</p><details open><summary>加算記録をすべて表示（${entries.length}回）</summary><div class="scroll pair-scroll"><table><thead><tr><th>加算順</th><th>注目位置</th><th>注目語 → 周辺語</th><th>増える行列セル</th></tr></thead><tbody>${rows}</tbody></table></div></details><p class="note">行列の全セルを合計：${entries.length}回の加算で N = ${s.N}。対称な文脈窓では、同じ隣接箇所も注目語を逆にして数えるため、${gaps}箇所 × 2方向 = ${entries.length}回。句点を含めて1列にしているので、文の境界もまたいで集計する。</p></section>`;
+  return `<section class="pair-walk"><h3>どの語の組を数えたか</h3><p>コーパスを左から位置番号で示す。各位置の語を注目語にし、左右の幅 ${$('window').value} 語以内にある語を周辺語として、対応する行列セルに1を加える。</p><div class="token-line" aria-label="位置番号付きコーパス">${tokens}</div><p><b>${s.tokens.length}語</b>の列から、文脈内の組を<b>${entries.length}回</b>数える。各組は「注目語 → 周辺語」の向きで1回ずつ記録する。</p><details open><summary>加算記録をすべて表示（${entries.length}回）</summary><div class="scroll pair-scroll"><table><thead><tr><th>加算順</th><th>注目位置</th><th>注目語 → 周辺語</th><th>増える行列セル</th></tr></thead><tbody>${rows}</tbody></table></div></details><p class="note">行列の全セルを合計：${entries.length}回の加算で実装の N = ${s.N}。教科書本文のN（コーパスの単語数）は${s.tokens.length}。対称な文脈窓では、同じ隣接箇所も注目語を逆にして数えるため、${gaps}箇所 × 2方向 = ${entries.length}回。句点を含めて1列にしているので、文の境界もまたいで集計する。</p></section>`;
 }
 function cosine(a,b) {const den=Math.hypot(...a)*Math.hypot(...b);return den<1e-12?null:a.reduce((v,x,i)=>v+x*b[i],0)/den;}
 function render() {
@@ -72,7 +76,7 @@ function render() {
   document.querySelectorAll('[role=tab]').forEach((b,i)=>{b.setAttribute('aria-selected',String(stage===i));b.tabIndex=stage===i?0:-1;});
   $('panel').setAttribute('aria-labelledby',`tab-${stage}`);
   $('title').textContent = ['共起行列 C の生成','共起ペアを確率に変える','期待される共起と実際の共起を比べる','PMIの負の値を0にする','PPMIを少ない成分で近似する','単語ベクトルUの先頭2成分','表現を変えたときの近い語'][stage];
-  $('lead').textContent = ['セルを選ぶと、同じ語の組を確率・PMI・PPMIまで追跡できる。','延べN件の共起記録から1件を選ぶとき、注目語がxである確率をP(x)とする。','PMIが正なら、独立と仮定した場合より多く共起している。','0を含む疎な行列はまだ語彙数V次元。次にSVDで次元を減らす。',`単語1つを${s.words.length}成分から${k}成分へ。教科書と同じUₖを使用。`,'点を選ぶと基準語が変わる。軸の符号や向き自体に意味はない。',`基準語「${s.words[q]}」を除外して比較。SVDは${k}次元を使用。`][stage];
+  $('lead').textContent = ['セルを選ぶと、同じ語の組を確率・PMI・PPMIまで追跡できる。','教科書の簡易実装に合わせ、共起行列の総和Nで割る。本文の式(2.3)ではNはコーパスの単語数。','PMIが正なら、独立と仮定した場合より多く共起している。','0を含む疎な行列はまだ語彙数V次元。次にSVDで次元を減らす。',`単語1つを${s.words.length}成分から${k}成分へ。教科書と同じUₖを使用。`,'点を選ぶと基準語が変わる。軸の符号や向き自体に意味はない。',`基準語「${s.words[q]}」を除外して比較。SVDは${k}次元を使用。`][stage];
   if(stage>=4 && s.S[0]<1e-12) {
     $('content').innerHTML='<div class="formula"><h3>PPMI行列が全て0</h3><p>共起の正の関連が残っていないため、SVDの軸から単語の関係を読み取れない。別の文章で比較する。</p></div>';
     $('previous').disabled=false; $('next').disabled=stage===6; $('step-count').textContent=`${stage+1} / 7`;
@@ -85,12 +89,16 @@ function render() {
     const valueCounts=matrixValues.reduce((counts,value)=>counts.set(value,(counts.get(value)||0)+1),new Map());
     const matrixTotal=valueCounts.size?[...valueCounts].sort(([a],[b])=>a-b).map(([value,count])=>`${value}×${count}`).join(' + '):'';
     const observedTypes=totalCells-(valueCounts.get(0)||0);
-    const matrixGuide=stage===0?`<div class="matrix-guide"><b>C[i,j] は「注目語 i → 周辺語 j」が現れた回数</b><span>行列の大きさ：${s.words.length}×${s.words.length} = ${totalCells}セル</span><span>実際に現れた組：${observedTypes}種類（0でないセル）</span><span>セルの値ごとの内訳：${[...valueCounts].sort(([a],[b])=>a-b).map(([value,count])=>`${value}のセル ${count}個`).join(' ／ ')}</span><strong>延べ共起回数 N = ${matrixTotal} = ${s.N}</strong><p>1セルは語の組の1種類に対応し、その値は出現回数。Nは繰り返しを含めて回数を足した延べ数で、組の種類数とは異なる。</p></div>`:'';
+    const matrixGuide=stage===0?`<div class="matrix-guide"><b>C[i,j] は「注目語 i → 周辺語 j」が現れた（共起した）回数</b><span>コーパスの単語数：${s.tokens.length}語（教科書本文の式(2.3)の N）</span><span>行列の大きさ：${s.words.length}×${s.words.length} = ${totalCells}セル</span><span>実際に現れた組：${observedTypes}種類（0でないセル）</span><span>セルの値ごとの内訳：${[...valueCounts].sort(([a],[b])=>a-b).map(([value,count])=>`${value}のセル ${count}個`).join(' ／ ')}</span><strong>教科書の簡易実装の N = ΣC = ${matrixTotal} = ${s.N}</strong><p>1セルは語の組の1種類に対応し、その値は出現回数。実装のNは繰り返しを含めて回数を足した延べ数で、本文のN（単語数）や組の種類数とは異なる。</p></div>`:'';
     $('content').innerHTML=`<div class="split"><div>${table(matrix)}<p class="note">${stage===0?'共起回数は整数。':'PMIの小数は表示時のみ丸める。'} 青枠：${esc(s.words[row])} × ${esc(s.words[col])}</p>${matrixGuide}</div>${cellExplanation()}</div>`;
   } else if(stage===1) {
-    const x=s.words[row], rowSum=s.rows[row];
-    const probabilityGuide=`<div class="probability-guide"><h3>P(x) は何の確率？</h3><p>「注目語 → 周辺語」を数えた<b>延べ${s.N}件の記録（N=${s.N}）</b>から1件を等確率で選ぶ。その記録の<b>注目語が x</b>である確率が P(x)。</p><p><b>P(${esc(x)}) = ${rowSum} / ${s.N} = ${fmt(rowSum/s.N)}</b><br>分子の${rowSum}は「${esc(x)}」行の合計、つまり注目語が「${esc(x)}」だった延べ回数。</p><p class="note">文章中で「${esc(x)}」が出る割合ではない。共起を数えた記録から選んでいる。</p></div>`;
-    $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p>${probabilityGuide}</div>${cellExplanation()}</div>${pairCountWalk()}`;
+    const x=s.words[row], y=s.words[col], rowSum=s.rows[row], colSum=s.cols[col];
+    const probabilityGuide=`<div class="probability-guide"><h3>P(x)・P(y) は何の確率？</h3>
+      <p>教科書の<b>簡易実装における確率</b>。数えた共起ペアを<b>延べ${s.N}件から1件</b>選ぶ。</p>
+      <p><b>P(x)：注目語が「${esc(x)}」である確率</b><br>行和 ${rowSum} ÷ ${s.N} = ${fmt(rowSum/s.N)}。分子は「${esc(x)}」が注目語だった延べ回数。</p>
+      <p><b>P(y)：周辺語が「${esc(y)}」である確率</b><br>列和 ${colSum} ÷ ${s.N} = ${fmt(colSum/s.N)}。分子は「${esc(y)}」が周辺語だった延べ回数。</p>
+      <p class="note">左右を同じ幅で数えるため、各単語の行和と列和は等しい。ただしP(x)は注目語側、P(y)は周辺語側を見る。本文の「コーパス中で単語が現れる確率」とも分母が異なる。</p></div>`;
+    $('content').innerHTML=`<div class="split"><div><table><thead><tr><th>単語</th><th>行和</th><th>P(x)</th><th>列和</th><th>P(y)</th></tr></thead><tbody>${s.words.map((w,i)=>`<tr><th>${esc(w)}</th><td>${s.rows[i]}</td><td>${fmt(s.rows[i]/s.N)}</td><td>${s.cols[i]}</td><td>${fmt(s.cols[i]/s.N)}</td></tr>`).join('')}</tbody></table><p>実装の N = ΣᵢΣⱼ C[i,j] = <b>${s.N}</b> ／ 本文の N = コーパスの単語数 <b>${s.tokens.length}</b></p><p class="note">左右を同じ幅で数えるため、この行列では行和と列和が一致する。</p>${probabilityGuide}</div>${cellExplanation()}</div>${pairCountWalk()}`;
   } else if(stage===4) {
     const energy=s.S.reduce((a,v)=>a+v*v,0), kept=s.S.slice(0,k).reduce((a,v)=>a+v*v,0);
     const error=Math.sqrt(Math.max(0,energy-kept));

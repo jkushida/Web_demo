@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>通常CBOWから改良CBOWへ | 自然言語処理2026</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="cbow-improved.css">
+  <script defer src="vendor/lucide.min.js"></script>
+  <script defer src="cbow-improved-core.js"></script>
+  <script defer src="cbow-improved.js"></script>
+</head>
+<body>
+  <header><div><small>自然言語処理2026 · 第4章 word2vecの高速化</small><h1>通常CBOWから改良CBOWへ</h1></div><nav><a href="cbow.html"><i data-lucide="arrow-left"></i>通常CBOW</a><a href="https://jkushida.github.io/Web_demo/NLP/"><i data-lucide="home"></i>NLPトップへ</a><a href="word-vector-space.html">学習済みベクトル<i data-lucide="arrow-right"></i></a><button id="settings-toggle" class="icon mobile-settings" title="文章・学習設定" aria-label="文章・学習設定" aria-controls="settings-panel" aria-expanded="false"><i data-lucide="sliders-horizontal"></i></button></nav></header>
+  <div class="workspace">
+    <aside id="settings-panel" data-open="false">
+      <form id="setup">
+        <h2>文章と学習設定</h2>
+        <label for="preset">例文</label><select id="preset"><option value="textbook">教科書の英文</option><option value="english">英文・3文（cat / dog）</option><option value="japanese">日本語・3文（分かち書き）</option><option value="custom">自由入力</option></select>
+        <label for="text">コーパス</label><textarea id="text" rows="3" maxlength="1500" spellcheck="false">You say goodbye and I say hello.</textarea>
+        <div class="pair"><div><label for="dimension">次元 H</label><select id="dimension"><option selected>3</option><option>5</option><option>8</option></select></div><div><label for="negative-count">負例数 K</label><select id="negative-count"><option>1</option><option selected>2</option><option>3</option><option>5</option></select></div></div>
+        <button class="primary full" type="submit"><i data-lucide="check"></i>設定を適用・初期化</button><p id="dirty" class="note" hidden>変更は未適用</p>
+        <p class="note">左右1語。日本語は空白で区切る。</p>
+      </form>
+      <section class="training"><h2>2つのモデルを学習</h2><label for="rate">学習率 η <output id="rate-value">0.50</output></label><input id="rate" type="range" min="0.05" max="1" step="0.05" value="0.5">
+        <div class="controls"><button id="step"><i data-lucide="step-forward"></i>1回</button><button id="run" class="primary"><i data-lucide="play"></i><span>連続学習</span></button><button id="reset" class="icon" title="同じ初期重みに戻す" aria-label="重みを初期化"><i data-lucide="rotate-ccw"></i></button></div>
+        <div class="metric">全学習例での重み更新 <b id="epoch">0回</b></div><p class="note">全件一括SGD。毎回負例を再抽出。1000回で停止。</p>
+      </section>
+      <section class="metrics"><div>トークン数 <b id="token-count"></b></div><div>語彙数 V <b id="vocab-count"></b></div><div>学習データ数 <b id="sample-count"></b></div><div>入力 W_in <b id="shape-in"></b></div><div>改良側 W_out <b id="shape-out"></b></div></section>
+      <a class="explanation-link" href="#explanation">詳しい説明 ↓</a>
+    </aside>
+    <main>
+      <p id="error" role="alert" hidden></p>
+      <nav class="tabs" role="tablist" aria-label="改良の段階"><button id="tab-embedding" role="tab" aria-controls="panel-embedding" aria-selected="true" data-tab="embedding">1. Embedding</button><button id="tab-sampling" role="tab" aria-controls="panel-sampling" aria-selected="false" data-tab="sampling">2. Negative Sampling</button><button id="tab-training" role="tab" aria-controls="panel-training" aria-selected="false" data-tab="training">3. 学習と更新</button><button id="tab-vectors" role="tab" aria-controls="panel-vectors" aria-selected="false" data-tab="vectors">4. 単語ベクトルの評価</button></nav>
+      <section class="sample-strip"><div><small>同じ学習例を比較</small><strong id="sample-equation"></strong></div><div class="sample-controls"><button id="previous" class="icon" title="前の学習例" aria-label="前の学習例"><i data-lucide="chevron-left"></i></button><select id="sample" aria-label="学習例を選択"></select><button id="next" class="icon" title="次の学習例" aria-label="次の学習例"><i data-lucide="chevron-right"></i></button></div></section>
+      <section id="panel-embedding" role="tabpanel" aria-labelledby="tab-embedding">
+        <h2>入力の改良：one-hotを作らず、IDで行を取り出す</h2><p class="lead">同じ W_in を使えば、どちらも同じベクトル h になる。</p>
+        <div class="comparison"><section><h3><span class="method ordinary">通常</span> one-hot × W_in</h3><div id="onehot"></div><p>長さVの入力を2本作り、共有する W_in と掛ける。</p><code>h = (x_left @ W_in + x_right @ W_in) / 2</code></section><section><h3><span class="method improved">改良</span> Embedding（行の参照）</h3><div id="lookup"></div><p>単語IDを添字として、必要な2行だけを取り出す。</p><code>h = (W_in[left] + W_in[right]) / 2</code></section></div>
+        <div class="section-heading"><h3>共有する入力重み W_in</h3><span class="note">青＝左の語 ／ 紫＝右の語</span></div><div id="embedding-matrix" class="table-scroll"></div>
+        <div id="hidden-equality" class="result-line"></div><div id="input-cost" class="notice"></div>
+      </section>
+      <section id="panel-sampling" role="tabpanel" aria-labelledby="tab-sampling" hidden>
+        <h2>出力の改良：全語彙ではなく、正例1語と負例K語を計算</h2><p class="lead">同じ初期重みで比較。学習後は目的関数が違うため、重みも別々に変わる。</p>
+        <div class="comparison output-comparison"><section><h3><span class="method ordinary">通常</span> 全語彙のSoftmax</h3><div id="softmax-table" class="table-scroll"></div><p id="softmax-loss"></p></section><section><div class="section-heading"><h3><span class="method improved">改良</span> 二値分類をK+1個</h3><button id="resample" class="icon" title="表示用の負例を再抽出（重みは変えない）" aria-label="表示用の負例を再抽出"><i data-lucide="shuffle"></i></button></div><div id="sampling-table" class="table-scroll"></div><p id="sampling-loss"></p><p class="note">σ(s)は、その語を正例と判定する二値分類の値。全語彙で合計1になる確率分布ではない。</p></section></div>
+        <div id="output-cost" class="notice"></div>
+        <details><summary>負例はどのように選ぶ？</summary><p>コーパスの語の出現回数を0.75乗し、合計1に正規化する。頻出語を選びやすくしつつ、単純な頻度比例よりまれな語も選びやすくする。</p><div id="sampling-distribution" class="table-scroll"></div><p>この教材は教科書のCPU実装と同じく、正解語を除いて確率を正規化し、重複なしでK語を選ぶ。表の「正解除外後」は1語目の抽出確率。2語目以降は選択済みの語も除き、再び正規化する。負例は「この学習例の正解ではない語」で、意味的に無関係な語とは限らない。</p></details>
+      </section>
+      <section id="panel-training" role="tabpanel" aria-labelledby="tab-training" hidden>
+        <h2>誤差を逆伝播し、共有する単語ベクトルを更新する</h2>
+        <div class="flow-line"><span>左右の単語ID</span><i data-lucide="arrow-right"></i><span>共有 W_in の2行</span><i data-lucide="arrow-right"></i><span>平均 h</span><i data-lucide="arrow-right"></i><span>正例＋負例</span><i data-lucide="arrow-right"></i><span>二値分類の損失</span></div>
+        <div class="comparison"><section><h3>通常：Softmax交差エントロピー</h3><strong class="loss-value" id="full-mean"></strong><canvas id="full-chart" role="img" aria-label="通常CBOWの平均損失"></canvas></section><section><h3>改良：正例・負例の二値交差エントロピーの和</h3><strong class="loss-value" id="ns-mean"></strong><canvas id="ns-chart" role="img" aria-label="改良CBOWの固定負例での平均損失"></canvas></section></div>
+        <p class="note">縦軸は各モデルの平均損失、横軸は更新回数。2つの損失は目的関数も尺度も違うので、値の大小で優劣を比べない。改良側のグラフは、比較条件をそろえるため固定した評価用負例で計算する。訓練用の負例は毎回変える。</p>
+        <h3>この1例で、改良側のどの行に勾配が流れる？</h3><div id="gradient-rows" class="table-scroll"></div><p class="note">入力側は左右の語の行、出力側は正例・選んだ負例の行だけ。同じIDが複数回使われたときは、その行への勾配を加算する。左の学習ボタンは、この1例だけでなく全学習例の勾配を平均して更新する。</p>
+      </section>
+      <section id="panel-vectors" role="tabpanel" aria-labelledby="tab-vectors" hidden>
+        <h2>学習の成果：W_inの各行を単語ベクトルとして使う</h2>
+        <div class="view-controls"><label for="vector-model">モデル<select id="vector-model"><option value="ns">改良CBOW</option><option value="full">通常CBOW</option></select></label><label for="query">類似度の基準語<select id="query"></select></label><label for="vector-values">表示する値<select id="vector-values"><option value="current">現在の重み</option><option value="delta">初期値からの変化</option></select></label></div>
+        <div class="comparison"><section><h3>入力の単語ベクトル W_in</h3><div id="vectors-table" class="table-scroll"></div></section><section><h3>コサイン類似度の高い語</h3><div id="neighbors"></div><p><code>cos(x,y) = x·y / (‖x‖‖y‖)</code></p></section></div>
+        <div class="notice">これは訓練コーパスで得たベクトルの観察。短文では一般的な意味の近さを保証しない。未知データでの性能評価ではない。</div><p><a href="word-vector-space.html">より大きなPTBコーパスで学習した1万語・100次元のベクトルを調べる →</a></p>
+      </section>
+      <footer>入力のEmbedding化は計算結果を保つ。出力のNegative Sampling化は学習目的を変える。</footer>
+    </main>
+  </div>
+  <section id="explanation" class="explanation">
+    <h2>通常CBOWから改良CBOWへ：何が変わり、何が変わらない？</h2>
+    <div class="explain-grid">
+      <article><h3>1. 大きな語彙でのボトルネック</h3><p>通常CBOWは周辺語のone-hot入力と重みの積からhを作り、全V語の出力スコアを計算する。Vが100万、Hが100なら、全語彙への内積だけで約1億回の積和が必要。短い例文では高速化の利点は小さいが、大きな語彙では重要になる。</p></article>
+      <article><h3>2. Embedding：IDに対応する行を選ぶ</h3><p>one-hotの1は1か所だけなので、行列積の結果は対応する1行そのもの。Embeddingはこの性質を利用し、one-hot配列と不要な掛け算を省く。逆伝播でも使った行へ勾配を加える。語順を保つ改良ではない。左右のベクトルを平均するため、左右を入れ替えてもhは同じ。</p></article>
+      <article><h3>3. 正例と負例の二値分類</h3><p>正例は文章から得た中心語、ラベルは1。負例は抽出した別の語、ラベルは0。各語の出力ベクトルuとhの内積sを求め、σ(s) = 1 / (1 + exp(−s))を計算する。</p><p><code>L = −log σ(s_positive) − Σ log(1 − σ(s_negative))</code></p><p>正例の値を1へ、負例の値を0へ近づける。Negative SamplingはSoftmaxを少数語でそのまま再現する操作ではなく、別の目的関数で学習する方法。</p></article>
+      <article><h3>4. 行列の向きと計算量</h3><p>通常の出力重みはH×Vで、各列が語の出力ベクトル。改良の出力重みはV×Hで、Embeddingとして各行を選ぶ。初期値は転置に相当する同じ値にそろえる。入力W_inも出力W_outも全語彙分を保持するので、重みの保存量はどちらも2VH個。減るのは1例の計算対象で、語彙の数やモデルの行数ではない。</p><p>この画面の積和数は主要な内積の理論値。経過時間の測定値ではなく、Softmax・Sigmoid・抽出・逆伝播のコストは含まない。通常側も疎行列最適化すれば入力計算を減らせる。</p></article>
+      <article><h3>5. 学習後に使うのは入力の単語ベクトル</h3><p>教科書の改良CBOWはW_inをword_vecsとして取り出す。コサイン類似度による近傍検索や、別のNLPモデルのEmbeddingの初期値に使える。出力重みW_outとは別の役割で、正例・負例の判別器そのものをそのまま全語彙Softmaxの予測確率とは呼べない。</p></article>
+      <article><h3>6. この教材と教科書の実験の違い</h3><p>対応は『ゼロから作るDeep Learning ❷』4.1 Embedding、4.2 Negative Sampling、4.3 改良版word2vecの学習。教科書のPTB実験は文脈幅5・次元100・負例5・Adam。ここでは仕組みを追うため、左右1語・少ない次元・全件一括SGDを使う。正例と負例で同じW_outを共有し、損失の和を逆伝播する点は同じ。</p><p>英字は小文字化、句読点も1語。文境界をまたいだID列から、先頭と末尾を除く位置を中心語にする。学習データ数はトークン数−2。正解語は文章自身から得られる。</p></article>
+    </div><a href="#">操作画面へ ↑</a>
+  </section>
+</body>
+</html>

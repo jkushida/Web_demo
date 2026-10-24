@@ -130,6 +130,7 @@ w_out -= learning_rate * grad_w_out</pre><div id="output-matrix" class="table-sc
       <div class="panel-heading"><h2>W_in の各行が、1語の分散表現</h2></div>
       <div class="vector-grid"><section><div class="view-controls"><label for="vector-mode">表示する値</label><select id="vector-mode"><option value="current">現在の重み</option><option value="initial">学習前の重み</option><option value="delta">学習による変化量</option></select></div><div id="vectors-table" class="table-scroll"></div></section><section class="similarity"><h3>ベクトルの向きの近さ</h3><label for="query">比較の基準となる語</label><select id="query"></select><div id="similarities"></div><code>cos(x, y) = x·y / (‖x‖‖y‖)</code><p class="field-note">類似度は現在の W_in から計算。小さな例文では、意味の近さより出現文脈の偏りが強く現れる。</p></section></div>
     </section>
+    <p><a class="top-link" href="cbow-improved.html"><i data-lucide="zap"></i>次へ：通常CBOWから改良CBOWへ</a></p>
     <footer><span>通常CBOW · バイアスなし · 文脈の順序は平均で失われる</span><span id="accuracy">訓練データ正解率 —</span></footer>
   </main>
 </div>
