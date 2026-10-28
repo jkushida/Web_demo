@@ -140,13 +140,16 @@
         <label for="binWidth">階級幅</label>
         <output id="binWidthValue" for="binWidth">8 kg</output>
       </div>
-      <input id="binWidth" type="range" min="3" max="20" step="1" value="8">
+      <input id="binWidth" type="range" min="3" max="20" step="0.1" value="8">
       <div class="range-ends"><span>3 kg（細かい）</span><span>20 kg（粗い）</span></div>
-      <div class="presets" aria-label="資料にある階級幅">
+      <div class="presets" aria-label="階級幅の例と公式による設定">
         <button type="button" data-width="3">3 kg</button>
         <button type="button" data-width="8">8 kg</button>
         <button type="button" data-width="20">20 kg</button>
+        <button type="button" data-rule="sturges">スタージェスの公式</button>
+        <button type="button" data-rule="fd">フリードマン・ダイアコニスの規則</button>
       </div>
+      <p class="note" id="ruleNote"></p>
     </section>
 
     <section class="panel" aria-labelledby="chart-title">
@@ -319,11 +322,16 @@
     const frequencyRows = document.getElementById('frequencyRows');
     const rawDataRows = document.getElementById('rawDataRows');
     const presetButtons = Array.from(document.querySelectorAll('[data-width]'));
+    const ruleButtons = Array.from(document.querySelectorAll('[data-rule]'));
+    const ruleNote = document.getElementById('ruleNote');
     const svgNamespace = 'http://www.w3.org/2000/svg';
     const plot = { left: 75, right: 865, top: 20, bottom: 290 };
+    const binStart = 35;
+    const binEnd = 95;
     const xMinimum = 35;
     const xMaximum = 115;
     const yMaximum = 120;
+    let selectedRule = null;
 
     function createSvgElement(name, attributes, text) {
       const element = document.createElementNS(svgNamespace, name);
@@ -332,9 +340,39 @@
       return element;
     }
 
+    function getPercentile(sortedValues, fraction) {
+      // NumPy のデフォルトと同じ線形補間で四分位数を求める。
+      const position = (sortedValues.length - 1) * fraction;
+      const lower = Math.floor(position);
+      const upper = Math.ceil(position);
+      return sortedValues[lower] + (sortedValues[upper] - sortedValues[lower]) * (position - lower);
+    }
+
+    function getRecommendations(values) {
+      const count = values.length;
+      const sturgesCount = Math.ceil(1 + Math.log2(count));
+      const sturgesWidth = (binEnd - binStart) / sturgesCount;
+      const sortedValues = [...values].sort((a, b) => a - b);
+      const iqr = getPercentile(sortedValues, 0.75) - getPercentile(sortedValues, 0.25);
+      const fdWidth = 2 * iqr / Math.cbrt(count);
+      return {
+        sturgesCount,
+        sturgesWidth,
+        sturgesApplied: Number(sturgesWidth.toFixed(1)),
+        iqr,
+        fdWidth,
+        fdApplied: Number(fdWidth.toFixed(1))
+      };
+    }
+
+    function formatKilograms(value) {
+      return String(Number(value.toFixed(1)));
+    }
+
     function getFrequencies(width, values) {
       const bins = [];
-      for (let lower = 35; lower < 95; lower += width) {
+      for (let index = 0; binStart + index * width < binEnd; index++) {
+        const lower = binStart + index * width;
         const upper = lower + width;
         const count = values.filter(weight => weight >= lower && weight < upper).length;
         bins.push({ lower, upper, count });
@@ -365,7 +403,7 @@
         const bar = createSvgElement('rect', {
           x, y, width: scaleX(bin.upper) - x, height: plot.bottom - y, class: 'bar'
         });
-        bar.appendChild(createSvgElement('title', {}, `${bin.lower} kg以上 ${bin.upper} kg未満：${bin.count}人`));
+        bar.appendChild(createSvgElement('title', {}, `${formatKilograms(bin.lower)} kg以上 ${formatKilograms(bin.upper)} kg未満：${bin.count}人`));
         group.appendChild(bar);
       });
 
@@ -379,18 +417,32 @@
     function updateHistogram() {
       const width = Number(slider.value);
       const dataset = datasets[distribution.value];
+      const recommendations = getRecommendations(dataset.values);
       const bins = getFrequencies(width, dataset.values);
       const total = bins.reduce((sum, bin) => sum + bin.count, 0);
-      widthValue.value = `${width} kg`;
-      summary.textContent = `${dataset.label} ・ 階級幅 ${width} kg ・ 棒 ${bins.length} 本 ・ 合計 ${total} 人`;
-      description.textContent = `${dataset.label}、階級幅${width} kgのヒストグラム。${bins.length}本の棒に${total}人を分類。各階級の人数は下の表に表示。`;
-      presetButtons.forEach(button => button.setAttribute('aria-pressed', Number(button.dataset.width) === width ? 'true' : 'false'));
+      widthValue.value = `${formatKilograms(width)} kg`;
+      summary.textContent = `${dataset.label} ・ 階級幅 ${formatKilograms(width)} kg ・ 棒 ${bins.length} 本 ・ 合計 ${total} 人`;
+      description.textContent = `${dataset.label}、階級幅${formatKilograms(width)} kgのヒストグラム。${bins.length}本の棒に${total}人を分類。各階級の人数は下の表に表示。`;
+      presetButtons.forEach(button => button.setAttribute('aria-pressed', selectedRule === null && Number(button.dataset.width) === width ? 'true' : 'false'));
+      ruleButtons.forEach(button => {
+        button.setAttribute('aria-pressed', selectedRule === button.dataset.rule ? 'true' : 'false');
+        button.textContent = button.dataset.rule === 'sturges'
+          ? `スタージェス（${recommendations.sturgesCount}階級）`
+          : `フリードマン・ダイアコニス（${formatKilograms(recommendations.fdApplied)} kg）`;
+      });
+      if (selectedRule === 'sturges') {
+        ruleNote.textContent = `スタージェス：k = ⌈1 + log₂(${dataset.values.length})⌉ = ${recommendations.sturgesCount}。35～95 kgを等分した幅${recommendations.sturgesWidth.toFixed(2)} kgを、0.1 kg単位の${formatKilograms(width)} kgで表示。`;
+      } else if (selectedRule === 'fd') {
+        ruleNote.textContent = `フリードマン・ダイアコニスの規則：IQR = ${recommendations.iqr.toFixed(2)} kg、h = 2 × IQR / ∛${dataset.values.length} = ${recommendations.fdWidth.toFixed(2)} kg。0.1 kg単位の${formatKilograms(width)} kgで表示。`;
+      } else {
+        ruleNote.textContent = `公式の目安：スタージェスは${recommendations.sturgesCount}階級、フリードマン・ダイアコニスは${formatKilograms(recommendations.fdApplied)} kg。現在のデータから計算。`;
+      }
       drawHistogram(bins);
       frequencyRows.replaceChildren(...bins.map(bin => {
         const row = document.createElement('tr');
         const range = document.createElement('td');
         const count = document.createElement('td');
-        range.textContent = `${bin.lower} kg以上 ～ ${bin.upper} kg未満`;
+        range.textContent = `${formatKilograms(bin.lower)} kg以上 ～ ${formatKilograms(bin.upper)} kg未満`;
         count.textContent = `${bin.count} 人`;
         row.append(range, count);
         return row;
@@ -399,6 +451,10 @@
 
     function updateDistribution() {
       const dataset = datasets[distribution.value];
+      if (selectedRule) {
+        const recommendations = getRecommendations(dataset.values);
+        slider.value = selectedRule === 'sturges' ? recommendations.sturgesApplied : recommendations.fdApplied;
+      }
       distributionNote.textContent = dataset.description;
       dataSourceNote.textContent = `データ：架空の160人分。${dataset.source}`;
       rawDataRows.replaceChildren(...dataset.values.map((weight, index) => {
@@ -414,10 +470,20 @@
       updateHistogram();
     }
 
-    slider.addEventListener('input', updateHistogram);
+    slider.addEventListener('input', () => {
+      selectedRule = null;
+      updateHistogram();
+    });
     distribution.addEventListener('change', updateDistribution);
     presetButtons.forEach(button => button.addEventListener('click', () => {
+      selectedRule = null;
       slider.value = button.dataset.width;
+      updateHistogram();
+    }));
+    ruleButtons.forEach(button => button.addEventListener('click', () => {
+      selectedRule = button.dataset.rule;
+      const recommendations = getRecommendations(datasets[distribution.value].values);
+      slider.value = selectedRule === 'sturges' ? recommendations.sturgesApplied : recommendations.fdApplied;
       updateHistogram();
     }));
     updateDistribution();
