@@ -101,6 +101,11 @@
     .raw-data-table th, .raw-data-table td { padding: 3px 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 0.78rem; white-space: nowrap; }
     .raw-data-table th { background: #f5f8f8; color: var(--muted); text-align: right; }
     .raw-data-table tbody tr:last-child td { border-bottom: 1px solid var(--line); }
+    .method-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .method { padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #f8fbfb; }
+    .method h3 { margin: 0 0 4px; font-size: 1rem; }
+    .formula { margin: 4px 0; color: var(--dark-teal); font-size: 1.05rem; font-weight: 700; }
+    .method p + p { margin-top: 6px; }
     table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
     th, td { padding: 5px 10px; text-align: left; border-bottom: 1px solid var(--line); }
     thead th { position: sticky; top: 0; background: #edf3f4; }
@@ -112,6 +117,7 @@
       .panel { padding: 12px; }
       .distribution-row { grid-template-columns: 1fr; gap: 3px; }
       .tables { grid-template-columns: 1fr; }
+      .method-grid { grid-template-columns: 1fr; }
       .chart-wrap { margin: 0 -5px; }
     }
   </style>
@@ -190,6 +196,25 @@
         <p class="note">左が番号、右が体重（kg）。生成順に160人全員を表示。集計には丸める前の値を使用。</p>
       </section>
     </div>
+
+    <section class="panel" aria-labelledby="methods-title">
+      <h2 id="methods-title">階級幅を決める2つの目安</h2>
+      <div class="method-grid">
+        <div class="method">
+          <h3>スタージェスの公式</h3>
+          <p class="formula">階級数 k = ⌈1 + log₂(n)⌉</p>
+          <p>データの個数 n から階級数を決める。分布の広がり方は計算に使わない。</p>
+          <p id="sturgesExplanation"></p>
+        </div>
+        <div class="method">
+          <h3>フリードマン・ダイアコニスの規則</h3>
+          <p class="formula">階級幅 h = 2 × IQR / ∛n</p>
+          <p>IQR は第3四分位数から第1四分位数を引いた値。データの中央50%の広がりを表す。</p>
+          <p id="fdExplanation"></p>
+        </div>
+      </div>
+      <p class="note">どちらも階級の決め方の目安。上のボタンでは、計算した幅を0.1 kg単位に丸めて適用する。階級幅を変え、分布の特徴が見えるか比べよう。</p>
+    </section>
   </main>
 
   <script>
@@ -324,6 +349,8 @@
     const presetButtons = Array.from(document.querySelectorAll('[data-width]'));
     const ruleButtons = Array.from(document.querySelectorAll('[data-rule]'));
     const ruleNote = document.getElementById('ruleNote');
+    const sturgesExplanation = document.getElementById('sturgesExplanation');
+    const fdExplanation = document.getElementById('fdExplanation');
     const svgNamespace = 'http://www.w3.org/2000/svg';
     const plot = { left: 75, right: 865, top: 20, bottom: 290 };
     const binStart = 35;
@@ -437,6 +464,8 @@
       } else {
         ruleNote.textContent = `公式の目安：スタージェスは${recommendations.sturgesCount}階級、フリードマン・ダイアコニスは${formatKilograms(recommendations.fdApplied)} kg。現在のデータから計算。`;
       }
+      sturgesExplanation.textContent = `現在の${dataset.values.length}人では${recommendations.sturgesCount}階級。表示範囲35～95 kgを等分すると約${recommendations.sturgesWidth.toFixed(2)} kgで、ボタンでは${formatKilograms(recommendations.sturgesApplied)} kgを使う。`;
+      fdExplanation.textContent = `${dataset.label}のIQRは${recommendations.iqr.toFixed(2)} kg。式から求めた幅は約${recommendations.fdWidth.toFixed(2)} kgで、ボタンでは${formatKilograms(recommendations.fdApplied)} kgを使う。`;
       drawHistogram(bins);
       frequencyRows.replaceChildren(...bins.map(bin => {
         const row = document.createElement('tr');
