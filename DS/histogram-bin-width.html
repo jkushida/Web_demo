@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ヒストグラムの階級幅を変えてみよう</title>
+  <meta name="description" content="同じ160人の体重データで階級幅を変え、ヒストグラムの形と各階級の人数を確かめるデモ">
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #173044;
+      --muted: #526574;
+      --line: #d9e3e7;
+      --teal: #3b878f;
+      --dark-teal: #17666e;
+      --background: #f5f8f8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(1040px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 14px 0 28px;
+    }
+
+    a { color: var(--dark-teal); }
+    .back { display: inline-block; margin-bottom: 6px; }
+    h1 { margin: 0 0 4px; font-size: clamp(1.4rem, 3.5vw, 1.9rem); }
+    h2 { margin: 0 0 8px; font-size: 1.06rem; }
+    p { margin: 0; }
+    .lead { color: var(--muted); }
+
+    .panel {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+    }
+
+    .control-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      font-weight: 700;
+    }
+
+    .distribution-row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 8px; }
+    .distribution-row label { font-weight: 700; }
+    select { width: 100%; min-height: 36px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; background: white; color: var(--ink); font: inherit; }
+    .distribution-note { margin-bottom: 8px; color: var(--muted); font-size: 0.9rem; }
+
+    output { color: var(--dark-teal); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    input[type="range"] { width: 100%; margin: 6px 0 2px; accent-color: var(--dark-teal); }
+    .range-ends { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem; }
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    button {
+      min-height: 34px;
+      padding: 4px 12px;
+      border: 1px solid var(--dark-teal);
+      border-radius: 7px;
+      background: white;
+      color: var(--dark-teal);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button[aria-pressed="true"] { background: var(--dark-teal); color: white; }
+    button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #f2a43a; outline-offset: 3px; }
+
+    .summary { margin-bottom: 6px; color: var(--muted); }
+    .chart-wrap { width: 100%; overflow-x: auto; }
+    svg { display: block; width: 100%; min-width: 500px; height: auto; }
+    .axis-label { fill: var(--muted); font-size: 14px; }
+    .tick-label { fill: var(--muted); font-size: 12px; }
+    .grid-line { stroke: #e8eff1; stroke-width: 1; }
+    .axis-line { stroke: #7d929c; stroke-width: 1.5; }
+    .bar { fill: var(--teal); stroke: white; stroke-width: 1; }
+    .bar:hover { fill: var(--dark-teal); }
+    .note { margin-top: 6px; color: var(--muted); font-size: 0.88rem; }
+    .callout { border-left: 4px solid var(--teal); background: #edf6f5; }
+    .callout strong { color: var(--dark-teal); }
+    .tables { display: grid; grid-template-columns: minmax(260px, 0.38fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+    .tables .panel { margin-top: 0; min-width: 0; }
+    .table-wrap { max-height: 230px; overflow: auto; border: 1px solid var(--line); border-radius: 7px; }
+    .raw-data-wrap { max-height: none; overflow: visible; }
+    .raw-data-table { display: block; }
+    .raw-data-table tbody { display: grid; grid-template-columns: repeat(auto-fit, minmax(82px, 1fr)); }
+    .raw-data-table tr { display: grid; grid-template-columns: 2.2em minmax(0, 1fr); min-width: 0; }
+    .raw-data-table th, .raw-data-table td { padding: 3px 4px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 0.78rem; white-space: nowrap; }
+    .raw-data-table th { background: #f5f8f8; color: var(--muted); text-align: right; }
+    .raw-data-table tbody tr:last-child td { border-bottom: 1px solid var(--line); }
+    table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    th, td { padding: 5px 10px; text-align: left; border-bottom: 1px solid var(--line); }
+    thead th { position: sticky; top: 0; background: #edf3f4; }
+    tbody th { font-weight: 600; }
+    td:last-child, th:last-child { text-align: right; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    @media (max-width: 600px) {
+      .panel { padding: 12px; }
+      .distribution-row { grid-template-columns: 1fr; gap: 3px; }
+      .tables { grid-template-columns: 1fr; }
+      .chart-wrap { margin: 0 -5px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <a class="back" href="../index.html">← デモ一覧へ</a>
+    <header>
+      <h1>ヒストグラムは階級幅で形が変わる</h1>
+      <p class="lead">分布の形を選び、同じ160人のデータで階級幅による見え方の違いを確かめよう。</p>
+    </header>
+
+    <section class="panel" aria-labelledby="control-title">
+      <h2 id="control-title">分布と階級幅を選ぶ</h2>
+      <div class="distribution-row">
+        <label for="distribution">分布のタイプ</label>
+        <select id="distribution">
+          <option value="normal">正規分布（山が1つ）</option>
+          <option value="uniform">一様分布（ほぼ平ら）</option>
+          <option value="bimodal">2つのピーク（52 kg・78 kg付近）</option>
+          <option value="skewed">右に裾が長い分布</option>
+        </select>
+      </div>
+      <p class="distribution-note" id="distributionNote"></p>
+      <div class="control-header">
+        <label for="binWidth">階級幅</label>
+        <output id="binWidthValue" for="binWidth">8 kg</output>
+      </div>
+      <input id="binWidth" type="range" min="3" max="20" step="1" value="8">
+      <div class="range-ends"><span>3 kg（細かい）</span><span>20 kg（粗い）</span></div>
+      <div class="presets" aria-label="資料にある階級幅">
+        <button type="button" data-width="3">3 kg</button>
+        <button type="button" data-width="8">8 kg</button>
+        <button type="button" data-width="20">20 kg</button>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="chart-title">
+      <h2 id="chart-title">体重のヒストグラム</h2>
+      <p class="summary" id="summary" role="status"></p>
+      <div class="chart-wrap">
+        <svg id="histogram" viewBox="0 0 900 350" role="img" aria-labelledby="chart-title chart-description">
+          <desc id="chart-description"></desc>
+        </svg>
+      </div>
+      <p class="note">横軸は体重、縦軸はその階級に入る人数。階級は35 kgから区切り、左端を含み右端は含まない。縦軸の目盛りは固定。</p>
+    </section>
+
+    <section class="panel callout" aria-labelledby="point-title">
+      <h2 id="point-title">見比べるポイント</h2>
+      <p>棒が高くなっても、人数が増えたわけではない。階級幅を広げると、複数の範囲の人数が1本の棒に合わさる。160人という合計は常に同じ。</p>
+    </section>
+
+    <div class="tables">
+      <section class="panel" aria-labelledby="table-title">
+        <h2 id="table-title">各階級の人数</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">体重の範囲</th><th scope="col">人数</th></tr></thead>
+            <tbody id="frequencyRows"></tbody>
+          </table>
+        </div>
+        <p class="note" id="dataSourceNote"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="raw-data-title">
+        <h2 id="raw-data-title">元データ（160人分）</h2>
+        <div class="table-wrap raw-data-wrap">
+          <table class="raw-data-table" aria-label="160人分の番号と体重（kg）">
+            <tbody id="rawDataRows"></tbody>
+          </table>
+        </div>
+        <p class="note">左が番号、右が体重（kg）。生成順に160人全員を表示。集計には丸める前の値を使用。</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    // NumPy RandomState(42).normal(loc=65, scale=10, size=160) の出力を固定。
+    const weights = [
+      69.96714153011233, 63.61735698828815, 71.47688538100692, 80.23029856408026, 62.658466252766644, 62.6586304305082, 80.79212815507391, 72.67434729152909,
+      60.30525614065048, 70.42560043585965, 60.365823071875376, 60.34270246429743, 67.41962271566034, 45.867197553422024, 47.75082167486967, 59.377124707590276,
+      54.87168879665576, 68.14247332595274, 55.91975924478789, 50.87696298664709, 79.65648768921554, 62.74223699513465, 65.67528204687923, 50.75251813786543,
+      59.556172754748175, 66.10922589709867, 53.49006422577697, 68.75698018345672, 58.99361310081195, 62.083062502067236, 58.98293387770603, 83.52278184508938,
+      64.86502775262066, 54.422890710441, 73.22544912103189, 52.791563500289776, 67.08863595004756, 45.403298761202244, 51.71813951101569, 66.96861235869123,
+      72.3846657999541, 66.7136828118997, 63.843517176117594, 61.98896304410711, 50.214780096325725, 57.801557916052914, 60.393612290402125, 75.57122226218915,
+      68.43618289568461, 47.36959844637266, 68.24083969394795, 61.149177195836835, 58.23077999694041, 71.11676288840867, 75.30999522495951, 74.31280119116198,
+      56.607824767773614, 61.907876241487855, 68.31263431403563, 74.75545127122359, 60.2082576215471, 63.14341023336183, 53.93665025993972, 53.037933759193294,
+      73.12525822394198, 78.56240028570824, 64.27989878419666, 75.03532897892025, 68.61636025047635, 58.54880245394876, 68.61395605508415, 80.38036566465969,
+      64.64173960890048, 80.64643655814007, 38.80254895910256, 73.21902504375224, 65.87047068238171, 62.00992649534132, 65.91760776535503, 45.12431085399107,
+      62.80328112162488, 68.57112571511746, 79.77894044741517, 59.81729781726352, 56.91506397106812, 59.982429564154636, 74.15402117702074, 68.28751109659684,
+      59.70239796232961, 70.13267433113356, 65.9707754934804, 74.68644990532889, 57.979469061226474, 61.723378534022316, 61.078918468678424, 50.364850518678814,
+      67.96120277064576, 67.6105527217989, 65.05113456642461, 62.654128666248525, 50.84629257949586, 60.79354677234641, 61.572854834732304, 56.977227307783814,
+      63.387142883339905, 69.04050856814538, 83.8618590121053, 66.74577812831839, 67.57550390722764, 64.25554084233833, 45.812287847009586, 64.73486124550783,
+      65.60230209941027, 89.63242112485287, 63.076390352188774, 68.01547342333612, 64.65288230294756, 53.31321962380468, 76.4282281451502, 72.51933032686775,
+      72.91031947043047, 55.90612545205261, 79.02794310936099, 50.98148937207719, 70.8685709380027, 86.90455625809979, 55.09463674869312, 59.33702270397228,
+      65.99651365087641, 59.96524345883801, 49.493365689338674, 65.68562974806028, 54.37696286273895, 69.73592430635182, 55.805757657661964, 80.4993440501754,
+      57.16746707663763, 61.77938483794325, 73.1351721736967, 52.69135683566045, 67.2745993460413, 78.07142754282428, 48.92516765438772, 66.84633858532304,
+      67.59882794248423, 72.8182287177731, 52.63049289121918, 51.795433869157236, 70.21941565616898, 67.96984673233186, 67.50492850345877, 68.46448209496975,
+      58.19975278421509, 67.32253697161003, 67.93072473298682, 57.85648581973632, 83.65774511144757, 69.73832920911788, 53.08696502797351, 71.5655360863383
+    ];
+    const otherWeights = {
+      uniform: [
+        41.90327398338674, 71.54399235676888, 43.0034578511593, 49.43537719792093, 54.62834334866839, 86.54824945691587, 74.96541278588154, 67.46973273700422,
+        36.74082946546162, 79.02489777681697, 58.69700110586035, 83.12282711771999, 50.26526755159276, 38.41309619906911, 86.99891845395202, 48.26173975306228,
+        59.29936688283558, 53.96578826109252, 39.599761999786836, 85.59348165378228, 85.93634886469168, 93.28790548612328, 58.122614863708286, 92.26928750651992,
+        61.74550165038313, 75.18347910330846, 39.95000298182932, 88.82591479889206, 52.88021004132576, 50.73828935578289, 35.30777294386742, 67.59215091682435,
+        63.53578202043519, 73.18242065429136, 93.69224804492036, 89.51976546986526, 89.60918454680939, 66.51534026642872, 41.24113699128577, 45.85487571547406,
+        92.1824132592045, 59.71717900318152, 86.9010272364309, 75.33063676857057, 72.72714775292967, 51.53352659893713, 88.80483618445176, 47.41348228060191,
+        59.264314584524456, 94.61434954364621, 79.14362489042725, 61.70368474938096, 68.6397901666241, 59.675329345198115, 78.61927951807931, 58.95181315424448,
+        75.20870988214291, 77.28293647283249, 71.57359227554275, 67.40206785089936, 47.36491105479811, 46.94968859736211, 82.74433188896265, 52.419966666245394,
+        74.35776966943124, 52.97700654842149, 43.668702705369725, 59.23740001882817, 53.61617161067539, 49.60388097685774, 70.28624255950257, 49.720595177801584,
+        79.86623670757179, 78.20879887125338, 76.71565201730557, 41.1645667143927, 91.61854569105746, 65.20037797356692, 88.98041716204476, 46.91479306617884,
+        70.66695120910585, 92.9245149006358, 94.92189475380123, 36.450117498832675, 63.878200007318995, 52.48536138041648, 38.82323409903887, 69.17746393658354,
+        35.30499708195284, 71.6766553802013, 87.21088862207537, 88.01608789843336, 92.2591689917623, 79.39182918820845, 46.08277745294533, 61.08069926520832,
+        88.1539697328724, 50.302776820087786, 61.59876168373904, 72.01621854925371, 41.201150652689265, 64.40657966414375, 37.68226414614482, 53.69764815854904,
+        80.1223811819615, 77.92994519168388, 91.49325462549902, 81.61372200252617, 47.91371089923117, 89.29827083799503, 68.13584882068422, 85.69387325461138,
+        90.34936902638243, 84.7376767363485, 58.65187987758358, 70.8912881949276, 60.96188477381601, 76.64882814481705, 64.0811893762176, 42.695620494564395,
+        73.66222979682881, 47.282372970239315, 79.69742753193377, 41.33703238415496, 35.438569623435484, 55.06933949317594, 93.15533022986335, 77.05854136599827,
+        59.82113208400018, 42.24513023094725, 38.62181266109322, 78.5727004256465, 89.32705905880842, 35.96155507592714, 70.0484498428152, 78.71624301251309,
+        52.53185265656049, 66.36785697963462, 83.89111317503706, 70.77961881061194, 57.71332036709419, 39.653468329698256, 64.21437057392518, 63.091634364195514,
+        45.89208540376104, 39.20815606779423, 65.50405592878438, 54.91110408987668, 47.86986922081487, 40.679413652866174, 85.27583172018302, 56.30674822404587,
+        84.6071043333448, 36.5577361539167, 35.13437462920118, 90.465065078862, 75.4359950604573, 94.6888748063725, 63.77030128644007, 44.54824979323888
+      ],
+      bimodal: [
+        58.5817866235591, 54.31603776024597, 49.42943910890844, 86.71441987538319, 75.62801491913363, 79.30160850711326, 87.08297627297506, 49.59871593619551,
+        82.00963298038127, 51.00761589158159, 51.90342476895891, 53.80428029889377, 82.6047365600962, 79.77151369996318, 52.978200129099214, 43.42464771013316,
+        81.3656448228303, 48.69424221601725, 84.01515918711014, 56.12832425270656, 73.72905823399675, 70.63342879454879, 54.80704335008831, 76.49042379549671,
+        46.94550144882928, 75.79861913833022, 55.754041289935614, 48.02300408018961, 50.82333081419798, 48.24692641372064, 86.35149910185798, 47.18298152925219,
+        65.01560684871492, 36.63155592370117, 71.29870964211908, 46.74138697465493, 54.77735818327325, 77.39246572659343, 48.91460180976474, 49.585094922288604,
+        56.35145965195564, 50.02420464828723, 76.02427229241104, 43.97542129370703, 79.14040812425725, 54.09255492193693, 51.09839267259889, 73.34486811456247,
+        69.72868624475379, 48.53603679321312, 54.16053587094074, 85.42209056547172, 79.86875774986596, 82.27053468139387, 46.04748191848634, 74.64362797706231,
+        74.4306197198687, 52.09306493424225, 45.95093224092887, 55.87918856279983, 50.93540434937862, 80.89522083478676, 48.48399244168476, 51.99596200800273,
+        78.42156534261697, 50.59914801408614, 68.5836859739641, 59.973416828021044, 81.26082078996913, 75.22961440521799, 42.680234277731735, 58.858854538745554,
+        47.24174723289008, 53.74645465972431, 79.29797983126666, 43.31303661480838, 70.2931657907671, 83.64651652248374, 51.414239107936766, 79.57054939712508,
+        83.92373093279848, 55.02722960346933, 76.9784954748087, 75.87775586355974, 52.96569561759519, 54.6020493484518, 79.66316077177991, 77.54581211176793,
+        74.86152252719273, 46.082954219452276, 79.97036328280642, 79.0185769695092, 72.95699595338442, 69.2462380666424, 76.865465748599, 86.81746106272729,
+        58.00881041191102, 74.72147943901352, 70.26563409039993, 61.293918457562775, 75.50227067344342, 48.47098483749074, 82.67552771942455, 70.94012249524576,
+        73.46094159391315, 78.52931283258005, 76.7535198587086, 76.647215877224, 57.56489914111139, 56.12611194559465, 84.39204795496713, 75.52474034287806,
+        78.28024493455538, 75.0402028658041, 76.83713316208464, 57.303051280504384, 70.04997558036386, 58.23070014321715, 60.508797891382926, 50.04435922598135,
+        52.244116452201325, 71.64183672640299, 78.12622092937201, 59.22668782079896, 77.92157646222006, 54.95594191062754, 89.24044786590937, 74.96528013230177,
+        79.44840455925274, 58.54089752056981, 77.26558649225039, 53.09935910515689, 52.125906773592774, 44.70559643614606, 71.03093663822024, 44.659281605100475,
+        52.66462409605366, 54.13101753597787, 54.80843121525147, 62.04311093454965, 52.45164760145266, 78.81966961671047, 84.08250394338286, 73.79329833223765,
+        73.63347678093886, 42.90453009417529, 77.0515852077693, 57.29298943317678, 53.503313677975775, 83.55493029846687, 79.10645988668271, 52.437939881329015,
+        48.80734883212774, 44.942504282974056, 78.13187386424781, 47.28344980697274, 51.73838901787633, 48.38031143548624, 79.35899808693452, 77.97719164714724
+      ],
+      skewed: [
+        58.879848303568856, 67.18706798606888, 56.98929345161302, 51.50546395843972, 52.1918855639973, 62.13653276617107, 72.30063020636652, 49.28140464809274,
+        53.68626194629804, 52.13588746741193, 51.842693167992664, 49.21650557231984, 43.388886348645556, 46.736681638931415, 51.93033697599748, 50.821048801158845,
+        63.92102644102101, 56.0109684466655, 52.665012174496674, 52.40694578613625, 53.46029257617701, 46.150819903771485, 44.00608362553061, 50.0800282586824,
+        57.43916029610526, 47.104786942388316, 40.770452029313084, 57.946668368859456, 51.67642571519092, 57.38988414747044, 52.00859010549554, 76.90189369266872,
+        44.06677555272474, 82.95226025188481, 47.79961472971774, 55.40498237655241, 51.74764759152618, 69.13929998296074, 46.79344843466681, 49.798131221221794,
+        48.58157404874204, 48.99878721286923, 55.532887552202446, 48.74721609242986, 44.63380950075055, 65.04185908745646, 51.79798675383456, 45.83080475350674,
+        52.87148573887457, 52.23069988653434, 47.50859800286286, 48.02793312883648, 44.858344750611835, 67.34806581725124, 66.51088618834953, 48.26812426996635,
+        50.485665749890856, 56.10537995549924, 54.66683647751962, 46.25491864877274, 51.25045826487817, 48.7038999726467, 65.01971785068855, 45.92319033480329,
+        51.26194750540232, 49.74119013973278, 54.53996532257304, 50.097863884308005, 55.66076891262372, 42.19762362581444, 79.4715322503293, 54.743081241230826,
+        80.57045398037036, 42.25275595912551, 65.41597308775019, 49.429747071996914, 59.86782279199986, 60.81931491860379, 53.85543773501446, 49.825605162525186,
+        49.05564762883619, 49.58755643364753, 53.39820381026803, 46.8251730059634, 60.98705189747018, 42.270525411254404, 47.34706933380415, 61.97720695745629,
+        69.34247416230966, 77.06421849593687, 58.95155614964873, 69.7148476458581, 66.606598441214, 50.829028933539696, 45.7404556643639, 54.320843465934686,
+        56.81524896372114, 49.11145506224735, 76.41720092592632, 51.321654207870296, 47.54431206943831, 57.755565149765644, 59.875993423518025, 46.06712765364581,
+        54.0320071978571, 66.85669526623488, 71.66234450912084, 50.56982533718295, 49.99405383462323, 77.54611264273086, 44.969637500631976, 51.079176590952144,
+        59.41827855956228, 51.59990919152486, 51.25286698415978, 55.78355160624898, 64.01055167706284, 42.76456155121327, 46.226836443381295, 52.043025592028776,
+        43.53714562403625, 54.62219912980858, 50.403215311255465, 54.762039633607955, 47.30824380492179, 53.66325357920991, 50.11568038524179, 44.05570627187033,
+        50.5163897399825, 68.50224705643822, 49.05511022857774, 53.45440248584326, 54.94203582842842, 43.566345780766696, 48.19079811271453, 47.80561086052487,
+        46.92077915260188, 55.37201915841914, 49.140139498217934, 58.191511772387884, 59.07431655149813, 51.600041955624135, 47.07810426156597, 60.02730040239133,
+        52.762415985668184, 68.10936504562929, 45.15960182883258, 57.59545215510704, 59.289297526799714, 44.086440729784, 45.24575065074845, 62.931781937670195,
+        49.48128846266272, 65.81330769973803, 54.70623142370066, 51.27197782182826, 70.59359351708295, 72.34393229556946, 42.25662888422473, 41.82598544977192
+      ],
+    };
+    // 各分布は固定データ。選択後に階級幅を変えても同じ160件を再分類する。
+    const datasets = {
+      normal: {
+        label: '正規分布',
+        description: '65 kg付近に集まり、左右へ離れるほど人数が少なくなる。',
+        source: '平均65 kg・標準偏差10 kgの正規分布。資料のNumPyコードと同じ seed=42。',
+        values: weights
+      },
+      uniform: {
+        label: '一様分布',
+        description: '35～95 kgのどの体重もほぼ同じ起こりやすさで生成した。',
+        source: '35～95 kgの一様分布から生成。seed=43。',
+        values: otherWeights.uniform
+      },
+      bimodal: {
+        label: '2つのピーク（二峰性分布）',
+        description: '52 kg付近と78 kg付近に、それぞれピークがある。階級幅を広げると見え方が変わる。',
+        source: '平均52 kgと78 kg、標準偏差5 kgの正規分布から各80件を生成して混合。seed=44・45・47。',
+        values: otherWeights.bimodal
+      },
+      skewed: {
+        label: '右に裾が長い分布',
+        description: '軽めの人が多く、重い側へ少数の値が伸びる。',
+        source: '40 kgにガンマ分布（形状2.5・尺度6）を加えて生成。seed=46。',
+        values: otherWeights.skewed
+      }
+    };
+    const distribution = document.getElementById('distribution');
+    const distributionNote = document.getElementById('distributionNote');
+    const dataSourceNote = document.getElementById('dataSourceNote');
+    const slider = document.getElementById('binWidth');
+    const widthValue = document.getElementById('binWidthValue');
+    const chart = document.getElementById('histogram');
+    const description = document.getElementById('chart-description');
+    const summary = document.getElementById('summary');
+    const frequencyRows = document.getElementById('frequencyRows');
+    const rawDataRows = document.getElementById('rawDataRows');
+    const presetButtons = Array.from(document.querySelectorAll('[data-width]'));
+    const svgNamespace = 'http://www.w3.org/2000/svg';
+    const plot = { left: 75, right: 865, top: 20, bottom: 290 };
+    const xMinimum = 35;
+    const xMaximum = 115;
+    const yMaximum = 120;
+
+    function createSvgElement(name, attributes, text) {
+      const element = document.createElementNS(svgNamespace, name);
+      for (const [key, value] of Object.entries(attributes)) element.setAttribute(key, value);
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function getFrequencies(width, values) {
+      const bins = [];
+      for (let lower = 35; lower < 95; lower += width) {
+        const upper = lower + width;
+        const count = values.filter(weight => weight >= lower && weight < upper).length;
+        bins.push({ lower, upper, count });
+      }
+      return bins;
+    }
+
+    function drawHistogram(bins) {
+      chart.querySelectorAll('.drawing').forEach(element => element.remove());
+      const group = createSvgElement('g', { class: 'drawing' });
+      const scaleX = value => plot.left + (value - xMinimum) / (xMaximum - xMinimum) * (plot.right - plot.left);
+      const scaleY = value => plot.bottom - value / yMaximum * (plot.bottom - plot.top);
+
+      for (let value = 0; value <= yMaximum; value += 20) {
+        const y = scaleY(value);
+        group.appendChild(createSvgElement('line', { x1: plot.left, y1: y, x2: plot.right, y2: y, class: 'grid-line' }));
+        group.appendChild(createSvgElement('text', { x: plot.left - 12, y: y + 4, 'text-anchor': 'end', class: 'tick-label' }, String(value)));
+      }
+
+      for (let value = 35; value <= 115; value += 10) {
+        const x = scaleX(value);
+        group.appendChild(createSvgElement('text', { x, y: plot.bottom + 22, 'text-anchor': 'middle', class: 'tick-label' }, String(value)));
+      }
+
+      bins.forEach(bin => {
+        const x = scaleX(bin.lower);
+        const y = scaleY(bin.count);
+        const bar = createSvgElement('rect', {
+          x, y, width: scaleX(bin.upper) - x, height: plot.bottom - y, class: 'bar'
+        });
+        bar.appendChild(createSvgElement('title', {}, `${bin.lower} kg以上 ${bin.upper} kg未満：${bin.count}人`));
+        group.appendChild(bar);
+      });
+
+      group.appendChild(createSvgElement('line', { x1: plot.left, y1: plot.bottom, x2: plot.right, y2: plot.bottom, class: 'axis-line' }));
+      group.appendChild(createSvgElement('line', { x1: plot.left, y1: plot.top, x2: plot.left, y2: plot.bottom, class: 'axis-line' }));
+      group.appendChild(createSvgElement('text', { x: 470, y: 338, 'text-anchor': 'middle', class: 'axis-label' }, '体重（kg）'));
+      group.appendChild(createSvgElement('text', { x: 20, y: 155, transform: 'rotate(-90 20 155)', 'text-anchor': 'middle', class: 'axis-label' }, '人数'));
+      chart.appendChild(group);
+    }
+
+    function updateHistogram() {
+      const width = Number(slider.value);
+      const dataset = datasets[distribution.value];
+      const bins = getFrequencies(width, dataset.values);
+      const total = bins.reduce((sum, bin) => sum + bin.count, 0);
+      widthValue.value = `${width} kg`;
+      summary.textContent = `${dataset.label} ・ 階級幅 ${width} kg ・ 棒 ${bins.length} 本 ・ 合計 ${total} 人`;
+      description.textContent = `${dataset.label}、階級幅${width} kgのヒストグラム。${bins.length}本の棒に${total}人を分類。各階級の人数は下の表に表示。`;
+      presetButtons.forEach(button => button.setAttribute('aria-pressed', Number(button.dataset.width) === width ? 'true' : 'false'));
+      drawHistogram(bins);
+      frequencyRows.replaceChildren(...bins.map(bin => {
+        const row = document.createElement('tr');
+        const range = document.createElement('td');
+        const count = document.createElement('td');
+        range.textContent = `${bin.lower} kg以上 ～ ${bin.upper} kg未満`;
+        count.textContent = `${bin.count} 人`;
+        row.append(range, count);
+        return row;
+      }));
+    }
+
+    function updateDistribution() {
+      const dataset = datasets[distribution.value];
+      distributionNote.textContent = dataset.description;
+      dataSourceNote.textContent = `データ：架空の160人分。${dataset.source}`;
+      rawDataRows.replaceChildren(...dataset.values.map((weight, index) => {
+        const row = document.createElement('tr');
+        const number = document.createElement('th');
+        const value = document.createElement('td');
+        number.scope = 'row';
+        number.textContent = String(index + 1);
+        value.textContent = weight.toFixed(2);
+        row.append(number, value);
+        return row;
+      }));
+      updateHistogram();
+    }
+
+    slider.addEventListener('input', updateHistogram);
+    distribution.addEventListener('change', updateDistribution);
+    presetButtons.forEach(button => button.addEventListener('click', () => {
+      slider.value = button.dataset.width;
+      updateHistogram();
+    }));
+    updateDistribution();
+  </script>
+</body>
+</html>

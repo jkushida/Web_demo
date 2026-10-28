@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コイン投げで学ぶ最尤推定</title>
+  <meta name="description" content="コイン投げの尤度関数とシミュレーションを使って、最尤推定の考え方を確認する静的HTMLデモ">
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --bg: #f6f7f2;
+      --panel: #ffffff;
+      --ink: #182230;
+      --muted: #667085;
+      --line: #d8ded2;
+      --teal: #0f8b8d;
+      --orange: #f59e0b;
+      --red: #d1495b;
+      --navy: #243b53;
+      --shadow: 0 10px 24px rgba(24, 34, 48, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 20px 0 28px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .back-link {
+      color: var(--teal);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(360px, 0.95fr);
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .control {
+      min-width: 0;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: var(--navy);
+      font-size: 0.86rem;
+      font-weight: 700;
+    }
+
+    .value {
+      color: var(--teal);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--teal);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      align-content: end;
+    }
+
+    button {
+      min-height: 38px;
+      border: 0;
+      border-radius: 7px;
+      color: #fff;
+      background: var(--teal);
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    button.secondary {
+      color: var(--navy);
+      background: #e8eee7;
+    }
+
+    button:hover {
+      filter: brightness(0.96);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .stat-value {
+      color: var(--navy);
+      font-size: 1.28rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .panel {
+      min-width: 0;
+      padding: 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: #fff;
+      border: 1px solid #edf0ea;
+      border-radius: 6px;
+    }
+
+    .note {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.7;
+    }
+
+    .formula {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .formula-box {
+      padding: 12px;
+      background: #fbfcf8;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      line-height: 1.7;
+    }
+
+    code {
+      color: var(--red);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.95em;
+    }
+
+    @media (max-width: 880px) {
+      header,
+      .layout,
+      .formula {
+        grid-template-columns: 1fr;
+      }
+
+      .controls,
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        width: min(100% - 16px, 1180px);
+        padding-top: 12px;
+      }
+
+      .controls,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .button-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <div>
+        <h1>コイン投げで学ぶ最尤推定</h1>
+        <p class="lead">「n回投げてk回表が出た」という観測データに対して、表が出る確率pを動かし、どのpなら観測データが最も起こりやすいかを確認します。</p>
+      </div>
+      <a class="back-link" href="../index.html">デモ一覧へ戻る</a>
+    </header>
+
+    <section class="controls" aria-label="パラメータ操作">
+      <div class="control">
+        <label for="trialRange">試行回数 n <span id="trialValue" class="value">10</span></label>
+        <input id="trialRange" type="range" min="1" max="80" step="1" value="10">
+      </div>
+      <div class="control">
+        <label for="headRange">表の回数 k <span id="headValue" class="value">3</span></label>
+        <input id="headRange" type="range" min="0" max="10" step="1" value="3">
+      </div>
+      <div class="control">
+        <label for="simulationRange">各pの実験回数 <span id="simulationValue" class="value">1000</span></label>
+        <input id="simulationRange" type="range" min="100" max="5000" step="100" value="1000">
+      </div>
+      <div class="button-row">
+        <button id="runButton" type="button">開始</button>
+        <button id="stepButton" type="button" class="secondary">1回進める</button>
+        <button id="resetButton" type="button" class="secondary">リセット</button>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="推定結果">
+      <div class="stat">
+        <div class="stat-label">最尤推定値</div>
+        <div id="mleValue" class="stat-value">0.300</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">最大尤度</div>
+        <div id="maxLikelihoodValue" class="stat-value">0.267</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">現在の観測</div>
+        <div id="observedValue" class="stat-value">3 / 10</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">積み上げ回数</div>
+        <div id="progressValue" class="stat-value">0 / 1000</div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="panel">
+        <h2>尤度関数 L(p)</h2>
+        <canvas id="likelihoodCanvas" width="720" height="430" data-ratio="0.597222" aria-label="尤度関数のグラフ"></canvas>
+        <p class="note">縦軸は見やすさのため、最大値が1になるよう正規化した相対尤度です。線の一番高い場所が、最尤推定値 <code>p = k / n</code> です。</p>
+      </div>
+
+      <div class="panel">
+        <h2>理論値と乱数実験の比較</h2>
+        <canvas id="simulationCanvas" width="620" height="430" data-ratio="0.693548" aria-label="理論確率とシミュレーション頻度の棒グラフ"></canvas>
+        <p class="note">各pについて「n回中k回表」が出る実験を1回ずつ積み上げます。橙色の棒は現在までの発生回数、緑色の棒は最終的な理論上の期待回数です。</p>
+      </div>
+    </section>
+
+    <section class="formula" aria-label="数式">
+      <div class="formula-box">
+        尤度関数<br>
+        <code>L(p) = C(n, k) p^k (1 - p)^(n - k)</code>
+      </div>
+      <div class="formula-box">
+        対数尤度<br>
+        <code>log L(p) = log C(n, k) + k log p + (n - k) log(1 - p)</code>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const trialRange = document.getElementById('trialRange');
+    const headRange = document.getElementById('headRange');
+    const simulationRange = document.getElementById('simulationRange');
+    const trialValue = document.getElementById('trialValue');
+    const headValue = document.getElementById('headValue');
+    const simulationValue = document.getElementById('simulationValue');
+    const mleValue = document.getElementById('mleValue');
+    const maxLikelihoodValue = document.getElementById('maxLikelihoodValue');
+    const observedValue = document.getElementById('observedValue');
+    const progressValue = document.getElementById('progressValue');
+    const runButton = document.getElementById('runButton');
+    const stepButton = document.getElementById('stepButton');
+    const resetButton = document.getElementById('resetButton');
+    const likelihoodCanvas = document.getElementById('likelihoodCanvas');
+    const simulationCanvas = document.getElementById('simulationCanvas');
+    const likelihoodCtx = likelihoodCanvas.getContext('2d');
+    const simulationCtx = simulationCanvas.getContext('2d');
+    const pGrid = Array.from({ length: 21 }, (_, i) => i / 20);
+    const dpr = window.devicePixelRatio || 1;
+
+    let simulationRows = [];
+    let animationId = null;
+    let isAnimating = false;
+    let lastFrameTime = 0;
+    const frameIntervalMs = 30;
+
+    function setupCanvas(canvas, ctx) {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Number(canvas.dataset.ratio) || 0.6;
+      const cssWidth = Math.max(1, Math.round(rect.width));
+      const cssHeight = Math.max(1, Math.round(rect.width * ratio));
+      canvas.style.height = `${cssHeight}px`;
+      canvas.width = Math.round(cssWidth * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { width: cssWidth, height: cssHeight };
+    }
+
+    function logFactorial(n) {
+      let total = 0;
+      for (let i = 2; i <= n; i++) total += Math.log(i);
+      return total;
+    }
+
+    function logChoose(n, k) {
+      return logFactorial(n) - logFactorial(k) - logFactorial(n - k);
+    }
+
+    function logLikelihood(p, n, k) {
+      if (p === 0) return k === 0 ? 0 : -Infinity;
+      if (p === 1) return k === n ? 0 : -Infinity;
+      return logChoose(n, k) + k * Math.log(p) + (n - k) * Math.log(1 - p);
+    }
+
+    function likelihood(p, n, k) {
+      const logValue = logLikelihood(p, n, k);
+      return Number.isFinite(logValue) ? Math.exp(logValue) : 0;
+    }
+
+    function relativeLikelihood(p, n, k, maxLogLikelihood) {
+      const logValue = logLikelihood(p, n, k);
+      return Number.isFinite(logValue) ? Math.exp(logValue - maxLogLikelihood) : 0;
+    }
+
+    function getState() {
+      const n = Number(trialRange.value);
+      const k = Math.min(Number(headRange.value), n);
+      const simulations = Number(simulationRange.value);
+      return { n, k, simulations };
+    }
+
+    function formatProb(value) {
+      if (value === 0) return '0.000';
+      if (value < 0.001) return value.toExponential(2);
+      return value.toFixed(3);
+    }
+
+    function syncControls() {
+      const n = Number(trialRange.value);
+      headRange.max = String(n);
+      if (Number(headRange.value) > n) headRange.value = String(n);
+
+      const { k, simulations } = getState();
+      trialValue.textContent = String(n);
+      headValue.textContent = String(k);
+      simulationValue.textContent = String(simulations);
+      observedValue.textContent = `${k} / ${n}`;
+      progressValue.textContent = `${currentSimulationCount()} / ${simulations}`;
+
+      const pHat = n === 0 ? 0 : k / n;
+      const maxValue = likelihood(pHat, n, k);
+      mleValue.textContent = pHat.toFixed(3);
+      maxLikelihoodValue.textContent = formatProb(maxValue);
+    }
+
+    function currentSimulationCount() {
+      return simulationRows.length === 0 ? 0 : simulationRows[0].trials;
+    }
+
+    function drawAxes(ctx, chart, labels) {
+      ctx.clearRect(0, 0, chart.width, chart.height);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chart.width, chart.height);
+
+      ctx.strokeStyle = '#d8ded2';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(chart.left, chart.top);
+      ctx.lineTo(chart.left, chart.bottom);
+      ctx.lineTo(chart.right, chart.bottom);
+      ctx.stroke();
+
+      ctx.fillStyle = '#667085';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(labels.x, (chart.left + chart.right) / 2, chart.bottom + 30);
+
+      ctx.save();
+      ctx.translate(16, (chart.top + chart.bottom) / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(labels.y, 0, 0);
+      ctx.restore();
+    }
+
+    function drawLikelihood() {
+      const { n, k } = getState();
+      const size = setupCanvas(likelihoodCanvas, likelihoodCtx);
+      const chart = {
+        width: size.width,
+        height: size.height,
+        left: 54,
+        right: size.width - 18,
+        top: 22,
+        bottom: size.height - 54
+      };
+      const pHat = k / n;
+      const maxLogLikelihood = logLikelihood(pHat, n, k);
+      const xScale = p => chart.left + p * (chart.right - chart.left);
+      const yScale = y => chart.bottom - y * (chart.bottom - chart.top);
+
+      drawAxes(likelihoodCtx, chart, { x: 'p', y: '相対尤度' });
+
+      likelihoodCtx.strokeStyle = '#edf0ea';
+      likelihoodCtx.fillStyle = '#667085';
+      likelihoodCtx.font = '11px sans-serif';
+      likelihoodCtx.textAlign = 'center';
+      likelihoodCtx.textBaseline = 'top';
+      for (let i = 0; i <= 10; i++) {
+        const p = i / 10;
+        const x = xScale(p);
+        likelihoodCtx.beginPath();
+        likelihoodCtx.moveTo(x, chart.top);
+        likelihoodCtx.lineTo(x, chart.bottom);
+        likelihoodCtx.stroke();
+        likelihoodCtx.fillText(p.toFixed(1), x, chart.bottom + 8);
+      }
+
+      likelihoodCtx.textAlign = 'right';
+      likelihoodCtx.textBaseline = 'middle';
+      for (let i = 0; i <= 4; i++) {
+        const y = i / 4;
+        const py = yScale(y);
+        likelihoodCtx.beginPath();
+        likelihoodCtx.moveTo(chart.left, py);
+        likelihoodCtx.lineTo(chart.right, py);
+        likelihoodCtx.stroke();
+        likelihoodCtx.fillText(y.toFixed(2), chart.left - 8, py);
+      }
+
+      likelihoodCtx.strokeStyle = '#0f8b8d';
+      likelihoodCtx.lineWidth = 3;
+      likelihoodCtx.beginPath();
+      for (let i = 0; i <= 320; i++) {
+        const p = i / 320;
+        const y = relativeLikelihood(p, n, k, maxLogLikelihood);
+        const x = xScale(p);
+        const py = yScale(y);
+        if (i === 0) likelihoodCtx.moveTo(x, py);
+        else likelihoodCtx.lineTo(x, py);
+      }
+      likelihoodCtx.stroke();
+
+      const mleX = xScale(pHat);
+      likelihoodCtx.strokeStyle = '#d1495b';
+      likelihoodCtx.lineWidth = 2;
+      likelihoodCtx.setLineDash([6, 5]);
+      likelihoodCtx.beginPath();
+      likelihoodCtx.moveTo(mleX, chart.top);
+      likelihoodCtx.lineTo(mleX, chart.bottom);
+      likelihoodCtx.stroke();
+      likelihoodCtx.setLineDash([]);
+
+      likelihoodCtx.fillStyle = '#d1495b';
+      likelihoodCtx.beginPath();
+      likelihoodCtx.arc(mleX, yScale(1), 5, 0, Math.PI * 2);
+      likelihoodCtx.fill();
+
+      likelihoodCtx.fillStyle = '#182230';
+      likelihoodCtx.font = '13px sans-serif';
+      likelihoodCtx.textAlign = 'left';
+      likelihoodCtx.textBaseline = 'bottom';
+      likelihoodCtx.fillText(`最大: p = ${pHat.toFixed(3)}`, Math.min(mleX + 8, chart.right - 110), chart.top + 18);
+    }
+
+    function createSimulationRows(n, k) {
+      return pGrid.map(p => ({
+        p,
+        theory: likelihood(p, n, k),
+        matches: 0,
+        trials: 0
+      }));
+    }
+
+    function countHeads(p, n) {
+      let heads = 0;
+      for (let i = 0; i < n; i++) {
+        if (Math.random() < p) heads++;
+      }
+      return heads;
+    }
+
+    function stopAnimation() {
+      if (animationId !== null) cancelAnimationFrame(animationId);
+      animationId = null;
+      isAnimating = false;
+      runButton.textContent = '開始';
+    }
+
+    function resetSimulation() {
+      stopAnimation();
+      const { n, k } = getState();
+      simulationRows = createSimulationRows(n, k);
+      syncControls();
+      drawSimulation();
+    }
+
+    function addSimulationStep() {
+      const { n, k, simulations } = getState();
+      if (simulationRows.length === 0 || currentSimulationCount() >= simulations) {
+        if (currentSimulationCount() >= simulations) stopAnimation();
+        return false;
+      }
+
+      simulationRows.forEach(row => {
+        const matched = countHeads(row.p, n) === k;
+        row.trials += 1;
+        if (matched) row.matches += 1;
+      });
+
+      syncControls();
+      drawSimulation();
+      return currentSimulationCount() < simulations;
+    }
+
+    function animateSimulation(timestamp) {
+      if (!isAnimating) return;
+      if (timestamp - lastFrameTime >= frameIntervalMs) {
+        lastFrameTime = timestamp;
+        if (!addSimulationStep()) {
+          stopAnimation();
+          return;
+        }
+      }
+      animationId = requestAnimationFrame(animateSimulation);
+    }
+
+    function toggleAnimation() {
+      if (isAnimating) {
+        stopAnimation();
+        return;
+      }
+
+      if (currentSimulationCount() >= Number(simulationRange.value)) {
+        resetSimulation();
+      }
+      isAnimating = true;
+      runButton.textContent = '停止';
+      lastFrameTime = 0;
+      animationId = requestAnimationFrame(animateSimulation);
+    }
+
+    function drawSimulation() {
+      const { n, k } = getState();
+      const size = setupCanvas(simulationCanvas, simulationCtx);
+      const chart = {
+        width: size.width,
+        height: size.height,
+        left: 54,
+        right: size.width - 18,
+        top: 22,
+        bottom: size.height - 58
+      };
+      if (simulationRows.length === 0) {
+        simulationRows = createSimulationRows(n, k);
+      }
+
+      drawAxes(simulationCtx, chart, { x: 'p', y: '発生回数' });
+
+      const targetSimulations = Number(simulationRange.value);
+      const maxY = Math.max(1, ...simulationRows.map(row => Math.max(row.theory * targetSimulations, row.matches))) * 1.12;
+      const xStep = (chart.right - chart.left) / simulationRows.length;
+      const barWidth = Math.max(4, xStep * 0.28);
+      const yScale = value => chart.bottom - value / maxY * (chart.bottom - chart.top);
+
+      simulationCtx.strokeStyle = '#edf0ea';
+      simulationCtx.fillStyle = '#667085';
+      simulationCtx.font = '11px sans-serif';
+      simulationCtx.textAlign = 'right';
+      simulationCtx.textBaseline = 'middle';
+      for (let i = 0; i <= 4; i++) {
+        const value = maxY * i / 4;
+        const y = yScale(value);
+        simulationCtx.beginPath();
+        simulationCtx.moveTo(chart.left, y);
+        simulationCtx.lineTo(chart.right, y);
+        simulationCtx.stroke();
+        simulationCtx.fillText(maxY >= 10 ? String(Math.round(value)) : value.toFixed(1), chart.left - 8, y);
+      }
+
+      simulationRows.forEach((row, index) => {
+        const cx = chart.left + xStep * (index + 0.5);
+        const theoryTop = yScale(row.theory * targetSimulations);
+        simulationCtx.fillStyle = '#0f8b8d';
+        simulationCtx.fillRect(cx - barWidth - 1, theoryTop, barWidth, chart.bottom - theoryTop);
+
+        if (row.trials > 0) {
+          const empiricalTop = yScale(row.matches);
+          simulationCtx.fillStyle = '#f59e0b';
+          simulationCtx.fillRect(cx + 1, empiricalTop, barWidth, chart.bottom - empiricalTop);
+        }
+
+        if (index % 2 === 0) {
+          simulationCtx.fillStyle = '#667085';
+          simulationCtx.textAlign = 'center';
+          simulationCtx.textBaseline = 'top';
+          simulationCtx.fillText(row.p.toFixed(1), cx, chart.bottom + 8);
+        }
+      });
+
+      const legendX = chart.left + 10;
+      const legendY = chart.top + 10;
+      simulationCtx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      simulationCtx.fillRect(legendX - 8, legendY - 8, 184, 52);
+      simulationCtx.strokeStyle = '#edf0ea';
+      simulationCtx.strokeRect(legendX - 8, legendY - 8, 184, 52);
+      simulationCtx.font = '12px sans-serif';
+      simulationCtx.textAlign = 'left';
+      simulationCtx.textBaseline = 'middle';
+      simulationCtx.fillStyle = '#0f8b8d';
+      simulationCtx.fillRect(legendX, legendY, 12, 12);
+      simulationCtx.fillStyle = '#182230';
+      simulationCtx.fillText('理論期待回数', legendX + 18, legendY + 6);
+      simulationCtx.fillStyle = '#f59e0b';
+      simulationCtx.fillRect(legendX, legendY + 24, 12, 12);
+      simulationCtx.fillStyle = '#182230';
+      simulationCtx.fillText('実験発生回数', legendX + 18, legendY + 30);
+    }
+
+    function updateAll() {
+      stopAnimation();
+      syncControls();
+      drawLikelihood();
+      const { n, k } = getState();
+      simulationRows = createSimulationRows(n, k);
+      syncControls();
+      drawSimulation();
+    }
+
+    trialRange.addEventListener('input', () => updateAll());
+    headRange.addEventListener('input', () => updateAll());
+    simulationRange.addEventListener('input', () => {
+      if (currentSimulationCount() > Number(simulationRange.value)) resetSimulation();
+      syncControls();
+      drawSimulation();
+    });
+    runButton.addEventListener('click', toggleAnimation);
+    stepButton.addEventListener('click', () => {
+      stopAnimation();
+      if (currentSimulationCount() >= Number(simulationRange.value)) resetSimulation();
+      addSimulationStep();
+    });
+    resetButton.addEventListener('click', () => {
+      trialRange.value = '10';
+      headRange.value = '3';
+      simulationRange.value = '1000';
+      updateAll();
+    });
+    window.addEventListener('resize', () => {
+      drawLikelihood();
+      drawSimulation();
+    });
+
+    updateAll();
+  </script>
+</body>
+</html>
