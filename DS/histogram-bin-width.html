@@ -113,6 +113,14 @@
     td:last-child, th:last-child { text-align: right; }
     tbody tr:last-child td { border-bottom: 0; }
 
+    /* 操作とグラフを並べ、スクロールせずに変化を確認できるようにする。 */
+    @media (min-width: 900px) {
+      main { width: min(1400px, calc(100% - 32px)); padding-top: 8px; }
+      .demo-layout { display: grid; grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.8fr); gap: 12px; align-items: stretch; }
+      .demo-layout > .panel { min-width: 0; }
+      .demo-layout .chart-wrap svg { max-height: min(42vh, 350px); }
+    }
+
     @media (max-width: 600px) {
       .panel { padding: 12px; }
       .distribution-row { grid-template-columns: 1fr; gap: 3px; }
@@ -130,6 +138,7 @@
       <p class="lead">分布の形を選び、同じ160人のデータで階級幅による見え方の違いを確かめよう。</p>
     </header>
 
+    <div class="demo-layout">
     <section class="panel" aria-labelledby="control-title">
       <h2 id="control-title">分布と階級幅を選ぶ</h2>
       <div class="distribution-row">
@@ -168,6 +177,8 @@
       </div>
       <p class="note">横軸は体重、縦軸はその階級に入る人数。階級は35 kgから区切り、左端を含み右端は含まない。縦軸の目盛りは固定。</p>
     </section>
+
+    </div>
 
     <section class="panel callout" aria-labelledby="point-title">
       <h2 id="point-title">見比べるポイント</h2>
