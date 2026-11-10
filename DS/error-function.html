@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>回帰直線と誤差関数</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color:#173044;background:#f5f8f8}*{box-sizing:border-box}body{margin:0}main{max-width:1320px;margin:auto;padding:12px 18px 30px}a{color:#17666e}h1{font-size:1.55rem;margin:4px 0}p{margin:4px 0;color:#526574}.controls{display:flex;gap:24px;flex-wrap:wrap;background:#fff;border:1px solid #d9e3e7;border-radius:10px;padding:10px 16px;margin:10px 0}.controls label{flex:1;min-width:220px;font-weight:600}.controls output{float:right;color:#17666e}input{width:100%;accent-color:#17666e}.layout{display:grid;grid-template-columns:minmax(0, .85fr) minmax(0, 1.15fr);gap:12px}.panel{background:#fff;border:1px solid #d9e3e7;border-radius:10px;padding:10px;min-width:0}h2{font-size:1rem;margin:0 0 2px}.panel p{font-size:.86rem}.plot{width:100%;height:285px;display:block}.slices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.slice{height:210px}#status{font-weight:600;color:#17666e}.legend{font-size:.85rem}.legend span{white-space:nowrap}.red{color:#c53e36}.black{color:#222}@media(max-width:760px){.layout{grid-template-columns:1fr}.empty{display:none}.plot{height:260px}.slice{height:200px}}@media(max-width:460px){.slices{grid-template-columns:1fr}}
+.surface-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap}.surface-controls{text-align:right}.surface-controls .legend{margin:3px 0 0}.axis-toggle{border:1px solid #17666e;border-radius:6px;background:white;color:#17666e;padding:5px 10px;font:inherit;cursor:pointer}.axis-toggle:disabled{opacity:.45;cursor:default}.axis-toggle[aria-pressed="true"]{background:#17666e;color:white}
+#surface { height: 370px; touch-action: none; cursor: grab; }
+#surface:active { cursor: grabbing; }
+#fit{touch-action:none;cursor:crosshair}
+.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.9rem}th,td{padding:6px 8px;border-bottom:1px solid #d9e3e7;text-align:right;white-space:nowrap}th{background:#edf3f4;color:#173044}tfoot{font-weight:700}.formula{margin-top:10px;padding:10px 14px;background:#fff;border:1px solid #d9e3e7;border-radius:10px}.formula p{color:#173044}.formula-heading{display:flex;align-items:baseline;gap:.4em;flex-wrap:wrap}.formula-heading h2,.formula-heading p{margin:0}.math{font-family:"Times New Roman",Times,serif;font-size:1.05rem;overflow-wrap:anywhere}.equations{display:grid;grid-template-columns:max-content max-content minmax(0,1fr);column-gap:.3em;align-items:baseline}.equations .math{margin:1px 0}
+@media(min-width: 1000px){
+ main{padding:5px 12px 12px}.intro{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}.intro h1{font-size:1.25rem;margin:0}.intro p{margin:0;font-size:.9rem}
+ .controls{margin:5px 0;padding:5px 12px;gap:20px;align-items:center}.controls label{min-width:180px}.controls input{display:block;margin:2px 0 0}
+ .layout,.slices{gap:7px}.panel{padding:7px}.plot{height:clamp(210px,30vh,285px)}#surface{height:clamp(245px,34vh,300px)}.slice{height:clamp(135px,18vh,180px)}
+ .panel p{margin:1px 0}th,td{padding:3px 5px}.formula{margin-top:6px;padding:6px 10px}.formula p{margin:1px 0}.math{font-size:.95rem}
+}
+</style>
+</head>
+<body><main>
+<header class="intro"><a href="../index.html">← デモ一覧へ</a><h1>回帰直線と誤差関数</h1><p>傾きと切片を変え、直線と誤差の変化を見てみよう。</p></header>
+<div class="controls"><label for="a">傾き a <output id="av">2.0</output><input id="a" type="range" min="0" max="5" step="0.1" value="2"></label><label for="b">切片 b <output id="bv">1.0</output><input id="b" type="range" min="0" max="6" step="0.1" value="1"></label><p id="status" aria-live="polite"></p></div>
+<div class="layout">
+<section class="panel"><div class="surface-header"><div><h2>データとモデル：y = ax + b</h2><p>青い点を上下にドラッグしてデータを変更</p></div><button type="button" class="axis-toggle" id="residual-toggle" aria-pressed="false">残差表示：OFF</button></div><canvas class="plot" id="fit" role="img" aria-label="データの散布図と回帰直線"></canvas></section>
+<section class="panel"><div class="surface-header"><h2>（1）誤差関数：残差平方和（SSE）</h2><div class="surface-controls"><button type="button" class="axis-toggle" id="zoom-out" aria-label="立体図を縮小">−</button> <button type="button" class="axis-toggle" id="zoom-in" aria-label="立体図を拡大">＋</button> <button type="button" class="axis-toggle" id="guide-toggle" aria-pressed="false">補助線：OFF</button> <button type="button" class="axis-toggle" id="axis-toggle" aria-pressed="true">座標軸：ON</button><p class="legend"><span class="red">● 現在の値</span>　<span class="black">● 誤差が最小の値</span></p></div></div><canvas class="plot" id="surface" tabindex="0" role="img" aria-label="傾きと切片に対する残差平方和の立体図。ドラッグまたは矢印キーで回転できます"></canvas><p>ドラッグまたは矢印キーで回転、＋・−で拡大縮小できます。</p></section>
+<section class="panel" aria-labelledby="table-title"><h2 id="table-title">誤差の計算</h2><p>残差 ＝ 予測値 − 実測値</p><div class="table-wrap"><table><thead><tr><th scope="col">x</th><th scope="col">実測値 y</th><th scope="col">予測値 ax+b</th><th scope="col">残差</th><th scope="col">残差の二乗</th></tr></thead><tbody id="error-rows"></tbody><tfoot><tr><th colspan="4" scope="row">残差平方和（SSE）</th><td id="table-mse"></td></tr></tfoot></table></div></section>
+<div class="slices"><section class="panel"><h2>（2）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section><section class="panel"><h2>（3）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section></div>
+</div><section class="formula" aria-labelledby="formula-title"><div class="formula-heading"><h2 id="formula-title">このデータの誤差関数：</h2><p>5個のデータについて、予測値と実測値の差を二乗して合計</p></div><div class="equations"><span class="math">E(<i>a</i>, <i>b</i>)</span><span class="math">=</span><span class="math" id="formula-expanded-input"></span><span></span><span class="math">=</span><span class="math" id="formula-expanded"></span></div></section><p>（2）と（3）の図は、傾き <i>a</i> または切片 <i>b</i> を現在の値に固定し、もう一方を変えたときの誤差を表しています。立体の誤差曲面を、それぞれの軸に平行な垂直面で切った断面です。</p>
+</main><script>
+'use strict';
+const xs=[0,1,2,3,4],ys=[3.2,5.7,8.9,11.5,14.7];
+const sse=(a,b)=>xs.reduce((sum,x,i)=>sum+(ys[i]-a*x-b)**2,0);
+const meanX=2;
+let meanY=0,bestA=0,bestB=0;
+function updateBest(){
+  meanY=ys.reduce((sum,y)=>sum+y,0)/ys.length;
+  const rawA=xs.reduce((sum,x,i)=>sum+(x-meanX)*(ys[i]-meanY),0)/xs.reduce((sum,x)=>sum+(x-meanX)**2,0);
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  const candidates=[];
+  const rawB=meanY-rawA*meanX;
+  if(rawA>=0&&rawA<=5&&rawB>=0&&rawB<=6)candidates.push([rawA,rawB]);
+  for(const a of [0,5])candidates.push([a,clamp(meanY-a*meanX,0,6)]);
+  for(const b of [0,6])candidates.push([clamp(xs.reduce((sum,x,i)=>sum+x*(ys[i]-b),0)/30,0,5),b]);
+  [bestA,bestB]=candidates.reduce((best,p)=>sse(...p)<sse(...best)?p:best);
+}
+function updateFormula(){
+  const terms=xs.map((x,i)=>`(${x?`${x===1?'':x}<i>a</i> + `:''}<i>b</i> − ${ys[i].toFixed(1)})²`);
+  document.getElementById('formula-expanded-input').innerHTML=`${terms.join(' + ')}`;
+  const xy=xs.reduce((sum,x,i)=>sum+x*ys[i],0), sy=ys.reduce((sum,y)=>sum+y,0), yy=ys.reduce((sum,y)=>sum+y*y,0);
+  const fmt=n=>Number(n.toFixed(2)).toString();
+  document.getElementById('formula-expanded').innerHTML=`30<i>a</i>² + 20<i>a</i><i>b</i> + 5<i>b</i>² − ${fmt(2*xy)}<i>a</i> − ${fmt(2*sy)}<i>b</i> + ${fmt(yy)}`;
+}
+const aControl=document.getElementById('a'),bControl=document.getElementById('b');
+function canvas(id){const c=document.getElementById(id),r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);const ctx=c.getContext('2d');ctx.scale(d,d);return {ctx,w:r.width,h:r.height};}
+function chart(id,xmin,xmax,ymin,ymax,xlabel,ylabel,draw){const {ctx:c,w,h}=canvas(id),left=45,right=12,top=12,bottom=36,W=w-left-right,H=h-top-bottom;const X=x=>left+(x-xmin)/(xmax-xmin)*W,Y=y=>top+H-(y-ymin)/(ymax-ymin)*H;c.font='12px system-ui';c.strokeStyle='#e1eaed';c.fillStyle='#526574';c.textAlign='right';c.textBaseline='middle';for(let i=0;i<=4;i++){const y=ymin+(ymax-ymin)*i/4;c.beginPath();c.moveTo(left,Y(y));c.lineTo(left+W,Y(y));c.stroke();c.fillText(y.toFixed(ymax<=10?1:0),left-6,Y(y));}c.textAlign='center';c.textBaseline='top';for(let i=0;i<=4;i++){let x=id==='fit'?i:xmin+(xmax-xmin)*i/4;c.fillText(x.toFixed(xmax<=6?1:0),X(x),top+H+4)}c.strokeStyle='#8ca0aa';c.beginPath();c.moveTo(left,top);c.lineTo(left,top+H);c.lineTo(left+W,top+H);c.stroke();c.fillStyle='#526574';c.fillText(xlabel,left+W/2,h-15);c.save();c.translate(11,top+H/2);c.rotate(-Math.PI/2);c.textBaseline='top';c.fillText(ylabel,0,0);c.restore();c.save();c.beginPath();c.rect(left-7,top-7,W+14,H+14);c.clip();draw(c,X,Y);c.restore();}
+function dot(c,x,y,color,r=4){c.fillStyle=color;c.beginPath();c.arc(x,y,r,0,2*Math.PI);c.fill()}
+function line(c,points,color,width=2){c.strokeStyle=color;c.lineWidth=width;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.stroke();c.lineWidth=1}
+let showResiduals=false;
+function drawFit(a,b){chart('fit',-0.15,4.15,0,24,'x','y',(c,X,Y)=>{
+  if(showResiduals){c.save();c.setLineDash([4,3]);xs.forEach((x,i)=>line(c,[[X(x),Y(ys[i])],[X(x),Y(a*x+b)]],'#7357a3',2));c.restore()}
+  line(c,[[X(0),Y(b)],[X(4),Y(4*a+b)]],'#c53e36');
+  xs.forEach((x,i)=>dot(c,X(x),Y(ys[i]),'#16869a',5))
+})}
+const residualToggle=document.getElementById('residual-toggle');
+residualToggle.addEventListener('click',()=>{
+  showResiduals=!showResiduals;
+  residualToggle.setAttribute('aria-pressed',String(showResiduals));
+  residualToggle.textContent=`残差表示：${showResiduals?'ON':'OFF'}`;
+  drawFit(Number(aControl.value),Number(bControl.value));
+});
+function drawSlice(id,low,high,fn,current,minimum,label){let max=0;for(let i=0;i<=100;i++)max=Math.max(max,fn(low+(high-low)*i/100));max=Math.ceil(max/20)*20;chart(id,low,high,0,max,label,'SSE',(c,X,Y)=>{let p=[];for(let i=0;i<=100;i++){let x=low+(high-low)*i/100;p.push([X(x),Y(fn(x))])}line(c,p,'#7357a3',2.5);const best=Math.max(low,Math.min(high,minimum));dot(c,X(best),Y(fn(best)),'#222',6);dot(c,X(current),Y(fn(current)),'#c53e36',4)})}
+// 回転角は描画とは独立に保持し、スライダー操作後も視点を維持する。
+let yaw = -0.24, pitch = 0.46, showAxes = true, showGuides = false, zoom = 1.1;
+function drawSurface(a,b) {
+  const {ctx:c,w,h}=canvas('surface');
+  const scale=Math.min(w/6.8,h/6.5)*zoom, ox=w/2, oy=h*.5;
+  const zMax=Math.max(sse(0,0),sse(0,6),sse(5,0),sse(5,6));
+  function project(aa,bb,z) {
+    const x=(aa-2.5)*.75, y=(bb-3)*.62, height=z/zMax*3-1.3;
+    const horizontal=x*Math.cos(yaw)-y*Math.sin(yaw);
+    const depth=x*Math.sin(yaw)+y*Math.cos(yaw);
+    return {x:ox+horizontal*scale,y:oy+(depth*Math.sin(pitch)-height*Math.cos(pitch))*scale,depth:depth*Math.cos(pitch)+height*Math.sin(pitch)};
+  }
+  const cells=[], n=24;
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) {
+    const a0=i*5/n,a1=(i+1)*5/n,b0=j*6/n,b1=(j+1)*6/n;
+    const points=[[a0,b0],[a1,b0],[a1,b1],[a0,b1]].map(([x,y])=>project(x,y,sse(x,y)));
+    cells.push({points,depth:points.reduce((sum,p)=>sum+p.depth,0)/4,fill:`rgb(${Math.round(102+i*1.2)},${Math.round(164-j)},${Math.round(176+j*.8)})`});
+  }
+  // 遠い面から描くことで、回転後の面の重なりを正しく表現する。
+  cells.sort((x,y)=>y.depth-x.depth);
+  for(const cell of cells) {
+    c.beginPath();cell.points.forEach((p,i)=>i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y));
+    c.closePath();c.fillStyle=cell.fill;c.fill();c.strokeStyle='rgba(75,83,113,.2)';c.stroke();
+  }
+  if(showGuides) {
+    // 現在点から底面に下ろし、底面上でそれぞれの軸へ結ぶ。
+    const point=project(a,b,sse(a,b)), base=project(a,b,0);
+    const aAxis=project(a,0,0), bAxis=project(0,b,0);
+    c.save();c.strokeStyle='#b32f2a';c.lineWidth=1.6;c.setLineDash([5,4]);
+    for(const [from,to] of [[point,base],[base,aAxis],[base,bAxis]]) {
+      c.beginPath();c.moveTo(from.x,from.y);c.lineTo(to.x,to.y);c.stroke();
+    }
+    c.restore();
+  }
+  let p=project(a,b,sse(a,b));dot(c,p.x,p.y,'#c53e36',6);
+  p=project(bestA,bestB,sse(bestA,bestB));dot(c,p.x,p.y,'#222',4);
+  if(showAxes) {
+    const origin=project(0,0,0), aEnd=project(5,0,0), bEnd=project(0,6,0), zEnd=project(0,0,zMax);
+    c.strokeStyle='#526574';c.lineWidth=1.5;
+    for(const end of [aEnd,bEnd,zEnd]) {c.beginPath();c.moveTo(origin.x,origin.y);c.lineTo(end.x,end.y);c.stroke()}
+    c.fillStyle='#344e5c';c.font='15px system-ui';
+    c.fillText('傾き a',aEnd.x-15,aEnd.y+17);
+    c.fillText('切片 b',bEnd.x-20,bEnd.y+17);
+    c.fillText('SSE',zEnd.x-12,zEnd.y-6);
+    c.font='13px system-ui';
+    c.fillText('0',origin.x+3,origin.y+13);
+    c.fillText('5',aEnd.x+2,aEnd.y+2);
+    c.fillText('6',bEnd.x+2,bEnd.y+2);
+    c.fillText(zMax.toFixed(1),zEnd.x+4,zEnd.y+5);
+  }
+}
+// 散布図では x を固定し、縦方向のドラッグで実測値を変更する。
+const fitCanvas=document.getElementById('fit');
+let selectedPoint=null;
+function fitPosition(event){
+  const rect=fitCanvas.getBoundingClientRect(), w=rect.width, h=rect.height;
+  return {x:event.clientX-rect.left,y:event.clientY-rect.top,w,h};
+}
+fitCanvas.addEventListener('pointerdown',event=>{
+  const p=fitPosition(event), W=p.w-57, H=p.h-48;
+  let nearest=-1, distance=18;
+  xs.forEach((x,i)=>{
+    const px=45+(x+.15)/4.3*W, py=12+H-ys[i]/24*H;
+    const d=Math.hypot(p.x-px,p.y-py);
+    if(d<distance){distance=d;nearest=i}
+  });
+  if(nearest<0)return;
+  selectedPoint=nearest;fitCanvas.setPointerCapture(event.pointerId);event.preventDefault();
+});
+fitCanvas.addEventListener('pointermove',event=>{
+  if(selectedPoint===null)return;
+  const p=fitPosition(event), H=p.h-48;
+  const y=Math.max(0,Math.min(24,(12+H-p.y)/H*24));
+  ys[selectedPoint]=Math.round(y*10)/10;
+  render();
+});
+for(const name of ['pointerup','pointercancel','lostpointercapture'])fitCanvas.addEventListener(name,()=>{selectedPoint=null});
+const surface=document.getElementById('surface');
+const axisToggle=document.getElementById('axis-toggle');
+const guideToggle=document.getElementById('guide-toggle');
+guideToggle.addEventListener('click',()=>{
+  showGuides=!showGuides;
+  guideToggle.setAttribute('aria-pressed',String(showGuides));
+  guideToggle.textContent=`補助線：${showGuides?'ON':'OFF'}`;
+  drawSurface(Number(aControl.value),Number(bControl.value));
+});
+function changeZoom(delta){
+  zoom=Math.max(0.7,Math.min(1.3,Math.round((zoom+delta)*10)/10));
+  document.getElementById('zoom-out').disabled=zoom<=0.7;
+  document.getElementById('zoom-in').disabled=zoom>=1.3;
+  drawSurface(Number(aControl.value),Number(bControl.value));
+}
+document.getElementById('zoom-out').addEventListener('click',()=>changeZoom(-0.1));
+document.getElementById('zoom-in').addEventListener('click',()=>changeZoom(0.1));
+axisToggle.addEventListener('click',()=>{
+  showAxes=!showAxes;
+  axisToggle.setAttribute('aria-pressed',String(showAxes));
+  axisToggle.textContent=`座標軸：${showAxes?'ON':'OFF'}`;
+  drawSurface(Number(aControl.value),Number(bControl.value));
+});
+let dragging=null;
+surface.addEventListener('pointerdown', event=>{dragging={x:event.clientX,y:event.clientY};surface.setPointerCapture(event.pointerId)});
+surface.addEventListener('pointermove', event=>{
+  if(!dragging)return;
+  yaw+=(event.clientX-dragging.x)*0.01;
+  pitch=Math.max(0.12,Math.min(1.35,pitch+(event.clientY-dragging.y)*0.01));
+  dragging={x:event.clientX,y:event.clientY};drawSurface(Number(aControl.value),Number(bControl.value));
+});
+surface.addEventListener('pointerup',()=>{dragging=null});
+surface.addEventListener('pointercancel',()=>{dragging=null});
+surface.addEventListener('lostpointercapture',()=>{dragging=null});
+surface.addEventListener('keydown', event=>{
+  const step=0.12;
+  if(event.key==='ArrowLeft')yaw-=step;
+  else if(event.key==='ArrowRight')yaw+=step;
+  else if(event.key==='ArrowUp')pitch=Math.max(0.12,pitch-step);
+  else if(event.key==='ArrowDown')pitch=Math.min(1.35,pitch+step);
+  else return;
+  event.preventDefault();drawSurface(Number(aControl.value),Number(bControl.value));
+});
+function renderTable(a,b){
+  const rows=document.getElementById('error-rows');
+  rows.replaceChildren(...xs.map((x,i)=>{
+    const predicted=a*x+b, residual=predicted-ys[i], tr=document.createElement('tr');
+    [x.toFixed(1),ys[i].toFixed(1),predicted.toFixed(2),residual.toFixed(2),(residual**2).toFixed(2)].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.appendChild(td)});
+    return tr;
+  }));
+  document.getElementById('table-mse').textContent=sse(a,b).toFixed(2);
+}
+function render(){updateBest();updateFormula();const a=Number(aControl.value),b=Number(bControl.value);renderTable(a,b);document.getElementById('av').value=a.toFixed(1);document.getElementById('bv').value=b.toFixed(1);document.getElementById('status').textContent=`現在の SSE：${sse(a,b).toFixed(2)} ／ 表示範囲内の最小：${sse(bestA,bestB).toFixed(2)}（a = ${bestA.toFixed(2)}, b = ${bestB.toFixed(2)}）`;drawFit(a,b);drawSurface(a,b);drawSlice('bslice',0,6,x=>sse(a,x),b,meanY-a*meanX,'切片 b');drawSlice('aslice',0,5,x=>sse(x,b),a,xs.reduce((sum,x,i)=>sum+x*(ys[i]-b),0)/xs.reduce((sum,x)=>sum+x*x,0),'傾き a')}
+aControl.addEventListener('input',render);bControl.addEventListener('input',render);window.addEventListener('resize',render);render();
+</script></body></html>
