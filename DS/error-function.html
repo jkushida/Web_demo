@@ -26,7 +26,7 @@
 <section class="panel"><div class="surface-header"><div><h2>データとモデル：y = ax + b</h2><p>青い点を上下にドラッグしてデータを変更</p></div><button type="button" class="axis-toggle" id="residual-toggle" aria-pressed="false">残差表示：OFF</button></div><canvas class="plot" id="fit" role="img" aria-label="データの散布図と回帰直線"></canvas></section>
 <section class="panel"><div class="surface-header"><h2>（1）誤差関数：残差平方和（SSE）</h2><div class="surface-controls"><button type="button" class="axis-toggle" id="zoom-out" aria-label="立体図を縮小">−</button> <button type="button" class="axis-toggle" id="zoom-in" aria-label="立体図を拡大">＋</button> <button type="button" class="axis-toggle" id="guide-toggle" aria-pressed="false">補助線：OFF</button> <button type="button" class="axis-toggle" id="axis-toggle" aria-pressed="true">座標軸：ON</button><p class="legend"><span class="red">● 現在の値</span>　<span class="black">● 誤差が最小の値</span></p></div></div><canvas class="plot" id="surface" tabindex="0" role="img" aria-label="傾きと切片に対する残差平方和の立体図。ドラッグまたは矢印キーで回転できます"></canvas><p>ドラッグまたは矢印キーで回転、＋・−で拡大縮小できます。</p></section>
 <section class="panel" aria-labelledby="table-title"><h2 id="table-title">誤差の計算</h2><p>残差 ＝ 予測値 − 実測値</p><div class="table-wrap"><table><thead><tr><th scope="col">x</th><th scope="col">実測値 y</th><th scope="col">予測値 ax+b</th><th scope="col">残差</th><th scope="col">残差の二乗</th></tr></thead><tbody id="error-rows"></tbody><tfoot><tr><th colspan="4" scope="row">残差平方和（SSE）</th><td id="table-mse"></td></tr></tfoot></table></div></section>
-<div class="slices"><section class="panel"><h2>（2）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section><section class="panel"><h2>（3）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section></div>
+<div class="slices"><section class="panel"><h2>（2）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section><section class="panel"><h2>（3）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section></div>
 </div><section class="formula" aria-labelledby="formula-title"><div class="formula-heading"><h2 id="formula-title">このデータの誤差関数：</h2><p>5個のデータについて、予測値と実測値の差を二乗して合計</p></div><div class="equations"><span class="math">E(<i>a</i>, <i>b</i>)</span><span class="math">=</span><span class="math" id="formula-expanded-input"></span><span></span><span class="math">=</span><span class="math" id="formula-expanded"></span></div></section><p>（2）と（3）の図は、傾き <i>a</i> または切片 <i>b</i> を現在の値に固定し、もう一方を変えたときの誤差を表しています。立体の誤差曲面を、それぞれの軸に平行な垂直面で切った断面です。</p>
 </main><script>
 'use strict';
@@ -96,11 +96,13 @@ function drawSurface(a,b) {
     c.closePath();c.fillStyle=cell.fill;c.fill();c.strokeStyle='rgba(75,83,113,.2)';c.stroke();
   }
   if(showGuides) {
-    // 現在点から底面に下ろし、底面上でそれぞれの軸へ結ぶ。
-    const point=project(a,b,sse(a,b)), base=project(a,b,0);
-    const aAxis=project(a,0,0), bAxis=project(0,b,0);
+    // 原点と現在点を対角に持つ直方体の12本の辺を描く。
+    const height=sse(a,b), vertices=[];
+    for(const aa of [0,a]) for(const bb of [0,b]) for(const zz of [0,height]) vertices.push(project(aa,bb,zz));
     c.save();c.strokeStyle='#b32f2a';c.lineWidth=1.6;c.setLineDash([5,4]);
-    for(const [from,to] of [[point,base],[base,aAxis],[base,bAxis]]) {
+    for(let i=0;i<8;i++) for(const bit of [1,2,4]) {
+      if(i & bit) continue;
+      const from=vertices[i],to=vertices[i | bit];
       c.beginPath();c.moveTo(from.x,from.y);c.lineTo(to.x,to.y);c.stroke();
     }
     c.restore();
