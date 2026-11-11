@@ -98,6 +98,8 @@
       model = next;
       doc = 0; term = Math.max(0, model.words.indexOf(core.tokenize($('query').value)[0])); focus = term; resultDoc = 0;
       $('doc-count').textContent = model.documents.length;
+      const appliedDocuments = $('applied-documents');
+      if (appliedDocuments) appliedDocuments.innerHTML = model.documents.map((text, i) => `<p><b>D${i + 1}:</b> ${escape(text)}</p>`).join('');
       $('word-count').textContent = model.words.length;
       $('token-count').textContent = model.tokens.flat().length;
       $('focus-word').innerHTML = model.words.map((w, i) => `<option value="${i}">${escape(w)}</option>`).join('');

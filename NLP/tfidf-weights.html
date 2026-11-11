@@ -6,10 +6,10 @@
   <title>TF-IDF | 自然言語処理2026</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="bow-tfidf.css?v=20261111-5">
-  <link rel="stylesheet" href="bow-pages.css?v=20261111-df2">
+  <link rel="stylesheet" href="bow-pages.css?v=20261112-2">
   <script defer src="vendor/lucide.min.js"></script>
   <script defer src="bow-tfidf-core.js?v=20261111-1"></script>
-  <script defer src="bow-tfidf.js?v=20261111-11"></script>
+  <script defer src="bow-tfidf.js?v=20261112-1"></script>
   <script defer src="bow-pages.js?v=20261111-df2"></script>
 </head>
 <body data-view="tfidf">
@@ -34,14 +34,15 @@ You enjoy music.</textarea>
       </form>
       <p class="note">日本語は分かち書き。英字は小文字化し、句読点・記号は除外。助詞などは残す。</p>
       <dl class="metrics"><div><dt>文書数 N</dt><dd id="doc-count"></dd></div><div><dt>語彙数 V</dt><dd id="word-count"></dd></div><div><dt>総トークン数</dt><dd id="token-count"></dd></div></dl>
+      <div class="applied-documents" aria-label="適用済み文書"><h3>適用済み文書</h3><div id="applied-documents"></div></div>
       <section><h3>検索する語</h3><form id="query-form"><label class="sr-only" for="query">検索語</label><div class="query-input"><input id="query" maxlength="300" value="music movies" spellcheck="false"><button type="submit" class="icon" title="検索" aria-label="検索"><i data-lucide="search" aria-hidden="true"></i></button></div></form><p id="query-note" class="note" aria-live="polite"></p></section>
     </aside>
     <main>
       <nav class="tabs page-links" aria-label="文書表現の教材"><a href="bow-documents.html">1. BoW</a><a href="document-frequency.html">2. DF・IDF</a><a href="tfidf-weights.html">3. TF-IDF</a><a href="document-search.html">4. 文書検索</a><a href="bow-tfidf.html">比較・計算の説明</a></nav>
       <section id="panel-search" role="tabpanel" aria-labelledby="tab-search">
-        <div class="section-heading"><h2>文書を数値にして、検索語と比べる</h2><div class="segment" role="group" aria-label="行列の値"><button data-method="bow" aria-pressed="true">BoW（回数）</button><button data-method="tfidf" aria-pressed="false">TF-IDF</button></div></div>
+        <div class="section-heading"><h2>文書を数値にして、検索語と比べる</h2></div>
         <div class="search-grid">
-          <section class="matrix-area"><div class="section-heading"><h3 id="matrix-title">文書 × 単語</h3><span id="matrix-size" class="note"></span></div>
+          <section class="matrix-area"><div class="section-heading"><h3 id="matrix-title">文書 × 単語</h3><div class="matrix-controls"><span id="matrix-size" class="note"></span><div class="segment" role="group" aria-label="行列の値"><button data-method="bow" aria-pressed="true">TFの行列</button><button data-method="tfidf" aria-pressed="false">TF-IDF行列</button></div></div></div>
             <div class="matrix-guide" id="matrix-guide"><p id="matrix-meaning"></p><p>共起行列は「単語 × 周辺語」。<strong>この表の1行は「文書」を表す。</strong></p></div>
             <div id="document-matrix" class="table-scroll" aria-describedby="matrix-guide"></div><div id="cell-detail" class="calculation" aria-live="polite"></div><div id="document-tokens" class="document-tokens"></div></section>
           <section class="ranking-area"><h3>検索結果 <span class="note">コサイン類似度 0〜1</span></h3><div class="ranking-grid"><div><h4 class="bow-heading">BoW</h4><div id="bow-ranking"></div></div><div><h4 class="tfidf-heading">TF-IDF</h4><div id="tfidf-ranking"></div></div></div><p id="ranking-note" class="note"></p><div id="score-detail" class="score-detail"></div></section>
