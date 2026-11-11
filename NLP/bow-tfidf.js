@@ -18,7 +18,7 @@
 
   function matrixTable(matrix, rows, selectable = false, highlight = -1, extras = '') {
     const max = Math.max(1, ...matrix.flat());
-    return `<table><thead><tr><th scope="col">${selectable ? '文書' : '行'} ＼ 単語</th>${model.words.map(w => `<th scope="col">${escape(w)}</th>`).join('')}</tr></thead><tbody>${matrix.map((row, i) => `<tr${i === highlight ? ' class="focus"' : ''}><th scope="row">${escape(rows[i])}</th>${row.map((value, j) => {
+    return `<table><thead><tr><th scope="col">${selectable ? '文書' : '行'} ＼ 単語</th>${model.words.map(w => `<th scope="col">${escape(w)}</th>`).join('')}</tr></thead><tbody>${matrix.map((row, i) => `<tr${i === highlight ? ' class="focus"' : ''}><th scope="row">${selectable ? `<button class="document-label" data-doc="${i}" aria-label="文書 D${i + 1} の内容を表示" aria-pressed="${i === doc}">${escape(rows[i])}</button>` : escape(rows[i])}</th>${row.map((value, j) => {
       const label = selectable && method === 'tfidf' ? fmt(value) : value;
       return `<td${value === 0 ? ' class="zero"' : ''}>${selectable ? `<button data-cell="${i},${j}" class="${i === doc && j === term ? 'selected' : ''}" aria-pressed="${i === doc && j === term}" aria-label="D${i + 1}・${escape(model.words[j])}：${label}" style="--cell-bg:rgba(8,127,120,${value ? 0.08 + 0.27 * value / max : 0})">${label}</button>` : label}</td>`;
     }).join('')}</tr>`).join('')}${extras}</tbody></table>`;
@@ -37,7 +37,7 @@
   }
   function showCell(row, column) {
     const word = escape(model.words[column]), tf = model.counts[row][column], df = model.df[column];
-    $('cell-detail').innerHTML = `<strong>TF-IDFの計算：D${row + 1} × ${word}</strong><p>TF(t,d) = <b>${tf}</b> 回 ／ DF(t) = <b>${df}</b> 文書 ／ 全文書数 D = ${model.documents.length}</p><p class="formula">IDF(t) = ln((1 + D) / (1 + DF(t))) + 1 = ln(${1 + model.documents.length}/${1 + df}) + 1 ≈ <b>${fmt(model.idf[column])}</b></p><p class="formula">TF-IDF(t,d) = TF(t,d) × IDF(t) = ${tf} × ${fmt(model.idf[column])} ≈ <b>${fmt(model.weighted[row][column])}</b></p>`;
+    $('cell-detail').innerHTML = document.body.dataset.view === 'bow' ? `<strong>出現回数：D${row + 1} × ${word}</strong><p>t（単語）＝「${word}」、d（文書）＝D${row + 1}<br>TF(${word}, D${row + 1}) = <b>${tf}回</b></p>` : `<strong>TF-IDFの計算：D${row + 1} × ${word}</strong><p>t（term：単語）＝「${word}」 ／ d（document：文書）＝D${row + 1}<br>N＝文書の総数</p><p><span class="tf-color">TF(t,d) = <b>${tf}</b> 回</span> ／ DF(t) = <b>${df}</b> 文書 ／ 全文書数 N = ${model.documents.length}</p><p class="math-line"><math aria-label="IDFは全文書数を出現文書数で割った値の自然対数"><mi class="idf-color">IDF</mi><mo>(</mo><mi>t</mi><mo>)</mo><mo>=</mo><mi>ln</mi><mo>(</mo><mfrac><mi>N</mi><mrow><mi>DF</mi><mo>(</mo><mi>t</mi><mo>)</mo></mrow></mfrac><mo>)</mo><mo>=</mo><mi>ln</mi><mo>(</mo><mfrac><mn>${model.documents.length}</mn><mn>${df}</mn></mfrac><mo>)</mo><mo>≈</mo><mn class="idf-color">${fmt(model.idf[column])}</mn></math></p><p class="math-line"><math aria-label="TF-IDFは出現回数とIDFの積"><mtext>TF-IDF</mtext><mo>(</mo><mi>t</mi><mo>,</mo><mi>d</mi><mo>)</mo><mo>=</mo><mi class="tf-color">TF</mi><mo>(</mo><mi>t</mi><mo>,</mo><mi>d</mi><mo>)</mo><mo>×</mo><mi class="idf-color">IDF</mi><mo>(</mo><mi>t</mi><mo>)</mo><mo>=</mo><mn class="tf-color">${tf}</mn><mo>×</mo><mn class="idf-color">${fmt(model.idf[column])}</mn><mo>≈</mo><mn>${fmt(model.weighted[row][column])}</mn></math></p>`;
     $('document-tokens').innerHTML = `<strong>D${row + 1} の単語列</strong><p>${model.tokens[row].map(w => `<span class="token${w === model.words[column] ? ' match' : ''}">${escape(w)}</span>`).join(' ')}</p><span class="note">D${row + 1}に「${word}」が${tf}回出現。単語同士が隣り合った回数ではない。</span>`;
   }
   function previewCell(button) {
@@ -45,7 +45,7 @@
     previewButton?.classList.remove('preview');
     previewButton = button;
     button.classList.add('preview');
-    const [row, column] = button.dataset.cell.split(',').map(Number);
+    const [row, column] = button.dataset.cell ? button.dataset.cell.split(',').map(Number) : [Number(button.dataset.doc), term];
     showCell(row, column);
   }
   function clearPreview() {
@@ -60,8 +60,9 @@
     }
     const a = results.bow.matches, b = results.tfidf.matches;
     const queryNorm = Math.hypot(...results.bow.vector);
+    const zeroTfidfQuery = !Math.hypot(...results.tfidf.vector);
     const tied = a.some((m, i) => i && m.score > 0 && m.rank === a[i - 1].rank) || b.some((m, i) => i && m.score > 0 && m.rank === b[i - 1].rank);
-    $('ranking-note').textContent = !queryNorm ? '語彙と一致する検索語がないため、検索スコアはすべて0。' : (a[0].i !== b[0].i ? `先頭の文書は D${a[0].i + 1} → D${b[0].i + 1}。` : 'この検索では先頭の文書は同じ。') + (tied ? '同点は同順位で、文書番号順に表示。' : 'スコアは確率ではない。');
+    $('ranking-note').textContent = !queryNorm ? '語彙と一致する検索語がないため、検索スコアはすべて0。' : zeroTfidfQuery ? 'TF-IDFの検索ベクトルは0のため、類似度は未定義（表示は0）。' : (a[0].i !== b[0].i ? `先頭の文書は D${a[0].i + 1} → D${b[0].i + 1}。` : 'この検索では先頭の文書は同じ。') + (tied ? '同点は同順位で、文書番号順に表示。' : 'スコアは確率ではない。');
     renderScore();
   }
   function renderScore() {
@@ -69,7 +70,7 @@
     const matrix = resultMethod === 'bow' ? model.counts : model.weighted;
     const vector = results[resultMethod].vector;
     const contributions = model.words.flatMap((w, j) => matrix[resultDoc][j] && vector[j] ? [`${escape(w)}：${fmt(matrix[resultDoc][j])} × ${fmt(vector[j])}`] : []);
-    $('score-detail').innerHTML = `<h4>${resultMethod === 'bow' ? 'BoW' : 'TF-IDF'} ／ D${resultDoc + 1}</h4><p>${escape(model.documents[resultDoc])}</p><p class="note">${contributions.length ? contributions.join(' ＋ ') : '共通する語の寄与は0。'}</p><p>内積 q · d = ${fmt(found.dot)}</p><p class="formula">${found.normA && found.normB ? `cos = ${fmt(found.dot)} / (${fmt(found.normA)} × ${fmt(found.normB)}) ≈ <b>${fmt(found.score)}</b>` : '検索ベクトルが0のため、コサインは未定義。表示上は0とする。'}</p><p class="note">分母は文書の長さ × 検索ベクトルの長さ。計算には丸め前の値を使う。</p>`;
+    $('score-detail').innerHTML = `<h4>${resultMethod === 'bow' ? 'BoW' : 'TF-IDF'} ／ D${resultDoc + 1}</h4><p>${escape(model.documents[resultDoc])}</p><p class="note">${contributions.length ? contributions.join(' ＋ ') : '共通する語の寄与は0。'}</p><p>内積 q · d = ${fmt(found.dot)}</p><p class="formula">${found.normA && found.normB ? `cos = ${fmt(found.dot)} / (${fmt(found.normA)} × ${fmt(found.normB)}) ≈ <b>${fmt(found.score)}</b>` : '検索または文書ベクトルが0のため、コサインは未定義。表示上は0とする。'}</p><p class="note">分母は文書の長さ × 検索ベクトルの長さ。計算には丸め前の値を使う。</p>`;
   }
   function renderCompare() {
     $('compare-bow').innerHTML = matrixTable(model.counts, model.documents.map((_, i) => `D${i + 1}`));
@@ -140,14 +141,21 @@
   });
   $('query-form').addEventListener('submit', event => { event.preventDefault(); renderSearch(); });
   $('query').addEventListener('input', renderSearch);
-  $('document-matrix').addEventListener('mouseover', event => previewCell(event.target.closest('[data-cell]')));
+  $('document-matrix').addEventListener('mouseover', event => previewCell(event.target.closest('[data-cell], [data-doc]')));
   $('document-matrix').addEventListener('mouseleave', clearPreview);
-  $('document-matrix').addEventListener('focusin', event => previewCell(event.target.closest('[data-cell]')));
+  $('document-matrix').addEventListener('focusin', event => previewCell(event.target.closest('[data-cell], [data-doc]')));
   $('document-matrix').addEventListener('focusout', event => {
     if (!$('document-matrix').contains(event.relatedTarget)) clearPreview();
   });
   $('document-matrix').addEventListener('click', event => {
     const button = event.target.closest('[data-cell]');
+    const docButton = event.target.closest('[data-doc]');
+    if (docButton) {
+      doc = Number(docButton.dataset.doc);
+      renderMatrix();
+      $('document-matrix').querySelector(`[data-doc="${doc}"]`).focus({ preventScroll: true });
+      return;
+    }
     if (!button) return;
     [doc, term] = button.dataset.cell.split(',').map(Number);
     renderMatrix();

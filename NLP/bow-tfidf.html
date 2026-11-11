@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BoW・TF-IDFと文書検索 | 自然言語処理2026</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="bow-tfidf.css">
+  <link rel="stylesheet" href="bow-tfidf.css?v=20261111-5">
   <script defer src="vendor/lucide.min.js"></script>
-  <script defer src="bow-tfidf-core.js"></script>
-  <script defer src="bow-tfidf.js"></script>
+  <script defer src="bow-tfidf-core.js?v=20261111-1"></script>
+  <script defer src="bow-tfidf.js?v=20261111-9"></script>
 </head>
 <body>
   <header>
@@ -22,7 +22,7 @@
         <label for="preset">例文</label>
         <select id="preset"><option value="english">英文・4文書</option><option value="repeated" selected>英文・同じ語が2回</option><option value="japanese">日本語・4文書</option><option value="ranking">順位が逆転する語列</option><option value="order">語順が違う2文</option><option value="custom">自由入力</option></select>
         <label for="corpus">1行＝1文書</label>
-        <textarea id="corpus" rows="6" maxlength="4000" spellcheck="false">I like music. I enjoy music.
+        <textarea id="corpus" rows="6" maxlength="4000" spellcheck="false" wrap="off">I like music. I enjoy music.
 You like movies. You enjoy movies.
 I enjoy music.
 You enjoy music.</textarea>
@@ -31,7 +31,7 @@ You enjoy music.</textarea>
         <p id="error" role="alert" hidden></p>
       </form>
       <p class="note">日本語は分かち書き。英字は小文字化し、句読点・記号は除外。助詞などは残す。</p>
-      <dl class="metrics"><div><dt>文書数 D</dt><dd id="doc-count"></dd></div><div><dt>語彙数 V</dt><dd id="word-count"></dd></div><div><dt>総トークン数</dt><dd id="token-count"></dd></div></dl>
+      <dl class="metrics"><div><dt>文書数 N</dt><dd id="doc-count"></dd></div><div><dt>語彙数 V</dt><dd id="word-count"></dd></div><div><dt>総トークン数</dt><dd id="token-count"></dd></div></dl>
       <section><h3>検索する語</h3><form id="query-form"><label class="sr-only" for="query">検索語</label><div class="query-input"><input id="query" maxlength="300" value="music movies" spellcheck="false"><button type="submit" class="icon" title="検索" aria-label="検索"><i data-lucide="search" aria-hidden="true"></i></button></div></form><p id="query-note" class="note" aria-live="polite"></p></section>
     </aside>
     <main>
@@ -61,13 +61,13 @@ You enjoy music.</textarea>
         <h2>回数 → 重み → 検索スコア</h2>
         <div class="explain-grid">
           <article><h3>1. BoW：語順を捨て、出現回数を数える</h3><p>Bag-of-Wordsは文章を単語の集まりとして扱う表現。同じ語彙の順番で、各単語が文書に何回出たかを並べる。この教材では生の出現回数を使う。</p><p><code>dog bites man</code> と <code>man bites dog</code> は意味が違っても同じBoWになる。</p></article>
-          <article><h3>2. TFとDF：回数と文書数を区別する</h3><p><strong>TF(t,d)</strong> は文書dでの語tの出現回数。<strong>DF(t)</strong> は語tを含む文書数。同じ文書に10回現れても、その文書からDFに加えるのは1。</p><p><strong>D</strong> は文書の総数。トークン数や共起回数の総和ではない。</p></article>
-          <article><h3>3. IDF：多くの文書にある語の重みを抑える</h3><p class="formula">IDF(t) = ln((1 + D) / (1 + DF(t))) + 1</p><p>lnは自然対数。この教材は平滑化ありの式を使う。少数の文書にしかない語ほど大きい。全文書にある語のIDFは1で、0にはならない。</p><p class="formula">TF-IDF(t,d) = TF(t,d) × IDF(t)</p><p>語の意味や重要性を直接理解した値ではなく、文書集合での出方から決まる重み。</p></article>
+          <article><h3>2. TFとDF：回数と文書数を区別する</h3><p><strong>TF(t,d)</strong> は文書dでの語tの出現回数。<strong>DF(t)</strong> は語tを含む文書数。同じ文書に10回現れても、その文書からDFに加えるのは1。</p><p><strong>N</strong> は文書の総数。トークン数や共起回数の総和ではない。</p></article>
+          <article><h3>3. IDF：多くの文書にある語の重みを抑える</h3><p class="formula">IDF(t) = ln(N / DF(t))</p><p>lnは自然対数。少数の文書にしかない語ほど大きく、全文書に現れる語のIDFは0。この教材の語彙は文書中に現れた語だけなので、DFは1以上。</p><p class="formula">TF-IDF(t,d) = TF(t,d) × IDF(t)</p><p>語の意味や重要性を直接理解した値ではなく、文書集合での出方から決まる重み。</p></article>
           <article><h3>4. 検索語も同じ語彙・同じIDFで表す</h3><p>検索語qの出現回数に、文書集合から求めたIDFを掛ける。検索語を追加の文書として数え直さない。文書集合の語彙にない検索語は計算対象外。</p><p>行列には長さを正規化する前の値を表示。検索のコサイン類似度で、ベクトルの長さを考慮する。</p></article>
-          <article><h3>5. コサイン類似度：ベクトルの向きの近さ</h3><p class="formula">cos(q,d) = (q · d) / (‖q‖ × ‖d‖)</p><p>内積は同じ単語の成分を掛けて足した値。‖d‖は成分の二乗和の平方根。非負のBoW・TF-IDFでは0〜1で、大きいほど向きが近い。確率ではない。</p><p>検索ベクトルがすべて0なら式は定義できないため、この教材ではスコア0・一致なしとして扱う。同点は同順位。</p></article>
+          <article><h3>5. コサイン類似度：ベクトルの向きの近さ</h3><p class="formula">cos(q,d) = (q · d) / (‖q‖ × ‖d‖)</p><p>内積は同じ単語の成分を掛けて足した値。‖d‖は成分の二乗和の平方根。非負のBoW・TF-IDFでは0〜1で、大きいほど向きが近い。確率ではない。</p><p>検索ベクトルまたは文書ベクトルがすべて0なら式は定義できないため、この教材ではスコア0・一致なしとして扱う。同点は同順位。</p></article>
           <article><h3>6. 文書と単語の表現を分けて考える</h3><p>BoWの行ベクトルは「その文書でどの単語が多いか」。共起行列の行ベクトルは「その単語の周囲にどの語が多いか」。どちらも回数を使うが、1行が表す対象が違う。</p><p>この教材は文書表現の補足。既存のPPMI・SVD教材やCBOW教材とは別の流れ。</p></article>
         </div>
-        <p class="note">自由入力の上限：8文書・40語彙・合計200語。式の参照：<a href="https://scikit-learn.org/stable/modules/feature_extraction.html#tf-idf-term-weighting" target="_blank" rel="noopener">scikit-learn公式解説：TF-IDF</a>。この教材ではTFを生の回数とし、対数TFは使わない。</p>
+        <p class="note">自由入力の上限：8文書・40語彙・合計200語。この教材は平滑化なしのIDFを使い、TFは生の出現回数とする。実装によっては平滑化や別の重み付けを用いる。</p>
       </section>
     </main>
   </div>

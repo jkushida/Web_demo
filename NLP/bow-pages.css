@@ -1,0 +1,6 @@
+.page-links a{display:block;white-space:nowrap;padding:16px 10px 12px;border-bottom:3px solid transparent;text-decoration:none;color:var(--ink);font-size:15px}
+.page-links a[aria-current=page]{border-bottom-color:var(--teal);color:var(--teal);font-weight:750}
+body[data-view=df] .ranking-area,body[data-view=df] aside section,body[data-view=df] .segment{display:none}body[data-view=df] .search-grid{grid-template-columns:minmax(0,1fr)}.df-word{width:100%;min-height:32px;padding:3px 6px;border:1px solid transparent;background:transparent;font-weight:700}.df-word.df-selected{color:#165d9c;background:#e3efff;border-color:#458bcb}.df-column,.meta-row td.df-column{background:#e3efff;color:#165d9c}
+body[data-view=bow] .ranking-area,body[data-view=tfidf] .ranking-area,body[data-view=bow] aside section,body[data-view=tfidf] aside section,body[data-view=bow] .query-row,body[data-view=tfidf] .query-row,body[data-view=bow] .meta-row,body[data-view=bow] .segment,body[data-view=tfidf] .segment{display:none}
+body[data-view=bow] .search-grid,body[data-view=tfidf] .search-grid{grid-template-columns:minmax(0,1fr)}
+@media(max-width:700px){.page-links a{font-size:13px;padding:13px 7px 10px}}

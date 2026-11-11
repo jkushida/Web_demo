@@ -19,7 +19,7 @@
       return vector;
     });
     const df = words.map((_, j) => counts.filter(row => row[j] > 0).length);
-    const idf = df.map(n => Math.log((1 + documents.length) / (1 + n)) + 1);
+    const idf = df.map(n => Math.log(documents.length / n));
     const weighted = counts.map(row => row.map((n, j) => n * idf[j]));
     // Each document is its own sequence; no context crosses a document boundary.
     const cooccurrence = words.map(() => Array(words.length).fill(0));
