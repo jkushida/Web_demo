@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="bow-pages.css?v=20261111-df2">
   <script defer src="vendor/lucide.min.js"></script>
   <script defer src="bow-tfidf-core.js?v=20261111-1"></script>
-  <script defer src="bow-tfidf.js?v=20261111-9"></script>
+  <script defer src="bow-tfidf.js?v=20261111-11"></script>
   <script defer src="bow-pages.js?v=20261111-df2"></script>
 </head>
 <body data-view="bow">
@@ -43,7 +43,7 @@ You enjoy music.</textarea>
         <div class="search-grid">
           <section class="matrix-area"><div class="section-heading"><h3 id="matrix-title">文書 × 単語</h3><span id="matrix-size" class="note"></span></div>
             <div class="matrix-guide" id="matrix-guide"><p id="matrix-meaning"></p><p>共起行列は「単語 × 周辺語」。<strong>この表の1行は「文書」を表す。</strong></p></div>
-            <p class="matrix-guide"><strong>TF（Term Frequency）</strong>は、文書 d に単語 t が出現する回数。表の各セルが TF(t,d) に当たる。</p><div id="document-matrix" class="table-scroll" aria-describedby="matrix-guide"></div><div id="cell-detail" class="calculation" aria-live="polite"></div><div id="document-tokens" class="document-tokens"></div></section>
+            <p class="matrix-guide"><strong>TF（Term Frequency）</strong>は、文書 d に単語 t が出現する回数。各セルが TF(t,d)、表全体がTFの行列に当たる。</p><div id="document-matrix" class="table-scroll" aria-describedby="matrix-guide"></div><div id="cell-detail" class="calculation" aria-live="polite"></div><div id="document-tokens" class="document-tokens"></div></section>
           <section class="ranking-area"><h3>検索結果 <span class="note">コサイン類似度 0〜1</span></h3><div class="ranking-grid"><div><h4 class="bow-heading">BoW</h4><div id="bow-ranking"></div></div><div><h4 class="tfidf-heading">TF-IDF</h4><div id="tfidf-ranking"></div></div></div><p id="ranking-note" class="note"></p><div id="score-detail" class="score-detail"></div></section>
         </div>
       </section>

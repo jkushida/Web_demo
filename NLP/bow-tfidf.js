@@ -25,7 +25,7 @@
   }
   function renderMatrix() {
     const matrix = method === 'bow' ? model.counts : model.weighted;
-    $('matrix-title').textContent = method === 'bow' ? '文書 × 単語：出現回数' : '文書 × 単語：TF × IDF';
+    $('matrix-title').textContent = method === 'bow' ? '文書 × 単語：TFの行列（出現回数）' : '文書 × 単語：TF × IDF';
     $('matrix-meaning').textContent = method === 'bow'
       ? '行＝文書、列＝単語。値は、その文書で単語が現れた回数。'
       : '行＝文書、列＝単語。値は、出現回数にIDFを掛けた重み。';
