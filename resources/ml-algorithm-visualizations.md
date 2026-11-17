@@ -6,19 +6,20 @@ date: 2026-10-13
 
 [Webデモへ戻る](../index.html)
 
-**NN・SVM・クラスタリングなど、学ぶカテゴリごとに44件を整理。** 各カテゴリでは、自分でデータやパラメータを変えられるページを優先して並べている。スクリーンショットは小さなサムネイルで、クリックすると拡大できる。
+**NN・SVM・クラスタリングなど、学ぶカテゴリごとに45件を整理。** 各カテゴリでは、自分でデータやパラメータを変えられるページを優先して並べている。一部の教材にはクリックして拡大できるサムネイルを掲載している。
 
 ## 学ぶカテゴリから探す
 
 | 分野 | カテゴリ |
 | --- | --- |
 | 基本のアルゴリズム | [NN・逆伝播](#category-nn) / [SVM](#category-svm) / [決定木・アンサンブル](#category-trees) / [回帰・確率モデル](#category-regression) |
+| 数学の基礎 | [確率・統計](#category-probability) |
 | 教師なし学習 | [クラスタリング](#category-clustering) / [次元削減](#category-dimensionality-reduction) |
 | 深層学習の発展 | [CNN・画像処理](#category-cnn) / [RNN・LSTM](#category-rnn) / [Transformer・LLM](#category-transformer) / [GNN](#category-gnn) |
 | 生成・意思決定 | [GAN・拡散モデル](#category-generative-models) / [強化学習・バンディット](#category-reinforcement-learning) |
 | 比較・横断 | [分類器を比較](#category-model-comparison) / [教材ポータル](#category-collections) |
 
-**確率統計・数学・モデル評価・AIの解釈まで探す:** [総合リンク集（95件）](ml-visualization-resources.html)。総合版には、このページと共通の教材も含まれる。44件と95件を足した件数ではなく、目的別の入口と総合索引の関係。
+**確率統計・数学・モデル評価・AIの解釈まで探す:** [総合リンク集（96件）](ml-visualization-resources.html)。総合版には、このページと共通の教材も含まれる。45件と96件を足した件数ではなく、目的別の入口と総合索引の関係。
 
 ## 最初に操作する8ページ
 
@@ -37,11 +38,35 @@ date: 2026-10-13
 
 学習カテゴリを軸に区分し、各カテゴリの中では操作型の実験・推論可視化を先に置いた。図解・動画、3D探索、環境準備が必要な分析ツールは各項目の形式欄で区別している。横断ポータルは末尾にまとめた。
 
-掲載先の説明と画面を確認し、サムネイルと操作内容をまとめた。スクリーンショットの取得は全機能の動作保証ではない。Vision Transformer Attention VisualizationとAttentionVizは、前回取得時に読み込み完了を確認できていない。
+掲載先の説明と画面を確認し、操作内容をまとめた。一部の教材にはサムネイルを掲載している。スクリーンショットの取得は全機能の動作保証ではない。Vision Transformer Attention VisualizationとAttentionVizは、前回取得時に読み込み完了を確認できていない。
 
 画像をクリックすると拡大表示できる。操作は見出しや出典のリンク先で行う。各カテゴリ内の掲載順は操作性を重視した編集上の選定。
 
 Narrative Flowの決定木教材はスクロール連動とデータ点へのホバーで学ぶ形式で、任意のパラメータで木を訓練する実験とは操作方法が異なる。
+
+## 確率・統計 {#category-probability}
+
+総合リンク集から、確率を学ぶ際の入口をまとめた。以下はアルゴリズム別の45件とは別の参考リンク。各サイトの操作の完走は確認していない。
+
+| 教材 | 学べる内容 |
+| --- | --- |
+| [Seeing Theory](https://seeing-theory.brown.edu/) | 確率、分布、中心極限定理、ベイズ推論。公式サイトはアーカイブ表示。 |
+| [Probability Distributions](https://www.simonwardjones.co.uk/posts/probability_distributions/) | 二項分布や正規分布などとパラメータの関係。 |
+| [Conditional Probability / Explained Visually](https://setosa.io/ev/conditional-probability/) | 条件付き確率と事象の重なり。 |
+| [Bayesian Inference](https://www.simonwardjones.co.uk/posts/bayesian_inference/) | コイン投げとベイズ推論。 |
+| [Markov Chains / Explained Visually](https://setosa.io/ev/markov-chains/) | 状態遷移と遷移確率。 |
+| [StatKey](https://www.lock5stat.com/StatKey/) | 標本分布、再標本化、統計的推論。 |
+
+さらに探す場合は[総合リンク集の確率・統計・ベイズ推論](ml-visualization-resources.html#topic-statistics)を参照。
+
+## 追加の参考リンク {#additional-references}
+
+次の2ページは直接取得できなかったため、内容と操作方法は未確認。上記の45件には含めていない。
+
+- [Convolution — Proswit](https://www.proswit.com/convolution)：畳み込みの参考候補。
+- [Vectors and Dot Product — VizLearn](https://vizlearn.app/ja/ai/classical-ml/vectors-dot-product)：ベクトルと内積の参考候補。
+
+日本語のK-means教材は[クラスタリング](#algorithm-096)に掲載している。
 
 ## NN（ニューラルネットワーク）・学習・逆伝播 {#category-nn}
 
@@ -142,6 +167,12 @@ Neural Networks from Scratchの補助アニメーション。ニューロン、�
 形式: 操作 / 対象: 中級 / 言語: 英語 / 確認: 本文
 
 ## クラスタリング {#category-clustering}
+
+### [アニメーションで学ぶ: K-meansクラスタリング](https://saycon.co.jp/g/k-means.html) {#algorithm-096}
+
+「前のステップ」「次のステップ」「リセット」で進められる日本語のK-means教材。
+
+形式: ステップ操作 / 言語: 日本語 / 確認: 画面入口（操作の完走は未確認）
 
 ### [Visualizing K-Means Clustering](https://www.naftaliharris.com/blog/visualizing-k-means-clustering/) {#algorithm-040}
 

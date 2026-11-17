@@ -1,10 +1,10 @@
 # 有益な外部リンク
 
-- `ml-algorithm-visualizations.html`: 学習カテゴリ別・操作型優先の44件。画像は`../assets/ml-algorithm-screenshots/`を参照。
-- `ml-visualization-resources.html`: 確率統計から生成AIまでの95件の総合リンク集。
+- `ml-algorithm-visualizations.html`: 学習カテゴリ別・操作型優先の45件。画像は`../assets/ml-algorithm-screenshots/`を参照。
+- `ml-visualization-resources.html`: 確率統計から生成AIまでの96件の総合リンク集。
 - 各HTMLと同名のMarkdownが編集元。共通スタイルは`link-collection.css`。
 
-公開導線はトップページ → 44件版 → 95件版。44件版はアルゴリズムの操作型教材を探す主入口、95件版は統計・数学・評価・AI解釈・分析ツールも含む総合索引とする。両方に共通の教材があるため件数は合算しない。教材の紹介を更新するときは両方の掲載箇所を確認する。
+公開導線はトップページ → 45件版 → 96件版。45件版はアルゴリズムの操作型教材を探す主入口、96件版は統計・数学・評価・AI解釈・分析ツールも含む総合索引とする。両方に共通の教材があるため件数は合算しない。教材の紹介を更新するときは両方の掲載箇所を確認する。
 
 リポジトリ直下から、既存のPandocでHTMLを生成する。
 

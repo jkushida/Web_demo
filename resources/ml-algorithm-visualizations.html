@@ -21,6 +21,10 @@ id="toc-学ぶカテゴリから探す">学ぶカテゴリから探す</a></li>
 id="toc-最初に操作する8ページ">最初に操作する8ページ</a></li>
 <li><a href="#操作性と確認状況"
 id="toc-操作性と確認状況">操作性と確認状況</a></li>
+<li><a href="#category-probability"
+id="toc-category-probability">確率・統計</a></li>
+<li><a href="#additional-references"
+id="toc-additional-references">追加の参考リンク</a></li>
 <li><a href="#category-nn"
 id="toc-category-nn">NN（ニューラルネットワーク）・学習・逆伝播</a></li>
 <li><a href="#category-svm"
@@ -54,8 +58,8 @@ id="toc-テーマ別に操作する順番">テーマ別に操作する順番</a>
     </nav>
   </details>
 <p><a href="../index.html">Webデモへ戻る</a></p>
-<p><strong>NN・SVM・クラスタリングなど、学ぶカテゴリごとに44件を整理。</strong>
-各カテゴリでは、自分でデータやパラメータを変えられるページを優先して並べている。スクリーンショットは小さなサムネイルで、クリックすると拡大できる。</p>
+<p><strong>NN・SVM・クラスタリングなど、学ぶカテゴリごとに45件を整理。</strong>
+各カテゴリでは、自分でデータやパラメータを変えられるページを優先して並べている。一部の教材にはクリックして拡大できるサムネイルを掲載している。</p>
 <h2 id="学ぶカテゴリから探す">学ぶカテゴリから探す</h2>
 <table>
 <colgroup>
@@ -63,37 +67,41 @@ id="toc-テーマ別に操作する順番">テーマ別に操作する順番</a>
 <col style="width: 50%" />
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th>分野</th>
 <th>カテゴリ</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>基本のアルゴリズム</td>
 <td><a href="#category-nn">NN・逆伝播</a> / <a
 href="#category-svm">SVM</a> / <a
 href="#category-trees">決定木・アンサンブル</a> / <a
 href="#category-regression">回帰・確率モデル</a></td>
 </tr>
-<tr>
+<tr class="even">
+<td>数学の基礎</td>
+<td><a href="#category-probability">確率・統計</a></td>
+</tr>
+<tr class="odd">
 <td>教師なし学習</td>
 <td><a href="#category-clustering">クラスタリング</a> / <a
 href="#category-dimensionality-reduction">次元削減</a></td>
 </tr>
-<tr>
+<tr class="even">
 <td>深層学習の発展</td>
 <td><a href="#category-cnn">CNN・画像処理</a> / <a
 href="#category-rnn">RNN・LSTM</a> / <a
 href="#category-transformer">Transformer・LLM</a> / <a
 href="#category-gnn">GNN</a></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>生成・意思決定</td>
 <td><a href="#category-generative-models">GAN・拡散モデル</a> / <a
 href="#category-reinforcement-learning">強化学習・バンディット</a></td>
 </tr>
-<tr>
+<tr class="even">
 <td>比較・横断</td>
 <td><a href="#category-model-comparison">分類器を比較</a> / <a
 href="#category-collections">教材ポータル</a></td>
@@ -101,7 +109,7 @@ href="#category-collections">教材ポータル</a></td>
 </tbody>
 </table>
 <p><strong>確率統計・数学・モデル評価・AIの解釈まで探す:</strong> <a
-href="ml-visualization-resources.html">総合リンク集（95件）</a>。総合版には、このページと共通の教材も含まれる。44件と95件を足した件数ではなく、目的別の入口と総合索引の関係。</p>
+href="ml-visualization-resources.html">総合リンク集（96件）</a>。総合版には、このページと共通の教材も含まれる。45件と96件を足した件数ではなく、目的別の入口と総合索引の関係。</p>
 <h2 id="最初に操作する8ページ">最初に操作する8ページ</h2>
 <table>
 <colgroup>
@@ -110,50 +118,50 @@ href="ml-visualization-resources.html">総合リンク集（95件）</a>。総�
 <col style="width: 33%" />
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th>学びたいこと</th>
 <th>操作するページ</th>
 <th>変えられるもの</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>分類器の比較</td>
 <td><a href="#algorithm-101">Decision Boundaries</a></td>
 <td>点群の形、k、木の深さ、SVMのC、学習率</td>
 </tr>
-<tr>
+<tr class="even">
 <td>決定木</td>
 <td><a href="#algorithm-102">A Visual Introduction to Machine
 Learning</a></td>
 <td>スクロールで分岐・木の成長を追い、点から予測経路を見る</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>NN / MLP</td>
 <td><a href="#algorithm-049">TensorFlow Playground</a></td>
 <td>層数、ユニット数、学習率、活性化関数</td>
 </tr>
-<tr>
+<tr class="even">
 <td>SVM</td>
 <td><a href="#algorithm-039">SVMJS</a></td>
 <td>データ点、カーネル、正則化</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>k-means</td>
 <td><a href="#algorithm-040">K-Means Clustering</a></td>
 <td>点群、重心の初期化、反復ステップ</td>
 </tr>
-<tr>
+<tr class="even">
 <td>PCA</td>
 <td><a href="#algorithm-057">PCA / EV</a></td>
 <td>点の位置、投影方向</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>CNN</td>
 <td><a href="#algorithm-063">CNN Explainer</a></td>
 <td>入力画像、表示する層・特徴マップ</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Transformer</td>
 <td><a href="#algorithm-069">Transformer Explainer</a></td>
 <td>入力文、温度、サンプリング設定</td>
@@ -162,12 +170,71 @@ Learning</a></td>
 </table>
 <h2 id="操作性と確認状況">操作性と確認状況</h2>
 <p>学習カテゴリを軸に区分し、各カテゴリの中では操作型の実験・推論可視化を先に置いた。図解・動画、3D探索、環境準備が必要な分析ツールは各項目の形式欄で区別している。横断ポータルは末尾にまとめた。</p>
-<p>掲載先の説明と画面を確認し、サムネイルと操作内容をまとめた。スクリーンショットの取得は全機能の動作保証ではない。Vision
+<p>掲載先の説明と画面を確認し、操作内容をまとめた。一部の教材にはサムネイルを掲載している。スクリーンショットの取得は全機能の動作保証ではない。Vision
 Transformer Attention
 VisualizationとAttentionVizは、前回取得時に読み込み完了を確認できていない。</p>
 <p>画像をクリックすると拡大表示できる。操作は見出しや出典のリンク先で行う。各カテゴリ内の掲載順は操作性を重視した編集上の選定。</p>
 <p>Narrative
 Flowの決定木教材はスクロール連動とデータ点へのホバーで学ぶ形式で、任意のパラメータで木を訓練する実験とは操作方法が異なる。</p>
+<h2 id="category-probability">確率・統計</h2>
+<p>総合リンク集から、確率を学ぶ際の入口をまとめた。以下はアルゴリズム別の45件とは別の参考リンク。各サイトの操作の完走は確認していない。</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>教材</th>
+<th>学べる内容</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="https://seeing-theory.brown.edu/">Seeing Theory</a></td>
+<td>確率、分布、中心極限定理、ベイズ推論。公式サイトはアーカイブ表示。</td>
+</tr>
+<tr class="even">
+<td><a
+href="https://www.simonwardjones.co.uk/posts/probability_distributions/">Probability
+Distributions</a></td>
+<td>二項分布や正規分布などとパラメータの関係。</td>
+</tr>
+<tr class="odd">
+<td><a href="https://setosa.io/ev/conditional-probability/">Conditional
+Probability / Explained Visually</a></td>
+<td>条件付き確率と事象の重なり。</td>
+</tr>
+<tr class="even">
+<td><a
+href="https://www.simonwardjones.co.uk/posts/bayesian_inference/">Bayesian
+Inference</a></td>
+<td>コイン投げとベイズ推論。</td>
+</tr>
+<tr class="odd">
+<td><a href="https://setosa.io/ev/markov-chains/">Markov Chains /
+Explained Visually</a></td>
+<td>状態遷移と遷移確率。</td>
+</tr>
+<tr class="even">
+<td><a href="https://www.lock5stat.com/StatKey/">StatKey</a></td>
+<td>標本分布、再標本化、統計的推論。</td>
+</tr>
+</tbody>
+</table>
+<p>さらに探す場合は<a
+href="ml-visualization-resources.html#topic-statistics">総合リンク集の確率・統計・ベイズ推論</a>を参照。</p>
+<h2 id="additional-references">追加の参考リンク</h2>
+<p>次の2ページは直接取得できなかったため、内容と操作方法は未確認。上記の45件には含めていない。</p>
+<ul>
+<li><a href="https://www.proswit.com/convolution">Convolution —
+Proswit</a>：畳み込みの参考候補。</li>
+<li><a
+href="https://vizlearn.app/ja/ai/classical-ml/vectors-dot-product">Vectors
+and Dot Product — VizLearn</a>：ベクトルと内積の参考候補。</li>
+</ul>
+<p>日本語のK-means教材は<a
+href="#algorithm-096">クラスタリング</a>に掲載している。</p>
 <h2 id="category-nn">NN（ニューラルネットワーク）・学習・逆伝播</h2>
 <h3 id="algorithm-049"><a
 href="https://playground.tensorflow.org/">TensorFlow Playground</a></h3>
@@ -276,6 +343,12 @@ Demo</a>
 <p>2次元データを使うSVMの実験。カーネルや正則化と、決定境界・支持ベクトルの関係を扱う。</p>
 <p>形式: 操作 / 対象: 中級 / 言語: 英語 / 確認: 本文</p>
 <h2 id="category-clustering">クラスタリング</h2>
+<h3 id="algorithm-096"><a
+href="https://saycon.co.jp/g/k-means.html">アニメーションで学ぶ:
+K-meansクラスタリング</a></h3>
+<p>「前のステップ」「次のステップ」「リセット」で進められる日本語のK-means教材。</p>
+<p>形式: ステップ操作 / 言語: 日本語 / 確認:
+画面入口（操作の完走は未確認）</p>
 <h3 id="algorithm-040"><a
 href="https://www.naftaliharris.com/blog/visualizing-k-means-clustering/">Visualizing
 K-Means Clustering</a></h3>
@@ -801,33 +874,33 @@ Soonの項目は利用可能教材として数えない。</p>
 <col style="width: 50%" />
 </colgroup>
 <thead>
-<tr>
+<tr class="header">
 <th>テーマ</th>
 <th>順番</th>
 </tr>
 </thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>分類とモデル選択</td>
 <td>Decision Boundaries → TensorFlow Playground → SVMJS</td>
 </tr>
-<tr>
+<tr class="even">
 <td>教師なし学習</td>
 <td>K-Means Clustering → PCA / EV → How to Use t-SNE Effectively</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>画像の処理</td>
 <td>Image Kernels → CNN Explainer</td>
 </tr>
-<tr>
+<tr class="even">
 <td>文章の生成</td>
 <td>Transformer Explainer → LLM Visualization</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>生成モデルの学習</td>
 <td>GAN Lab → Diffusion Explainer</td>
 </tr>
-<tr>
+<tr class="even">
 <td>強化学習</td>
 <td>Reinforcement Learning / MLU → REINFORCEjs</td>
 </tr>
