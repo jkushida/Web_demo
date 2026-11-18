@@ -19,7 +19,7 @@ date: 2026-10-13
 | 生成・意思決定 | [GAN・拡散モデル](#category-generative-models) / [強化学習・バンディット](#category-reinforcement-learning) |
 | 比較・横断 | [分類器を比較](#category-model-comparison) / [教材ポータル](#category-collections) |
 
-**確率統計・数学・モデル評価・AIの解釈まで探す:** [総合リンク集（96件）](ml-visualization-resources.html)。総合版には、このページと共通の教材も含まれる。45件と96件を足した件数ではなく、目的別の入口と総合索引の関係。
+**確率統計・数学・モデル評価・AIの解釈まで探す:** [総合リンク集（101件）](ml-visualization-resources.html)。総合版には、このページと共通の教材も含まれる。45件と101件を足した件数ではなく、目的別の入口と総合索引の関係。
 
 ## 最初に操作する8ページ
 
@@ -46,10 +46,15 @@ Narrative Flowの決定木教材はスクロール連動とデータ点へのホ
 
 ## 確率・統計 {#category-probability}
 
-総合リンク集から、確率を学ぶ際の入口をまとめた。以下はアルゴリズム別の45件とは別の参考リンク。各サイトの操作の完走は確認していない。
+総合リンク集から、確率を学ぶ際の入口をまとめた。以下はアルゴリズム別の45件とは別の参考リンク。各サイトの操作の完走は確認していない。追加した5件は2026年11月18日にページ本文または画面入口を確認した。
 
 | 教材 | 学べる内容 |
 | --- | --- |
+| [確率を学ぶ — GeoGebra](https://www.geogebra.org/math/probability?lang=ja) | 日本語の教材集。コイン投げ、抽出、理論的確率と実験結果の比較など。 |
+| [データの分析や活用の学習ツール — 東京学芸大学](https://www2.u-gakugei.ac.jp/~knishi/DS/) | コイン投げ・確率分布などの外部教材への案内と使い方の動画。 |
+| [Statistics Interactive](https://statistik-interaktiv.ch/en) | 大数の法則、分布、信頼区間などの教材集（英語・ドイツ語）。 |
+| [Explore the Central Limit Theorem — YTLab](https://ytlab.kmu.edu.tw/learn/central-limit-theorem/) | 母集団や標本サイズを変えて標本分布を比較（英語）。 |
+| [ProbViz](https://probviz.com/) | 正規・二項分布、ガルトンボード、中心極限定理など（英語）。 |
 | [Seeing Theory](https://seeing-theory.brown.edu/) | 確率、分布、中心極限定理、ベイズ推論。公式サイトはアーカイブ表示。 |
 | [Probability Distributions](https://www.simonwardjones.co.uk/posts/probability_distributions/) | 二項分布や正規分布などとパラメータの関係。 |
 | [Conditional Probability / Explained Visually](https://setosa.io/ev/conditional-probability/) | 条件付き確率と事象の重なり。 |
