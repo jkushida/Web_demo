@@ -17,6 +17,16 @@
  .layout,.slices{gap:7px}.panel{padding:7px}.plot{height:clamp(210px,30vh,285px)}#surface{height:clamp(245px,34vh,300px)}.slice{height:clamp(135px,18vh,180px)}
  .panel p{margin:1px 0}th,td{padding:3px 5px}.formula{margin-top:6px;padding:6px 10px}.formula p{margin:1px 0}.math{font-size:.95rem}
 }
+.surface-slice-tools {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.slice-toggle { padding: 3px 7px; font-size: .84rem; }
+.surface-slice-tools .legend { margin: 0 0 0 4px; }
 </style>
 </head>
 <body><main>
@@ -24,7 +34,11 @@
 <div class="controls"><label for="a">傾き a <output id="av">2.0</output><input id="a" type="range" min="0" max="5" step="0.1" value="2"></label><label for="b">切片 b <output id="bv">1.0</output><input id="b" type="range" min="0" max="6" step="0.1" value="1"></label><p id="status" aria-live="polite"></p></div>
 <div class="layout">
 <section class="panel"><div class="surface-header"><div><h2>データとモデル：y = ax + b</h2><p>青い点を上下にドラッグしてデータを変更</p></div><button type="button" class="axis-toggle" id="residual-toggle" aria-pressed="false">残差表示：OFF</button></div><canvas class="plot" id="fit" role="img" aria-label="データの散布図と回帰直線"></canvas></section>
-<section class="panel"><div class="surface-header"><h2>（1）誤差関数：残差平方和（SSE）</h2><div class="surface-controls"><button type="button" class="axis-toggle" id="zoom-out" aria-label="立体図を縮小">−</button> <button type="button" class="axis-toggle" id="zoom-in" aria-label="立体図を拡大">＋</button> <button type="button" class="axis-toggle" id="guide-toggle" aria-pressed="false">補助線：OFF</button> <button type="button" class="axis-toggle" id="axis-toggle" aria-pressed="true">座標軸：ON</button><p class="legend"><span class="red">● 現在の値</span>　<span class="black">● 誤差が最小の値</span></p></div></div><canvas class="plot" id="surface" tabindex="0" role="img" aria-label="傾きと切片に対する残差平方和の立体図。ドラッグまたは矢印キーで回転できます"></canvas><p>ドラッグまたは矢印キーで回転、＋・−で拡大縮小できます。</p></section>
+<section class="panel"><div class="surface-header"><h2>（1）誤差関数：残差平方和（SSE）</h2><div class="surface-controls"><button type="button" class="axis-toggle" id="zoom-out" aria-label="立体図を縮小">−</button> <button type="button" class="axis-toggle" id="zoom-in" aria-label="立体図を拡大">＋</button> <button type="button" class="axis-toggle" id="guide-toggle" aria-pressed="false">補助線：OFF</button> <button type="button" class="axis-toggle" id="axis-toggle" aria-pressed="true">座標軸：ON</button><div class="surface-slice-tools">
+  <button type="button" class="axis-toggle slice-toggle" id="slice-a-toggle" aria-pressed="false" aria-controls="surface" aria-label="（2）a方向の断面を表示（切片 b を固定）">a方向：OFF</button>
+  <button type="button" class="axis-toggle slice-toggle" id="slice-b-toggle" aria-pressed="false" aria-controls="surface" aria-label="（3）b方向の断面を表示（傾き a を固定）">b方向：OFF</button>
+  <p class="legend"><span class="red">● 現在の値</span>　<span class="black">● 誤差が最小の値</span></p>
+</div></div></div><canvas class="plot" id="surface" tabindex="0" role="img" aria-label="傾きと切片に対する残差平方和の立体図。ドラッグまたは矢印キーで回転できます"></canvas><p>ドラッグまたは矢印キーで回転、＋・−で拡大縮小できます。</p></section>
 <section class="panel" aria-labelledby="table-title"><h2 id="table-title">誤差の計算</h2><p>残差 ＝ 予測値 − 実測値</p><div class="table-wrap"><table><thead><tr><th scope="col">x</th><th scope="col">実測値 y</th><th scope="col">予測値 ax+b</th><th scope="col">残差</th><th scope="col">残差の二乗</th></tr></thead><tbody id="error-rows"></tbody><tfoot><tr><th colspan="4" scope="row">残差平方和（SSE）</th><td id="table-mse"></td></tr></tfoot></table></div></section>
 <div class="slices"><section class="panel"><h2>（2）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section><section class="panel"><h2>（3）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section></div>
 </div><section class="formula" aria-labelledby="formula-title"><div class="formula-heading"><h2 id="formula-title">このデータの誤差関数：</h2><p>5個のデータについて、予測値と実測値の差を二乗して合計</p></div><div class="equations"><span class="math">E(<i>a</i>, <i>b</i>)</span><span class="math">=</span><span class="math" id="formula-expanded-input"></span><span></span><span class="math">=</span><span class="math" id="formula-expanded"></span></div></section><p>（2）と（3）の図は、傾き <i>a</i> または切片 <i>b</i> を現在の値に固定し、もう一方を変えたときの誤差を表しています。立体の誤差曲面を、それぞれの軸に平行な垂直面で切った断面です。</p>
@@ -70,9 +84,25 @@ residualToggle.addEventListener('click',()=>{
   residualToggle.textContent=`残差表示：${showResiduals?'ON':'OFF'}`;
   drawFit(Number(aControl.value),Number(bControl.value));
 });
-function drawSlice(id,low,high,fn,current,minimum,label){let max=0;for(let i=0;i<=100;i++)max=Math.max(max,fn(low+(high-low)*i/100));max=Math.ceil(max/20)*20;chart(id,low,high,0,max,label,'SSE',(c,X,Y)=>{let p=[];for(let i=0;i<=100;i++){let x=low+(high-low)*i/100;p.push([X(x),Y(fn(x))])}line(c,p,'#7357a3',2.5);const best=Math.max(low,Math.min(high,minimum));dot(c,X(best),Y(fn(best)),'#222',6);dot(c,X(current),Y(fn(current)),'#c53e36',4)})}
+const sliceAColor = '#5e359e';
+const sliceBColor = '#006358';
+function drawSlice(id, low, high, fn, current, minimum, label, color) {
+  const points = Array.from({length: 101}, (_, i) => {
+    const x = low + (high - low) * i / 100;
+    return [x, fn(x)];
+  });
+  const max = Math.ceil(Math.max(...points.map(([, y]) => y)) / 20) * 20;
+  chart(id, low, high, 0, max, label, 'SSE', (ctx, X, Y) => {
+    line(ctx, points.map(([x, y]) => [X(x), Y(y)]), color, 2.5);
+    const best = Math.max(low, Math.min(high, minimum));
+    dot(ctx, X(best), Y(fn(best)), '#222', 6);
+    dot(ctx, X(current), Y(fn(current)), '#c53e36', 4);
+  });
+}
 // 回転角は描画とは独立に保持し、スライダー操作後も視点を維持する。
 let yaw = -0.24, pitch = 0.46, showAxes = true, showGuides = false, zoom = 1.1;
+let showASlice = false;
+let showBSlice = false;
 function drawSurface(a,b) {
   const {ctx:c,w,h}=canvas('surface');
   const scale=Math.min(w/6.8,h/6.5)*zoom, ox=w/2, oy=h*.5;
@@ -107,6 +137,21 @@ function drawSurface(a,b) {
     }
     c.restore();
   }
+  // 各断面は、現在の a または b を固定した曲面上の曲線。
+  function drawSurfaceSlice(max, projectAt, color) {
+    const points = Array.from({length: max * 20 + 1}, (_, i) => {
+      const {x, y} = projectAt(i / 20);
+      return [x, y];
+    });
+    c.save();
+    c.lineJoin = 'round';
+    line(c, points, '#fff', 5);
+    line(c, points, color, 2.8);
+    c.restore();
+  }
+  if (showASlice) drawSurfaceSlice(5, value => project(value, b, sse(value, b)), sliceAColor);
+  if (showBSlice) drawSurfaceSlice(6, value => project(a, value, sse(a, value)), sliceBColor);
+
   let p=project(a,b,sse(a,b));dot(c,p.x,p.y,'#c53e36',6);
   p=project(bestA,bestB,sse(bestA,bestB));dot(c,p.x,p.y,'#222',4);
   if(showAxes) {
@@ -151,6 +196,20 @@ fitCanvas.addEventListener('pointermove',event=>{
 });
 for(const name of ['pointerup','pointercancel','lostpointercapture'])fitCanvas.addEventListener(name,()=>{selectedPoint=null});
 const surface=document.getElementById('surface');
+const sliceAToggle = document.getElementById('slice-a-toggle');
+const sliceBToggle = document.getElementById('slice-b-toggle');
+sliceAToggle.addEventListener('click', () => {
+  showASlice = !showASlice;
+  sliceAToggle.setAttribute('aria-pressed', String(showASlice));
+  sliceAToggle.textContent = `a方向：${showASlice ? 'ON' : 'OFF'}`;
+  drawSurface(Number(aControl.value), Number(bControl.value));
+});
+sliceBToggle.addEventListener('click', () => {
+  showBSlice = !showBSlice;
+  sliceBToggle.setAttribute('aria-pressed', String(showBSlice));
+  sliceBToggle.textContent = `b方向：${showBSlice ? 'ON' : 'OFF'}`;
+  drawSurface(Number(aControl.value), Number(bControl.value));
+});
 const axisToggle=document.getElementById('axis-toggle');
 const guideToggle=document.getElementById('guide-toggle');
 guideToggle.addEventListener('click',()=>{
@@ -202,6 +261,6 @@ function renderTable(a,b){
   }));
   document.getElementById('table-mse').textContent=sse(a,b).toFixed(2);
 }
-function render(){updateBest();updateFormula();const a=Number(aControl.value),b=Number(bControl.value);renderTable(a,b);document.getElementById('av').value=a.toFixed(1);document.getElementById('bv').value=b.toFixed(1);document.getElementById('status').textContent=`現在の SSE：${sse(a,b).toFixed(2)} ／ 表示範囲内の最小：${sse(bestA,bestB).toFixed(2)}（a = ${bestA.toFixed(2)}, b = ${bestB.toFixed(2)}）`;drawFit(a,b);drawSurface(a,b);drawSlice('bslice',0,6,x=>sse(a,x),b,meanY-a*meanX,'切片 b');drawSlice('aslice',0,5,x=>sse(x,b),a,xs.reduce((sum,x,i)=>sum+x*(ys[i]-b),0)/xs.reduce((sum,x)=>sum+x*x,0),'傾き a')}
+function render(){updateBest();updateFormula();const a=Number(aControl.value),b=Number(bControl.value);renderTable(a,b);document.getElementById('av').value=a.toFixed(1);document.getElementById('bv').value=b.toFixed(1);document.getElementById('status').textContent=`現在の SSE：${sse(a,b).toFixed(2)} ／ 表示範囲内の最小：${sse(bestA,bestB).toFixed(2)}（a = ${bestA.toFixed(2)}, b = ${bestB.toFixed(2)}）`;drawFit(a,b);drawSurface(a,b);drawSlice('bslice',0,6,x=>sse(a,x),b,meanY-a*meanX,'切片 b',sliceBColor);drawSlice('aslice',0,5,x=>sse(x,b),a,xs.reduce((sum,x,i)=>sum+x*(ys[i]-b),0)/xs.reduce((sum,x)=>sum+x*x,0),'傾き a',sliceAColor)}
 aControl.addEventListener('input',render);bControl.addEventListener('input',render);window.addEventListener('resize',render);render();
 </script></body></html>
