@@ -6,6 +6,23 @@
 <title>ヒストグラムから確率密度関数へ</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#173044;background:#f5f8f8}*{box-sizing:border-box}body{margin:0;line-height:1.5}main{width:min(1080px,calc(100% - 28px));margin:auto;padding:10px 0 24px}a{color:#17666e}h1{font-size:clamp(1.35rem,2.3vw,1.8rem);margin:2px 0}h2{font-size:1.05rem;margin:0}p{margin:3px 0;color:#526574}.panel{background:#fff;border:1px solid #d9e3e7;border-radius:10px;padding:12px;margin-top:9px}.controls{display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:20px}.control{display:block;font-weight:700}.control output{float:right;color:#17666e;font-variant-numeric:tabular-nums}input[type=range]{display:block;width:100%;margin:4px 0;accent-color:#17666e}.ends{display:flex;justify-content:space-between;color:#526574;font-size:.85rem;font-weight:400}.chart{min-width:0}.chart canvas{width:100%;height:310px;display:block}.sub{font-size:.9rem}.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:.9rem}.swatch{display:inline-block;width:18px;height:12px;background:#abd7e3;border:1px solid #477ca7;margin-right:5px}.curve{display:inline-block;width:20px;border-top:3px solid #d9433b;vertical-align:middle;margin-right:5px}.reference{border-top:2px dashed #526574}.note{font-size:.93rem}.button{font:inherit;color:#17666e;background:white;border:1px solid #17666e;border-radius:6px;padding:7px 12px;cursor:pointer}.button:focus-visible,input:focus-visible{outline:3px solid #e6a23c;outline-offset:3px}@media(max-width:750px){.controls{grid-template-columns:1fr}.chart canvas{height:260px}}@media(min-width:1000px) and (max-height:850px){.chart canvas{height:clamp(210px,34vh,285px)}main{padding-top:5px}.panel{padding:9px;margin-top:6px}}
+.interval-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(230px, 1.25fr);
+  gap: 6px 18px;
+  align-items: center;
+  margin: 8px 0 4px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  background: #f5f8f8;
+  font-size: .9rem;
+}
+.interval-results { font-variant-numeric: tabular-nums; }
+.interval-results strong { color: #a72b27; }
+@media (max-width: 750px) {
+  .interval-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .interval-results { grid-column: 1 / -1; }
+}
 </style>
 </head>
 <body><main>
@@ -21,6 +38,18 @@
 <div class="chart">
   <h2>ヒストグラムと確率密度曲線</h2>
   <p class="sub" id="chartDetails"></p>
+  <div class="interval-controls" role="group" aria-label="確率を調べる身長の区間">
+    <label class="control" for="lower">下限 <output id="lowerValue" for="lower">162 cm</output>
+      <input id="lower" type="range" min="125" max="215" step="1" value="162">
+    </label>
+    <label class="control" for="upper">上限 <output id="upperValue" for="upper">178 cm</output>
+      <input id="upper" type="range" min="125" max="215" step="1" value="178">
+    </label>
+    <div class="interval-results" role="status" aria-atomic="true">
+      <div>赤線の下の面積 <strong id="fittedArea"></strong></div>
+      <div>灰色の基準曲線での確率 <span id="referenceProbability"></span></div>
+    </div>
+  </div>
   <canvas id="histogram" role="img" aria-label="身長のヒストグラムと２本の確率密度曲線"></canvas>
 </div>
 <div class="legend">
@@ -35,12 +64,26 @@
 'use strict';
 const sampleOptions=[10,25,50,200,1000,5000,20000], minX=125, maxX=215, mean=170, sigma=8;
 const sampleSlider=document.getElementById('samples'), binSlider=document.getElementById('bins');
+const lowerSlider = document.getElementById('lower');
+const upperSlider = document.getElementById('upper');
 let seed=137, samples=[];
 function rng(seedValue){let state=seedValue>>>0;return ()=>{state=(Math.imul(1664525,state)+1013904223)>>>0;return (state+0.5)/4294967296}}
 function generate(){const random=rng(seed);samples=[];while(samples.length<20000){const u=random(),v=random(),r=Math.sqrt(-2*Math.log(u)),theta=2*Math.PI*v;samples.push(mean+sigma*r*Math.cos(theta),mean+sigma*r*Math.sin(theta));}}
 function density(x, center, spread) {
   const z = (x - center) / spread;
   return Math.exp(-z * z / 2) / (spread * Math.sqrt(2 * Math.PI));
+}
+
+// 等間隔の分点で密度を評価し、シンプソン則で曲線の下の面積を求める。
+function intervalProbability({lower, upper}, center, spread) {
+  const steps = 256;
+  const step = (upper - lower) / steps;
+  let sum = density(lower, center, spread) + density(upper, center, spread);
+  for (let i = 1; i < steps; i++) {
+    const weight = i % 2 === 0 ? 2 : 4;
+    sum += weight * density(lower + i * step, center, spread);
+  }
+  return Math.min(1, sum * step / 3);
 }
 
 function fitNormal(data) {
@@ -61,7 +104,7 @@ function histogram(data, bins) {
 
 const canvas = document.getElementById('histogram');
 
-function draw(hist, yMax, fit) {
+function draw(hist, yMax, fit, {lower, upper}) {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(rect.width * dpr);
@@ -110,6 +153,20 @@ function draw(hist, yMax, fit) {
     ctx.stroke();
   }
 
+  if (lower < upper) {
+    ctx.beginPath();
+    ctx.moveTo(xPixel(lower), bottom);
+    // 選択範囲の両端を通るように曲線をサンプリングする。
+    for (let i = 0; i <= 300; i++) {
+      const x = lower + (upper - lower) * i / 300;
+      ctx.lineTo(xPixel(x), yPixel(density(x, fit.center, fit.spread)));
+    }
+    ctx.lineTo(xPixel(upper), bottom);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(217,67,59,.24)';
+    ctx.fill();
+  }
+
   drawCurve(fit.center, fit.spread, '#d9433b', 2.4, []);
   drawCurve(mean, sigma, '#526574', 1.5, [6, 4]);
 
@@ -138,6 +195,7 @@ function draw(hist, yMax, fit) {
 function render() {
   const n = sampleOptions[Number(sampleSlider.value) - 1];
   const bins = Number(binSlider.value);
+  const interval = {lower: Number(lowerSlider.value), upper: Number(upperSlider.value)};
   const data = samples.slice(0, n);
   const fit = fitNormal(data);
   const hist = histogram(data, bins);
@@ -148,9 +206,35 @@ function render() {
   document.getElementById('samplesValue').value = sampleCount + ' 人';
   document.getElementById('binsValue').value = bins + ' 階級';
   document.getElementById('chartDetails').textContent = details;
-  canvas.setAttribute('aria-label', `${sampleCount}人の身長のヒストグラムと正規分布の密度曲線。${details}`);
-  draw(hist, yMax, fit);
+  const fittedProbability = intervalProbability(interval, fit.center, fit.spread);
+  const referenceProbability = intervalProbability(interval, mean, sigma);
+  const fittedPercent = (fittedProbability * 100).toFixed(2);
+  document.getElementById('lowerValue').value = interval.lower + ' cm';
+  document.getElementById('upperValue').value = interval.upper + ' cm';
+  lowerSlider.setAttribute('aria-valuetext', interval.lower + ' cm');
+  upperSlider.setAttribute('aria-valuetext', interval.upper + ' cm');
+  document.getElementById('fittedArea').textContent = fittedProbability.toFixed(4) + ' ≈ ' + fittedPercent + '%';
+  document.getElementById('referenceProbability').textContent = (referenceProbability * 100).toFixed(2) + '%';
+  canvas.setAttribute('aria-label', `${sampleCount}人の身長のヒストグラムと正規分布の密度曲線。${details}。色を塗った ${interval.lower}〜${interval.upper} cm の区間は、赤線のモデルで約 ${fittedPercent}%です。`);
+  draw(hist, yMax, fit, interval);
 }
 
-sampleSlider.addEventListener('input',render);binSlider.addEventListener('input',render);document.getElementById('resample').addEventListener('click',()=>{seed=(seed+1)>>>0;generate();render()});window.addEventListener('resize',render);generate();render();
+lowerSlider.addEventListener('input', () => {
+  lowerSlider.value = Math.min(Number(lowerSlider.value), Number(upperSlider.value));
+  render();
+});
+upperSlider.addEventListener('input', () => {
+  upperSlider.value = Math.max(Number(lowerSlider.value), Number(upperSlider.value));
+  render();
+});
+sampleSlider.addEventListener('input', render);
+binSlider.addEventListener('input', render);
+document.getElementById('resample').addEventListener('click', () => {
+  seed = (seed + 1) >>> 0;
+  generate();
+  render();
+});
+window.addEventListener('resize', render);
+generate();
+render();
 </script></body></html>
