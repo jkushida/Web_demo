@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ヒストグラムから確率密度関数へ</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#173044;background:#f5f8f8}*{box-sizing:border-box}body{margin:0;line-height:1.5}main{width:min(1080px,calc(100% - 28px));margin:auto;padding:10px 0 24px}a{color:#17666e}h1{font-size:clamp(1.35rem,2.3vw,1.8rem);margin:2px 0}h2{font-size:1.05rem;margin:0}p{margin:3px 0;color:#526574}.panel{background:#fff;border:1px solid #d9e3e7;border-radius:10px;padding:12px;margin-top:9px}.controls{display:grid;grid-template-columns:1fr 1fr auto;align-items:center;gap:20px}.control{display:block;font-weight:700}.control output{float:right;color:#17666e;font-variant-numeric:tabular-nums}input[type=range]{display:block;width:100%;margin:4px 0;accent-color:#17666e}.ends{display:flex;justify-content:space-between;color:#526574;font-size:.85rem;font-weight:400}.chart{min-width:0}.chart canvas{width:100%;height:310px;display:block}.sub{font-size:.9rem}.legend{display:flex;gap:20px;flex-wrap:wrap;font-size:.9rem}.swatch{display:inline-block;width:18px;height:12px;background:#abd7e3;border:1px solid #477ca7;margin-right:5px}.curve{display:inline-block;width:20px;border-top:3px solid #d9433b;vertical-align:middle;margin-right:5px}.reference{border-top:2px dashed #526574}.note{font-size:.93rem}.button{font:inherit;color:#17666e;background:white;border:1px solid #17666e;border-radius:6px;padding:7px 12px;cursor:pointer}.button:focus-visible,input:focus-visible{outline:3px solid #e6a23c;outline-offset:3px}@media(max-width:750px){.controls{grid-template-columns:1fr}.chart canvas{height:260px}}@media(min-width:1000px) and (max-height:850px){.chart canvas{height:clamp(210px,34vh,285px)}main{padding-top:5px}.panel{padding:9px;margin-top:6px}}
+</style>
+</head>
+<body><main>
+<a href="../index.html">← デモ一覧へ</a>
+<h1>ヒストグラムから確率密度関数へ</h1>
+<p>同じ身長データで、階級数と標本数を変えて分布の見え方を比べよう。</p>
+<section class="panel controls" aria-label="表示の設定">
+<label class="control" for="samples">データ数 <output id="samplesValue"></output><input id="samples" type="range" min="1" max="7" step="1" value="5"><span class="ends"><span>10人</span><span>20,000人</span></span></label>
+<label class="control" for="bins">階級数 <output id="binsValue"></output><input id="bins" type="range" min="5" max="50" step="1" value="20"><span class="ends"><span>5（粗い）</span><span>50（細かい）</span></span></label>
+<button class="button" id="resample" type="button">データを作り直す</button>
+</section>
+<section class="panel">
+<div class="chart">
+  <h2>ヒストグラムと確率密度曲線</h2>
+  <p class="sub" id="chartDetails"></p>
+  <canvas id="histogram" role="img" aria-label="身長のヒストグラムと２本の確率密度曲線"></canvas>
+</div>
+<div class="legend">
+  <span><span class="swatch" aria-hidden="true"></span>標本のヒストグラム（密度）</span>
+  <span><span class="curve" aria-hidden="true"></span>標本の平均・標準偏差から描いた正規分布</span>
+  <span><span class="curve reference" aria-hidden="true"></span>標本を生成した正規分布（平均170 cm、標準偏差8 cm）</span>
+</div>
+</section>
+<section class="panel note"><h2>見比べるポイント</h2><p>ヒストグラムは、各階級の人数を「データ数 × 階級幅」で割った密度で表示しています。表示範囲内の棒の面積の合計は、その範囲に入るデータの割合です。</p><p>データ数を増やし、階級幅を適切に選ぶと、ヒストグラムは理論曲線に近づきます。データ数が少ないまま階級を細かくしすぎると、かえって凸凹が目立ちます。</p><p>10人に設定し、「データを作り直す」を何度か押してみましょう。赤線の位置や幅が標本ごとに変わります。標本数が多いほど、そのばらつきは小さくなり、固定した灰色の破線に近づく傾向があります。連続する値がある区間に入る確率は、その区間で曲線の下にある面積です。</p></section>
+</main>
+<script>
+'use strict';
+const sampleOptions=[10,25,50,200,1000,5000,20000], minX=125, maxX=215, mean=170, sigma=8;
+const sampleSlider=document.getElementById('samples'), binSlider=document.getElementById('bins');
+let seed=137, samples=[];
+function rng(seedValue){let state=seedValue>>>0;return ()=>{state=(Math.imul(1664525,state)+1013904223)>>>0;return (state+0.5)/4294967296}}
+function generate(){const random=rng(seed);samples=[];while(samples.length<20000){const u=random(),v=random(),r=Math.sqrt(-2*Math.log(u)),theta=2*Math.PI*v;samples.push(mean+sigma*r*Math.cos(theta),mean+sigma*r*Math.sin(theta));}}
+function density(x, center, spread) {
+  const z = (x - center) / spread;
+  return Math.exp(-z * z / 2) / (spread * Math.sqrt(2 * Math.PI));
+}
+
+function fitNormal(data) {
+  const center = data.reduce((sum, value) => sum + value, 0) / data.length;
+  const variance = data.reduce((sum, value) => sum + (value - center) ** 2, 0) / data.length;
+  return {center, spread: Math.sqrt(variance)};
+}
+
+function histogram(data, bins) {
+  const counts = Array(bins).fill(0);
+  const width = (maxX - minX) / bins;
+  for (const value of data) {
+    const index = Math.floor((value - minX) / width);
+    if (index >= 0 && index < bins) counts[index]++;
+  }
+  return {width, heights: counts.map(count => count / (data.length * width))};
+}
+
+const canvas = document.getElementById('histogram');
+
+function draw(hist, yMax, fit) {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(rect.width * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const left = 60, right = rect.width - 14, top = 12, bottom = rect.height - 40;
+  const xPixel = x => left + (x - minX) / (maxX - minX) * (right - left);
+  const yPixel = y => bottom - y / yMax * (bottom - top);
+
+  ctx.font = '12px system-ui';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#526574';
+  ctx.strokeStyle = '#e3ebee';
+  for (let i = 0; i <= 4; i++) {
+    const value = yMax * i / 4;
+    const y = yPixel(value);
+    ctx.beginPath();
+    ctx.moveTo(left, y);
+    ctx.lineTo(right, y);
+    ctx.stroke();
+    ctx.fillText(value.toFixed(3), left - 7, y);
+  }
+
+  ctx.fillStyle = 'rgba(132,196,215,.55)';
+  ctx.strokeStyle = '#547eb0';
+  hist.heights.forEach((height, i) => {
+    const x = xPixel(minX + i * hist.width);
+    const width = xPixel(minX + (i + 1) * hist.width) - x;
+    const y = yPixel(height);
+    ctx.fillRect(x, y, width, bottom - y);
+    ctx.strokeRect(x, y, width, bottom - y);
+  });
+
+  function drawCurve(center, spread, color, width, dash) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.moveTo(left, yPixel(density(minX, center, spread)));
+    for (let i = 1; i <= 300; i++) {
+      const x = minX + (maxX - minX) * i / 300;
+      ctx.lineTo(xPixel(x), yPixel(density(x, center, spread)));
+    }
+    ctx.stroke();
+  }
+
+  drawCurve(fit.center, fit.spread, '#d9433b', 2.4, []);
+  drawCurve(mean, sigma, '#526574', 1.5, [6, 4]);
+
+  ctx.setLineDash([]);
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = '#80939d';
+  ctx.beginPath();
+  ctx.moveTo(left, top);
+  ctx.lineTo(left, bottom);
+  ctx.lineTo(right, bottom);
+  ctx.stroke();
+  ctx.fillStyle = '#526574';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (const tick of [130, 150, 170, 190, 210]) {
+    ctx.fillText(String(tick), xPixel(tick), bottom + 5);
+  }
+  ctx.fillText('身長（cm）', (left + right) / 2, rect.height - 16);
+  ctx.save();
+  ctx.translate(4, (top + bottom) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('密度', 0, 0);
+  ctx.restore();
+}
+
+function render() {
+  const n = sampleOptions[Number(sampleSlider.value) - 1];
+  const bins = Number(binSlider.value);
+  const data = samples.slice(0, n);
+  const fit = fitNormal(data);
+  const hist = histogram(data, bins);
+  const peak = Math.max(density(mean, mean, sigma), density(fit.center, fit.center, fit.spread), ...hist.heights);
+  const yMax = Math.ceil(peak * 1.08 / 0.01) * 0.01;
+  const sampleCount = n.toLocaleString('ja-JP');
+  const details = `${bins}階級・階級幅 ${Number(hist.width.toFixed(1))} cm ｜ 標本の平均 ${fit.center.toFixed(2)} cm、標準偏差 ${fit.spread.toFixed(2)} cm`;
+  document.getElementById('samplesValue').value = sampleCount + ' 人';
+  document.getElementById('binsValue').value = bins + ' 階級';
+  document.getElementById('chartDetails').textContent = details;
+  canvas.setAttribute('aria-label', `${sampleCount}人の身長のヒストグラムと正規分布の密度曲線。${details}`);
+  draw(hist, yMax, fit);
+}
+
+sampleSlider.addEventListener('input',render);binSlider.addEventListener('input',render);document.getElementById('resample').addEventListener('click',()=>{seed=(seed+1)>>>0;generate();render()});window.addEventListener('resize',render);generate();render();
+</script></body></html>
