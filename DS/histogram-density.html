@@ -23,6 +23,12 @@
   .interval-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .interval-results { grid-column: 1 / -1; }
 }
+.distribution-explanation {
+  margin-top: 8px;
+  padding-top: 5px;
+  border-top: 1px solid #d9e3e7;
+  font-size: .93rem;
+}
 </style>
 </head>
 <body><main>
@@ -56,6 +62,10 @@
   <span><span class="swatch" aria-hidden="true"></span>標本のヒストグラム（密度）</span>
   <span><span class="curve" aria-hidden="true"></span>標本の平均・標準偏差から描いた正規分布</span>
   <span><span class="curve reference" aria-hidden="true"></span>標本を生成した正規分布（平均170 cm、標準偏差8 cm）</span>
+</div>
+<div class="distribution-explanation">
+  <p><strong>確率（灰色の破線）</strong>　既知の分布から、身長が指定した区間に入る確率を求めます。このデモでは、その分布から標本を生成します。</p>
+  <p><strong>統計（赤線）</strong>　得られた標本の平均と標準偏差を使い、もとの分布を正規分布と仮定して推定します。</p>
 </div>
 </section>
 <section class="panel note"><h2>見比べるポイント</h2><p>ヒストグラムは、各階級の人数を「データ数 × 階級幅」で割った密度で表示しています。表示範囲内の棒の面積の合計は、その範囲に入るデータの割合です。</p><p>データ数を増やし、階級幅を適切に選ぶと、ヒストグラムは理論曲線に近づきます。データ数が少ないまま階級を細かくしすぎると、かえって凸凹が目立ちます。</p><p>10人に設定し、「データを作り直す」を何度か押してみましょう。赤線の位置や幅が標本ごとに変わります。標本数が多いほど、そのばらつきは小さくなり、固定した灰色の破線に近づく傾向があります。連続する値がある区間に入る確率は、その区間で曲線の下にある面積です。</p></section>
