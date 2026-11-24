@@ -27,6 +27,8 @@
 }
 .slice-toggle { padding: 3px 7px; font-size: .84rem; }
 .surface-slice-tools .legend { margin: 0 0 0 4px; }
+:root { --slice-minimum-color: #0063c3; }
+.slice-min-key { color: var(--slice-minimum-color); }
 </style>
 </head>
 <body><main>
@@ -40,7 +42,7 @@
   <p class="legend"><span class="red">● 現在の値</span>　<span class="black">● 誤差が最小の値</span></p>
 </div></div></div><canvas class="plot" id="surface" tabindex="0" role="img" aria-label="傾きと切片に対する残差平方和の立体図。ドラッグまたは矢印キーで回転できます"></canvas><p>ドラッグまたは矢印キーで回転、＋・−で拡大縮小できます。</p></section>
 <section class="panel" aria-labelledby="table-title"><h2 id="table-title">誤差の計算</h2><p>残差 ＝ 予測値 − 実測値</p><div class="table-wrap"><table><thead><tr><th scope="col">x</th><th scope="col">実測値 y</th><th scope="col">予測値 ax+b</th><th scope="col">残差</th><th scope="col">残差の二乗</th></tr></thead><tbody id="error-rows"></tbody><tfoot><tr><th colspan="4" scope="row">残差平方和（SSE）</th><td id="table-mse"></td></tr></tfoot></table></div></section>
-<div class="slices"><section class="panel"><h2>（2）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section><section class="panel"><h2>（3）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="black">● 表示範囲内の最小</span></p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section></div>
+<div class="slices"><section class="panel"><h2>（2）傾き a と誤差</h2><p>切片 b を現在の値に固定　<span class="slice-min-key" aria-hidden="true">●</span> 表示範囲内の最小</p><canvas class="plot slice" id="aslice" role="img" aria-label="切片を固定したときの傾きと誤差の関係"></canvas></section><section class="panel"><h2>（3）切片 b と誤差</h2><p>傾き a を現在の値に固定　<span class="slice-min-key" aria-hidden="true">●</span> 表示範囲内の最小</p><canvas class="plot slice" id="bslice" role="img" aria-label="傾きを固定したときの切片と誤差の関係"></canvas></section></div>
 </div><section class="formula" aria-labelledby="formula-title"><div class="formula-heading"><h2 id="formula-title">このデータの誤差関数：</h2><p>5個のデータについて、予測値と実測値の差を二乗して合計</p></div><div class="equations"><span class="math">E(<i>a</i>, <i>b</i>)</span><span class="math">=</span><span class="math" id="formula-expanded-input"></span><span></span><span class="math">=</span><span class="math" id="formula-expanded"></span></div></section><p>（2）と（3）の図は、傾き <i>a</i> または切片 <i>b</i> を現在の値に固定し、もう一方を変えたときの誤差を表しています。立体の誤差曲面を、それぞれの軸に平行な垂直面で切った断面です。</p>
 </main><script>
 'use strict';
@@ -86,6 +88,7 @@ residualToggle.addEventListener('click',()=>{
 });
 const sliceAColor = '#5e359e';
 const sliceBColor = '#006358';
+const sliceMinimumColor = getComputedStyle(document.documentElement).getPropertyValue('--slice-minimum-color').trim();
 function drawSlice(id, low, high, fn, current, minimum, label, color) {
   const points = Array.from({length: 101}, (_, i) => {
     const x = low + (high - low) * i / 100;
@@ -95,7 +98,7 @@ function drawSlice(id, low, high, fn, current, minimum, label, color) {
   chart(id, low, high, 0, max, label, 'SSE', (ctx, X, Y) => {
     line(ctx, points.map(([x, y]) => [X(x), Y(y)]), color, 2.5);
     const best = Math.max(low, Math.min(high, minimum));
-    dot(ctx, X(best), Y(fn(best)), '#222', 6);
+    dot(ctx, X(best), Y(fn(best)), sliceMinimumColor, 6);
     dot(ctx, X(current), Y(fn(current)), '#c53e36', 4);
   });
 }
